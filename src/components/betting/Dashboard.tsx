@@ -1,38 +1,75 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { getUser, getBets } from '@/lib/storage';
-import { User, Bet } from '@/types/betting';
-import { Coins, TrendingUp, Activity } from 'lucide-react';
+import { getUser, getBets } from '@/lib/supabase-storage';
+import { User, Bet } from '@/types/supabase-betting';
+import { Coins, TrendingUp, Activity, Trophy } from 'lucide-react';
 import BettingSlip from './BettingSlip';
 import MyBets from './MyBets';
+import Leaderboard from './Leaderboard';
 
 const Dashboard = () => {
   const [user, setUser] = useState<User | null>(null);
   const [bets, setBets] = useState<Bet[]>([]);
-  const [activeView, setActiveView] = useState<'dashboard' | 'betting' | 'mybets'>('dashboard');
+  const [activeView, setActiveView] = useState<'dashboard' | 'betting' | 'mybets' | 'leaderboard'>('dashboard');
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setUser(getUser());
-    setBets(getBets());
+    const fetchData = async () => {
+      try {
+        const [userData, betsData] = await Promise.all([
+          getUser(),
+          getBets()
+        ]);
+        setUser(userData);
+        setBets(betsData);
+      } catch (error) {
+        console.error('Error fetching data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
   }, []);
 
-  const refreshData = () => {
-    setUser(getUser());
-    setBets(getBets());
+  const refreshData = async () => {
+    try {
+      const [userData, betsData] = await Promise.all([
+        getUser(),
+        getBets()
+      ]);
+      setUser(userData);
+      setBets(betsData);
+    } catch (error) {
+      console.error('Error refreshing data:', error);
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <p className="text-muted-foreground">Loading...</p>
+      </div>
+    );
+  }
 
   if (!user) return null;
 
   const pendingBets = bets.filter(bet => bet.result === 'pending');
-  const winRate = bets.length > 0 ? (bets.filter(bet => bet.result === 'win').length / bets.filter(bet => bet.result !== 'pending').length * 100).toFixed(1) : '0';
+  const settledBets = bets.filter(bet => bet.result !== 'pending');
+  const winRate = settledBets.length > 0 ? (bets.filter(bet => bet.result === 'win').length / settledBets.length * 100).toFixed(1) : '0';
 
   if (activeView === 'betting') {
     return <BettingSlip onBack={() => setActiveView('dashboard')} onBetPlaced={refreshData} />;
   }
 
   if (activeView === 'mybets') {
-    return <MyBets onBack={() => setActiveView('dashboard')} />;
+    return <MyBets onBack={() => setActiveView('dashboard')} onRefresh={refreshData} />;
+  }
+
+  if (activeView === 'leaderboard') {
+    return <Leaderboard onBack={() => setActiveView('dashboard')} />;
   }
 
   return (
@@ -99,6 +136,17 @@ const Dashboard = () => {
           </Button>
         </div>
 
+        {/* Leaderboard Button */}
+        <Button 
+          variant="outline" 
+          size="lg" 
+          className="w-full h-16 text-lg"
+          onClick={() => setActiveView('leaderboard')}
+        >
+          <Trophy className="mr-2 h-5 w-5" />
+          🏆 Leaderboard
+        </Button>
+
         {/* Recent Activity */}
         {bets.length > 0 && (
           <Card>
@@ -112,7 +160,7 @@ const Dashboard = () => {
                     <div>
                       <span className="font-medium">{bet.city}</span>
                       <span className="text-muted-foreground ml-2">
-                        {bet.predictionType === 'rain' ? `Rain: ${bet.predictionValue}` : `Temp: ${bet.predictionValue}°C`}
+                        {bet.prediction_type === 'rain' ? `Rain: ${bet.prediction_value}` : `Temp: ${bet.prediction_value}°C`}
                       </span>
                     </div>
                     <div className="text-right">

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -6,8 +6,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { ArrowLeft } from 'lucide-react';
-import { getUser, addBet, updateUserPoints } from '@/lib/storage';
-import { CITIES, TEMPERATURE_RANGES, City } from '@/types/betting';
+import { getUser, addBet, updateUserPoints } from '@/lib/supabase-storage';
+import { CITIES, TEMPERATURE_RANGES, City } from '@/types/supabase-betting';
 import { useToast } from '@/hooks/use-toast';
 
 interface BettingSlipProps {
@@ -21,9 +21,21 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
   const [rainPrediction, setRainPrediction] = useState<'yes' | 'no' | ''>('');
   const [tempRange, setTempRange] = useState<string>('');
   const [stake, setStake] = useState<string>('');
+  const [user, setUser] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
-  const user = getUser();
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const userData = await getUser();
+        setUser(userData);
+      } catch (error) {
+        console.error('Error fetching user:', error);
+      }
+    };
+    fetchUser();
+  }, []);
 
   const getRainOdds = () => 2.0;
   const getTempOdds = () => {
@@ -54,34 +66,53 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
     );
   };
 
-  const handlePlaceBet = () => {
-    if (!canPlaceBet()) return;
+  const handlePlaceBet = async () => {
+    if (!canPlaceBet() || loading) return;
 
-    const stakeNum = parseInt(stake);
-    const predictionValue = predictionType === 'rain' ? rainPrediction : tempRange;
+    setLoading(true);
+    try {
+      const stakeNum = parseInt(stake);
+      const predictionValue = predictionType === 'rain' ? rainPrediction : tempRange;
 
-    // Deduct stake from user points
-    updateUserPoints(user.points - stakeNum);
+      // Deduct stake from user points
+      await updateUserPoints(user.points - stakeNum);
 
-    // Add bet
-    addBet({
-      userId: user.id,
-      city: city as City,
-      predictionType: predictionType as 'rain' | 'temperature',
-      predictionValue: predictionValue as string,
-      stake: stakeNum,
-      odds: getCurrentOdds(),
-      result: 'pending',
-    });
+      // Add bet
+      await addBet({
+        city: city as City,
+        prediction_type: predictionType as 'rain' | 'temperature',
+        prediction_value: predictionValue as string,
+        stake: stakeNum,
+        odds: getCurrentOdds(),
+        result: 'pending',
+      });
 
-    toast({
-      title: "Bet Placed!",
-      description: `Your ${stakeNum} point bet on ${city} has been placed.`,
-    });
+      toast({
+        title: "Bet Placed!",
+        description: `Your ${stakeNum} point bet on ${city} has been placed.`,
+      });
 
-    onBetPlaced();
-    onBack();
+      onBetPlaced();
+      onBack();
+    } catch (error) {
+      console.error('Error placing bet:', error);
+      toast({
+        title: "Error",
+        description: "Failed to place bet. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
+
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <p className="text-muted-foreground">Loading...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background p-4">
@@ -221,9 +252,9 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
               className="w-full" 
               size="lg"
               onClick={handlePlaceBet}
-              disabled={!canPlaceBet()}
+              disabled={!canPlaceBet() || loading}
             >
-              Place Bet
+              {loading ? 'Placing Bet...' : 'Place Bet'}
             </Button>
           </CardContent>
         </Card>

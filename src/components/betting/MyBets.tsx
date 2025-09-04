@@ -3,46 +3,73 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, RefreshCw } from 'lucide-react';
-import { getBets, updateBetResult, getUser, updateUserPoints } from '@/lib/storage';
-import { Bet } from '@/types/betting';
+import { getBets, updateBetResult, getUser, updateUserPoints } from '@/lib/supabase-storage';
+import { Bet } from '@/types/supabase-betting';
 import { useToast } from '@/hooks/use-toast';
 
 interface MyBetsProps {
   onBack: () => void;
+  onRefresh: () => void;
 }
 
-const MyBets = ({ onBack }: MyBetsProps) => {
+const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
   const [bets, setBets] = useState<Bet[]>([]);
+  const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
   useEffect(() => {
-    setBets(getBets());
+    const fetchBets = async () => {
+      try {
+        const data = await getBets();
+        setBets(data);
+      } catch (error) {
+        console.error('Error fetching bets:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchBets();
   }, []);
 
-  const refreshBets = () => {
-    setBets(getBets());
+  const refreshBets = async () => {
+    try {
+      const data = await getBets();
+      setBets(data);
+      onRefresh();
+    } catch (error) {
+      console.error('Error refreshing bets:', error);
+    }
   };
 
-  const handleManualSettle = (bet: Bet, result: 'win' | 'loss') => {
-    updateBetResult(bet.id, result);
-    
-    if (result === 'win') {
-      const user = getUser();
-      const winnings = Math.floor(bet.stake * bet.odds);
-      updateUserPoints(user.points + winnings);
+  const handleManualSettle = async (bet: Bet, result: 'win' | 'loss') => {
+    try {
+      await updateBetResult(bet.id, result);
       
+      if (result === 'win') {
+        const user = await getUser();
+        const winnings = Math.floor(bet.stake * Number(bet.odds));
+        await updateUserPoints(user.points + winnings);
+        
+        toast({
+          title: "Bet Won! 🎉",
+          description: `You won ${winnings} points!`,
+        });
+      } else {
+        toast({
+          title: "Bet Lost 😞",
+          description: `Better luck next time!`,
+        });
+      }
+      
+      await refreshBets();
+    } catch (error) {
+      console.error('Error settling bet:', error);
       toast({
-        title: "Bet Won! 🎉",
-        description: `You won ${winnings} points!`,
-      });
-    } else {
-      toast({
-        title: "Bet Lost 😞",
-        description: `Better luck next time!`,
+        title: "Error",
+        description: "Failed to settle bet. Please try again.",
+        variant: "destructive",
       });
     }
-    
-    refreshBets();
   };
 
   const pendingBets = bets.filter(bet => bet.result === 'pending');
@@ -64,6 +91,14 @@ const MyBets = ({ onBack }: MyBetsProps) => {
       default: return 'secondary';
     }
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <p className="text-muted-foreground">Loading bets...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background p-4">
@@ -96,12 +131,12 @@ const MyBets = ({ onBack }: MyBetsProps) => {
                       <div>
                         <h3 className="font-semibold text-lg">{bet.city}</h3>
                         <p className="text-muted-foreground">
-                          {bet.predictionType === 'rain' 
-                            ? `Rain: ${bet.predictionValue}` 
-                            : `Temperature: ${bet.predictionValue}°C`
+                          {bet.prediction_type === 'rain' 
+                            ? `Rain: ${bet.prediction_value}` 
+                            : `Temperature: ${bet.prediction_value}°C`
                           }
                         </p>
-                        <p className="text-sm text-muted-foreground">{formatDate(bet.createdAt)}</p>
+                        <p className="text-sm text-muted-foreground">{formatDate(bet.created_at)}</p>
                       </div>
                       <div className="text-right">
                         <Badge variant={getBadgeVariant(bet.result)}>
@@ -152,12 +187,12 @@ const MyBets = ({ onBack }: MyBetsProps) => {
                     <div>
                       <h3 className="font-medium">{bet.city}</h3>
                       <p className="text-sm text-muted-foreground">
-                        {bet.predictionType === 'rain' 
-                          ? `Rain: ${bet.predictionValue}` 
-                          : `Temperature: ${bet.predictionValue}°C`
+                        {bet.prediction_type === 'rain' 
+                          ? `Rain: ${bet.prediction_value}` 
+                          : `Temperature: ${bet.prediction_value}°C`
                         }
                       </p>
-                      <p className="text-xs text-muted-foreground">{formatDate(bet.createdAt)}</p>
+                      <p className="text-xs text-muted-foreground">{formatDate(bet.created_at)}</p>
                     </div>
                     <div className="text-right">
                       <Badge variant={getBadgeVariant(bet.result)}>
@@ -165,7 +200,7 @@ const MyBets = ({ onBack }: MyBetsProps) => {
                       </Badge>
                       <p className="text-sm mt-1">
                         {bet.result === 'win' 
-                          ? `+${Math.floor(bet.stake * bet.odds)} pts`
+                          ? `+${Math.floor(bet.stake * Number(bet.odds))} pts`
                           : `-${bet.stake} pts`
                         }
                       </p>
