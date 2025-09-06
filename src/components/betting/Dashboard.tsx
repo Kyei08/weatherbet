@@ -166,8 +166,8 @@ const Dashboard = () => {
                     <div className="text-right">
                       <div className="font-medium">{bet.stake} pts</div>
                       <div className={`text-sm ${
-                        bet.result === 'win' ? 'text-green-600' : 
-                        bet.result === 'loss' ? 'text-red-600' : 
+                        bet.result === 'win' ? 'text-success' : 
+                        bet.result === 'loss' ? 'text-destructive' : 
                         'text-muted-foreground'
                       }`}>
                         {bet.result === 'pending' ? 'Pending' : bet.result.toUpperCase()}

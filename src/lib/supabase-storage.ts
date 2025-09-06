@@ -12,7 +12,8 @@ const STORAGE_KEY = 'weather-betting-user-id';
 const getCurrentUserId = (): string => {
   let userId = localStorage.getItem(STORAGE_KEY);
   if (!userId) {
-    userId = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    // Generate a proper UUID v4 format
+    userId = crypto.randomUUID();
     localStorage.setItem(STORAGE_KEY, userId);
   }
   return userId;

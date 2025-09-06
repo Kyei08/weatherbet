@@ -9,6 +9,7 @@ import { ArrowLeft } from 'lucide-react';
 import { getUser, addBet, updateUserPoints } from '@/lib/supabase-storage';
 import { CITIES, TEMPERATURE_RANGES, City } from '@/types/supabase-betting';
 import { useToast } from '@/hooks/use-toast';
+import WeatherDisplay from './WeatherDisplay';
 
 interface BettingSlipProps {
   onBack: () => void;
@@ -131,6 +132,9 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
             <p className="text-muted-foreground">Available Balance: {user.points.toLocaleString()} points</p>
           </CardHeader>
           <CardContent className="space-y-6">
+            {/* Weather Display */}
+            {city && <WeatherDisplay city={city} />}
+            
             {/* City Selection */}
             <div className="space-y-2">
               <Label>Select City</Label>
