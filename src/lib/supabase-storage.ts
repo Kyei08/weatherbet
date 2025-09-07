@@ -8,14 +8,35 @@ type BetInsert = Database['public']['Tables']['bets']['Insert'];
 
 const STORAGE_KEY = 'weather-betting-user-id';
 
+// Validate if string is a proper UUID
+const isValidUUID = (str: string): boolean => {
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(str);
+};
+
+// Generate UUID v4 (fallback for older browsers)
+const generateUUID = (): string => {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  // Fallback UUID generation for older browsers
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = Math.random() * 16 | 0;
+    const v = c == 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+};
+
 // Get or create current user ID from localStorage
 const getCurrentUserId = (): string => {
   let userId = localStorage.getItem(STORAGE_KEY);
-  if (!userId) {
-    // Generate a proper UUID v4 format
-    userId = crypto.randomUUID();
+  
+  // Check if stored ID is valid UUID, if not, generate new one
+  if (!userId || !isValidUUID(userId)) {
+    userId = generateUUID();
     localStorage.setItem(STORAGE_KEY, userId);
   }
+  
   return userId;
 };
 
