@@ -3,53 +3,50 @@ import { Database } from '@/integrations/supabase/types';
 
 type User = Database['public']['Tables']['users']['Row'];
 type Bet = Database['public']['Tables']['bets']['Row'];
+type Profile = Database['public']['Tables']['profiles']['Row'];
 type UserInsert = Database['public']['Tables']['users']['Insert'];
 type BetInsert = Database['public']['Tables']['bets']['Insert'];
+type ProfileInsert = Database['public']['Tables']['profiles']['Insert'];
 
-const STORAGE_KEY = 'weather-betting-user-id';
-
-// Validate if string is a proper UUID
-const isValidUUID = (str: string): boolean => {
-  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-  return uuidRegex.test(str);
+// Get current authenticated user ID
+const getCurrentUserId = async (): Promise<string | null> => {
+  const { data: { user } } = await supabase.auth.getUser();
+  return user?.id ?? null;
 };
 
-// Generate UUID v4 (fallback for older browsers)
-const generateUUID = (): string => {
-  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
-    return crypto.randomUUID();
+// Profile management
+export const getProfile = async (): Promise<Profile | null> => {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('*')
+    .single();
+
+  if (error && error.code !== 'PGRST116') {
+    throw error;
   }
-  // Fallback UUID generation for older browsers
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-    const r = Math.random() * 16 | 0;
-    const v = c == 'x' ? r : (r & 0x3 | 0x8);
-    return v.toString(16);
-  });
+  return data;
 };
 
-// Get or create current user ID from localStorage
-const getCurrentUserId = (): string => {
-  let userId = localStorage.getItem(STORAGE_KEY);
-  
-  // Check if stored ID is valid UUID, if not, generate new one
-  if (!userId || !isValidUUID(userId)) {
-    userId = generateUUID();
-    localStorage.setItem(STORAGE_KEY, userId);
-  }
-  
-  return userId;
+export const updateProfile = async (updates: Partial<ProfileInsert>): Promise<void> => {
+  const { error } = await supabase
+    .from('profiles')
+    .update(updates)
+    .eq('user_id', (await supabase.auth.getUser()).data.user?.id);
+
+  if (error) throw error;
 };
 
-// User management
-export const getUser = async (): Promise<User> => {
-  const userId = getCurrentUserId();
-  
+// User management (for the game-specific user table)
+export const getUser = async (): Promise<User | null> => {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+
   // Try to find existing user
   const { data: existingUser } = await supabase
     .from('users')
     .select('*')
-    .eq('id', userId)
-    .single();
+    .eq('id', user.id)
+    .maybeSingle();
 
   if (existingUser) {
     return existingUser;
@@ -57,7 +54,7 @@ export const getUser = async (): Promise<User> => {
 
   // Create new user if doesn't exist
   const newUser: UserInsert = {
-    id: userId,
+    id: user.id,
     username: `Player${Math.floor(Math.random() * 10000)}`,
     points: 1000,
   };
@@ -73,35 +70,34 @@ export const getUser = async (): Promise<User> => {
 };
 
 export const updateUserPoints = async (points: number): Promise<void> => {
-  const userId = getCurrentUserId();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('User not authenticated');
   
   const { error } = await supabase
     .from('users')
     .update({ points })
-    .eq('id', userId);
+    .eq('id', user.id);
 
   if (error) throw error;
 };
 
 export const updateUsername = async (username: string): Promise<void> => {
-  const userId = getCurrentUserId();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('User not authenticated');
   
   const { error } = await supabase
     .from('users')
     .update({ username })
-    .eq('id', userId);
+    .eq('id', user.id);
 
   if (error) throw error;
 };
 
 // Bet management
 export const getBets = async (): Promise<Bet[]> => {
-  const userId = getCurrentUserId();
-  
   const { data, error } = await supabase
     .from('bets')
     .select('*')
-    .eq('user_id', userId)
     .order('created_at', { ascending: false });
 
   if (error) throw error;
@@ -109,11 +105,12 @@ export const getBets = async (): Promise<Bet[]> => {
 };
 
 export const addBet = async (bet: Omit<BetInsert, 'id' | 'user_id' | 'created_at' | 'updated_at'>): Promise<Bet> => {
-  const userId = getCurrentUserId();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('User not authenticated');
   
   const newBet: BetInsert = {
     ...bet,
-    user_id: userId,
+    user_id: user.id,
   };
 
   const { data, error } = await supabase
@@ -146,15 +143,16 @@ export const getLeaderboard = async (): Promise<User[]> => {
   return data || [];
 };
 
-export const clearAllData = async (): Promise<void> => {
-  const userId = getCurrentUserId();
+export const clearAllUserData = async (): Promise<void> => {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('User not authenticated');
   
-  // Delete all bets first (due to foreign key constraint)
-  await supabase.from('bets').delete().eq('user_id', userId);
+  // Delete all user bets first (due to foreign key constraint)
+  await supabase.from('bets').delete().eq('user_id', user.id);
   
-  // Delete user
-  await supabase.from('users').delete().eq('id', userId);
+  // Delete user record
+  await supabase.from('users').delete().eq('id', user.id);
   
-  // Clear localStorage
-  localStorage.removeItem(STORAGE_KEY);
+  // Delete profile
+  await supabase.from('profiles').delete().eq('user_id', user.id);
 };

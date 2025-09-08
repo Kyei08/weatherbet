@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { ArrowLeft } from 'lucide-react';
-import { getUser, addBet, updateUserPoints } from '@/lib/supabase-storage';
+import { getUser, addBet, updateUserPoints } from '@/lib/supabase-auth-storage';
 import { CITIES, TEMPERATURE_RANGES, City } from '@/types/supabase-betting';
 import { useToast } from '@/hooks/use-toast';
 import WeatherDisplay from './WeatherDisplay';

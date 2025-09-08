@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, RefreshCw } from 'lucide-react';
-import { getBets, updateBetResult, getUser, updateUserPoints } from '@/lib/supabase-storage';
+import { getBets, updateBetResult, getUser, updateUserPoints } from '@/lib/supabase-auth-storage';
 import { Bet } from '@/types/supabase-betting';
 import { useToast } from '@/hooks/use-toast';
 

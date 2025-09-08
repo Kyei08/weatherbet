@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, Trophy, Medal, Award } from 'lucide-react';
-import { getLeaderboard } from '@/lib/supabase-storage';
+import { getLeaderboard } from '@/lib/supabase-auth-storage';
 import { User } from '@/types/supabase-betting';
 
 interface LeaderboardProps {
