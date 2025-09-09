@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { getUser, getBets } from '@/lib/supabase-auth-storage';
+import { getUser, getRecentBets } from '@/lib/supabase-auth-storage';
 import { User, Bet } from '@/types/supabase-betting';
 import { Coins, TrendingUp, Activity, Trophy } from 'lucide-react';
 import BettingSlip from './BettingSlip';
@@ -19,7 +19,7 @@ const Dashboard = () => {
       try {
         const [userData, betsData] = await Promise.all([
           getUser(),
-          getBets()
+          getRecentBets()
         ]);
         setUser(userData);
         setBets(betsData);
@@ -37,7 +37,7 @@ const Dashboard = () => {
     try {
       const [userData, betsData] = await Promise.all([
         getUser(),
-        getBets()
+        getRecentBets()
       ]);
       setUser(userData);
       setBets(betsData);
