@@ -3,15 +3,16 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { getUser, getRecentBets } from '@/lib/supabase-auth-storage';
 import { User, Bet } from '@/types/supabase-betting';
-import { Coins, TrendingUp, Activity, Trophy } from 'lucide-react';
+import { Coins, TrendingUp, Activity, Trophy, Palette } from 'lucide-react';
 import BettingSlip from './BettingSlip';
 import MyBets from './MyBets';
 import Leaderboard from './Leaderboard';
+import DesignShowcase from '@/components/DesignShowcase';
 
 const Dashboard = () => {
   const [user, setUser] = useState<User | null>(null);
   const [bets, setBets] = useState<Bet[]>([]);
-  const [activeView, setActiveView] = useState<'dashboard' | 'betting' | 'mybets' | 'leaderboard'>('dashboard');
+  const [activeView, setActiveView] = useState<'dashboard' | 'betting' | 'mybets' | 'leaderboard' | 'designs'>('dashboard');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -70,6 +71,10 @@ const Dashboard = () => {
 
   if (activeView === 'leaderboard') {
     return <Leaderboard onBack={() => setActiveView('dashboard')} />;
+  }
+
+  if (activeView === 'designs') {
+    return <DesignShowcase onBack={() => setActiveView('dashboard')} />;
   }
 
   return (
@@ -136,16 +141,27 @@ const Dashboard = () => {
           </Button>
         </div>
 
-        {/* Leaderboard Button */}
-        <Button 
-          variant="outline" 
-          size="lg" 
-          className="w-full h-16 text-lg"
-          onClick={() => setActiveView('leaderboard')}
-        >
-          <Trophy className="mr-2 h-5 w-5" />
-          🏆 Leaderboard
-        </Button>
+        {/* Action Buttons */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Button 
+            variant="outline" 
+            size="lg" 
+            className="h-16 text-lg"
+            onClick={() => setActiveView('leaderboard')}
+          >
+            <Trophy className="mr-2 h-5 w-5" />
+            🏆 Leaderboard
+          </Button>
+          <Button 
+            variant="outline" 
+            size="lg" 
+            className="h-16 text-lg"
+            onClick={() => setActiveView('designs')}
+          >
+            <Palette className="mr-2 h-5 w-5" />
+            🎨 View Designs
+          </Button>
+        </div>
 
         {/* Recent Activity */}
         {bets.length > 0 && (
