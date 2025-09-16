@@ -1,1 +1,4 @@
 project_id = "imyzcwgskjngwvcadrjn"
+
+[functions.resolve-bets]
+verify_jwt = false
