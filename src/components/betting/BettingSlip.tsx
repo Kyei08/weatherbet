@@ -22,6 +22,7 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
   const [rainPrediction, setRainPrediction] = useState<'yes' | 'no' | ''>('');
   const [tempRange, setTempRange] = useState<string>('');
   const [stake, setStake] = useState<string>('');
+  const [betDuration, setBetDuration] = useState<string>('');
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
@@ -55,12 +56,21 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
     return Math.floor(stakeNum * getCurrentOdds());
   };
 
+  const getBetDeadline = () => {
+    const now = new Date();
+    const daysToAdd = parseInt(betDuration);
+    const deadline = new Date(now);
+    deadline.setDate(deadline.getDate() + daysToAdd);
+    return deadline.toISOString();
+  };
+
   const canPlaceBet = () => {
     const stakeNum = parseInt(stake) || 0;
     return (
       city &&
       predictionType &&
       (predictionType === 'rain' ? rainPrediction : tempRange) &&
+      betDuration &&
       stakeNum >= 10 &&
       stakeNum <= 100 &&
       stakeNum <= user.points
@@ -79,6 +89,7 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
       await updateUserPoints(user.points - stakeNum);
 
       // Add bet
+      const targetDate = getBetDeadline();
       await addBet({
         city: city as City,
         prediction_type: predictionType as 'rain' | 'temperature',
@@ -86,6 +97,9 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
         stake: stakeNum,
         odds: getCurrentOdds(),
         result: 'pending',
+        target_date: targetDate,
+        expires_at: targetDate,
+        bet_duration_days: parseInt(betDuration),
       });
 
       toast({
@@ -203,6 +217,23 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
               </div>
             )}
 
+            {/* Bet Duration/Deadline */}
+            <div className="space-y-2">
+              <Label>Bet Deadline</Label>
+              <Select value={betDuration} onValueChange={setBetDuration}>
+                <SelectTrigger>
+                  <SelectValue placeholder="When should this bet be resolved?" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1">Tomorrow (24 hours)</SelectItem>
+                  <SelectItem value="2">2 Days</SelectItem>
+                  <SelectItem value="3">3 Days</SelectItem>
+                  <SelectItem value="7">1 Week</SelectItem>
+                  <SelectItem value="14">2 Weeks</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
             {/* Stake */}
             <div className="space-y-2">
               <Label>Stake (10-100 points)</Label>
@@ -217,7 +248,7 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
             </div>
 
             {/* Bet Summary */}
-            {city && predictionType && (predictionType === 'rain' ? rainPrediction : tempRange) && stake && (
+            {city && predictionType && (predictionType === 'rain' ? rainPrediction : tempRange) && stake && betDuration && (
               <Card className="bg-muted">
                 <CardContent className="pt-4">
                   <div className="space-y-2 text-sm">
@@ -232,6 +263,12 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
                           ? `Rain: ${rainPrediction}` 
                           : `Temperature: ${TEMPERATURE_RANGES.find(r => r.value === tempRange)?.label}`
                         }
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Deadline:</span>
+                      <span className="font-medium">
+                        {betDuration === '1' ? 'Tomorrow' : `${betDuration} days`}
                       </span>
                     </div>
                     <div className="flex justify-between">
