@@ -7,6 +7,7 @@ import { Coins, TrendingUp, Activity, Trophy } from 'lucide-react';
 import BettingSlip from './BettingSlip';
 import MyBets from './MyBets';
 import Leaderboard from './Leaderboard';
+import ActiveBetsWeather from './ActiveBetsWeather';
 
 const Dashboard = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -80,6 +81,9 @@ const Dashboard = () => {
           <h1 className="text-4xl font-bold text-foreground mb-2">🌦️ Weather Betting</h1>
           <p className="text-muted-foreground">Predict the weather, win points!</p>
         </div>
+
+        {/* Weather Alerts */}
+        {bets.length > 0 && <ActiveBetsWeather bets={bets} />}
 
         {/* User Stats */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
