@@ -100,7 +100,7 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
         target_date: targetDate,
         expires_at: targetDate,
         bet_duration_days: parseInt(betDuration),
-      });
+      } as any);
 
       toast({
         title: "Bet Placed!",

@@ -16,38 +16,47 @@ export type Database = {
     Tables: {
       bets: {
         Row: {
+          bet_duration_days: number | null
           city: string
           created_at: string
+          expires_at: string | null
           id: string
           odds: number
           prediction_type: string
           prediction_value: string
           result: string
           stake: number
+          target_date: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
+          bet_duration_days?: number | null
           city: string
           created_at?: string
+          expires_at?: string | null
           id?: string
           odds: number
           prediction_type: string
           prediction_value: string
           result?: string
           stake: number
+          target_date?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
+          bet_duration_days?: number | null
           city?: string
           created_at?: string
+          expires_at?: string | null
           id?: string
           odds?: number
           prediction_type?: string
           prediction_value?: string
           result?: string
           stake?: number
+          target_date?: string | null
           updated_at?: string
           user_id?: string
         }
