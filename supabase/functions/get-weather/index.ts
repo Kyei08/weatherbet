@@ -5,35 +5,43 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-interface WeatherResponse {
-  current: {
-    temp: number;
-    feels_like: number;
-    humidity: number;
-    pressure: number;
-    wind_speed: number;
-    weather: Array<{
-      main: string;
-      description: string;
-      icon: string;
-    }>;
-  };
-  daily: Array<{
-    dt: number;
-    temp: {
-      min: number;
-      max: number;
-      day: number;
-    };
-    humidity: number;
-    wind_speed: number;
-    pop: number; // Probability of precipitation
-    weather: Array<{
-      main: string;
-      description: string;
-      icon: string;
-    }>;
-  }>;
+// Helper function to process forecast data into daily summaries
+function processForecastData(forecastList: any[]): any[] {
+  const dailyData = new Map();
+  
+  forecastList.forEach(item => {
+    const date = new Date(item.dt * 1000).toISOString().split('T')[0];
+    
+    if (!dailyData.has(date)) {
+      dailyData.set(date, {
+        date: new Date(item.dt * 1000).toISOString(),
+        temps: [item.main.temp],
+        humidity: item.main.humidity,
+        wind_speed: item.wind.speed,
+        rain_probability: (item.pop || 0) * 100,
+        condition: item.weather[0].main,
+        description: item.weather[0].description,
+        icon: item.weather[0].icon,
+      });
+    } else {
+      const dayData = dailyData.get(date);
+      dayData.temps.push(item.main.temp);
+      dayData.rain_probability = Math.max(dayData.rain_probability, (item.pop || 0) * 100);
+    }
+  });
+  
+  return Array.from(dailyData.values()).slice(0, 7).map(day => ({
+    date: day.date,
+    temp_min: Math.round(Math.min(...day.temps)),
+    temp_max: Math.round(Math.max(...day.temps)),
+    temp_day: Math.round(day.temps.reduce((a: number, b: number) => a + b, 0) / day.temps.length),
+    humidity: day.humidity,
+    wind_speed: Math.round(day.wind_speed * 3.6),
+    rain_probability: Math.round(day.rain_probability),
+    condition: day.condition,
+    description: day.description,
+    icon: day.icon,
+  }));
 }
 
 const CITY_COORDS: Record<string, { lat: number; lon: number }> = {
@@ -81,50 +89,58 @@ serve(async (req) => {
     }
 
     const coords = CITY_COORDS[city];
-    const url = `https://api.openweathermap.org/data/3.0/onecall?lat=${coords.lat}&lon=${coords.lon}&exclude=minutely,hourly,alerts&units=metric&appid=${apiKey}`;
     
     console.log(`Fetching weather for ${city}...`);
-    const response = await fetch(url);
     
-    if (!response.ok) {
-      console.error('OpenWeather API error:', response.status);
+    // Fetch current weather (free tier API)
+    const currentUrl = `https://api.openweathermap.org/data/2.5/weather?lat=${coords.lat}&lon=${coords.lon}&units=metric&appid=${apiKey}`;
+    const currentResponse = await fetch(currentUrl);
+    
+    if (!currentResponse.ok) {
+      console.error('OpenWeather API error:', currentResponse.status);
+      const errorData = await currentResponse.text();
+      console.error('Error details:', errorData);
       return new Response(
         JSON.stringify({ error: 'Failed to fetch weather data' }),
         { 
-          status: response.status,
+          status: currentResponse.status,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         }
       );
     }
 
-    const data: WeatherResponse = await response.json();
+    const currentData = await currentResponse.json();
+    
+    // Fetch 5-day forecast (free tier API)
+    const forecastUrl = `https://api.openweathermap.org/data/2.5/forecast?lat=${coords.lat}&lon=${coords.lon}&units=metric&appid=${apiKey}`;
+    const forecastResponse = await fetch(forecastUrl);
+    
+    if (!forecastResponse.ok) {
+      console.error('OpenWeather Forecast API error:', forecastResponse.status);
+      const errorData = await forecastResponse.text();
+      console.error('Error details:', errorData);
+    }
+    
+    const forecastData = forecastResponse.ok ? await forecastResponse.json() : null;
     console.log(`Weather fetched successfully for ${city}`);
+
+    // Process forecast data - group by day and get daily highs/lows
+    const dailyForecast = forecastData?.list ? processForecastData(forecastData.list) : [];
 
     return new Response(
       JSON.stringify({
         city,
         current: {
-          temperature: Math.round(data.current.temp),
-          feels_like: Math.round(data.current.feels_like),
-          humidity: data.current.humidity,
-          pressure: data.current.pressure,
-          wind_speed: Math.round(data.current.wind_speed * 3.6), // Convert m/s to km/h
-          condition: data.current.weather[0].main,
-          description: data.current.weather[0].description,
-          icon: data.current.weather[0].icon,
+          temperature: Math.round(currentData.main.temp),
+          feels_like: Math.round(currentData.main.feels_like),
+          humidity: currentData.main.humidity,
+          pressure: currentData.main.pressure,
+          wind_speed: Math.round(currentData.wind.speed * 3.6), // Convert m/s to km/h
+          condition: currentData.weather[0].main,
+          description: currentData.weather[0].description,
+          icon: currentData.weather[0].icon,
         },
-        forecast: data.daily.slice(0, 7).map(day => ({
-          date: new Date(day.dt * 1000).toISOString(),
-          temp_min: Math.round(day.temp.min),
-          temp_max: Math.round(day.temp.max),
-          temp_day: Math.round(day.temp.day),
-          humidity: day.humidity,
-          wind_speed: Math.round(day.wind_speed * 3.6),
-          rain_probability: Math.round(day.pop * 100),
-          condition: day.weather[0].main,
-          description: day.weather[0].description,
-          icon: day.weather[0].icon,
-        })),
+        forecast: dailyForecast,
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
