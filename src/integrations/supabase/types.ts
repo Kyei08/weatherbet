@@ -70,6 +70,39 @@ export type Database = {
           },
         ]
       }
+      challenges: {
+        Row: {
+          challenge_type: string
+          created_at: string
+          description: string
+          id: string
+          is_active: boolean
+          reward_points: number
+          target_value: number
+          title: string
+        }
+        Insert: {
+          challenge_type: string
+          created_at?: string
+          description: string
+          id?: string
+          is_active?: boolean
+          reward_points: number
+          target_value: number
+          title: string
+        }
+        Update: {
+          challenge_type?: string
+          created_at?: string
+          description?: string
+          id?: string
+          is_active?: boolean
+          reward_points?: number
+          target_value?: number
+          title?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -99,6 +132,50 @@ export type Database = {
           username?: string | null
         }
         Relationships: []
+      }
+      user_challenges: {
+        Row: {
+          challenge_date: string
+          challenge_id: string
+          completed: boolean
+          completed_at: string | null
+          created_at: string
+          id: string
+          progress: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          challenge_date?: string
+          challenge_id: string
+          completed?: boolean
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          progress?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          challenge_date?: string
+          challenge_id?: string
+          completed?: boolean
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          progress?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_challenges_challenge_id_fkey"
+            columns: ["challenge_id"]
+            isOneToOne: false
+            referencedRelation: "challenges"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       users: {
         Row: {

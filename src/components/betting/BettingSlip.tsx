@@ -10,6 +10,7 @@ import { getUser, addBet, updateUserPoints } from '@/lib/supabase-auth-storage';
 import { CITIES, TEMPERATURE_RANGES, City } from '@/types/supabase-betting';
 import { useToast } from '@/hooks/use-toast';
 import WeatherDisplay from './WeatherDisplay';
+import { useChallengeTracker } from '@/hooks/useChallengeTracker';
 
 interface BettingSlipProps {
   onBack: () => void;
@@ -26,6 +27,7 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
+  const { checkAndUpdateChallenges } = useChallengeTracker();
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -101,6 +103,12 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
         expires_at: targetDate,
         bet_duration_days: parseInt(betDuration),
       } as any);
+
+      // Track challenge progress
+      await checkAndUpdateChallenges('bet_placed', { 
+        stake: stakeNum, 
+        city: city as string 
+      });
 
       toast({
         title: "Bet Placed!",

@@ -176,12 +176,72 @@ export const getLeaderboard = async (): Promise<User[]> => {
   return data || [];
 };
 
+// Challenge management
+export const getChallenges = async () => {
+  const { data, error } = await supabase
+    .from('challenges')
+    .select('*')
+    .eq('is_active', true)
+    .order('reward_points', { ascending: false });
+
+  if (error) throw error;
+  return data || [];
+};
+
+export const getUserChallenges = async () => {
+  const userId = await getCurrentUserId();
+  if (!userId) return [];
+
+  const today = new Date().toISOString().split('T')[0];
+  
+  const { data, error } = await supabase
+    .from('user_challenges')
+    .select('*, challenges(*)')
+    .eq('user_id', userId)
+    .eq('challenge_date', today);
+
+  if (error) throw error;
+  return data || [];
+};
+
+export const updateChallengeProgress = async (
+  challengeId: string,
+  progress: number,
+  completed: boolean = false
+) => {
+  const userId = await getCurrentUserId();
+  if (!userId) throw new Error('User not authenticated');
+
+  const today = new Date().toISOString().split('T')[0];
+
+  const { data, error } = await supabase
+    .from('user_challenges')
+    .upsert({
+      user_id: userId,
+      challenge_id: challengeId,
+      progress,
+      completed,
+      completed_at: completed ? new Date().toISOString() : null,
+      challenge_date: today,
+    }, {
+      onConflict: 'user_id,challenge_id,challenge_date'
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+};
+
 export const clearAllUserData = async (): Promise<void> => {
   const userId = await getCurrentUserId();
   if (!userId) throw new Error('User not authenticated');
   
   // Delete all user bets first (due to foreign key constraint)
   await supabase.from('bets').delete().eq('user_id', userId);
+  
+  // Delete user challenges
+  await supabase.from('user_challenges').delete().eq('user_id', userId);
   
   // Delete user record
   await supabase.from('users').delete().eq('id', userId);
