@@ -6,6 +6,7 @@ import { ArrowLeft, RefreshCw } from 'lucide-react';
 import { getBets, updateBetResult, getUser, updateUserPoints } from '@/lib/supabase-auth-storage';
 import { Bet } from '@/types/supabase-betting';
 import { useToast } from '@/hooks/use-toast';
+import { useChallengeTracker } from '@/hooks/useChallengeTracker';
 
 interface MyBetsProps {
   onBack: () => void;
@@ -16,6 +17,7 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
   const [bets, setBets] = useState<Bet[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  const { checkAndUpdateChallenges } = useChallengeTracker();
 
   useEffect(() => {
     const fetchBets = async () => {
@@ -49,6 +51,9 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
         const user = await getUser();
         const winnings = Math.floor(bet.stake * Number(bet.odds));
         await updateUserPoints(user.points + winnings);
+        
+        // Track win for challenges
+        await checkAndUpdateChallenges('bet_won');
         
         toast({
           title: "Bet Won! 🎉",

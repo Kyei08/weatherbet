@@ -2,54 +2,52 @@ import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
-import { Trophy, Target, CheckCircle2 } from 'lucide-react';
-import { getChallenges, getUserChallenges } from '@/lib/supabase-auth-storage';
-
-interface Challenge {
-  id: string;
-  title: string;
-  description: string;
-  challenge_type: string;
-  target_value: number;
-  reward_points: number;
-}
-
-interface UserChallenge {
-  id: string;
-  progress: number;
-  completed: boolean;
-  challenge_id: string;
-  challenges: Challenge;
-}
+import { Trophy, Target, CheckCircle2, Clock } from 'lucide-react';
+import { getDailyChallenges, ChallengeWithProgress } from '@/lib/supabase-challenges';
+import { useToast } from '@/hooks/use-toast';
 
 export const DailyChallenges = () => {
-  const [challenges, setChallenges] = useState<Challenge[]>([]);
-  const [userChallenges, setUserChallenges] = useState<UserChallenge[]>([]);
+  const [challenges, setChallenges] = useState<ChallengeWithProgress[]>([]);
   const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    loadChallenges();
-  }, []);
+  const { toast } = useToast();
 
   const loadChallenges = async () => {
     try {
-      const [allChallenges, userProgress] = await Promise.all([
-        getChallenges(),
-        getUserChallenges(),
-      ]);
-      
-      setChallenges(allChallenges);
-      setUserChallenges(userProgress);
+      const data = await getDailyChallenges();
+      setChallenges(data);
     } catch (error) {
       console.error('Error loading challenges:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to load daily challenges',
+        variant: 'destructive',
+      });
     } finally {
       setLoading(false);
     }
   };
 
-  const getChallengeProgress = (challengeId: string) => {
-    const userChallenge = userChallenges.find(uc => uc.challenge_id === challengeId);
-    return userChallenge || { progress: 0, completed: false };
+  useEffect(() => {
+    loadChallenges();
+  }, []);
+
+  const getChallengeIcon = (type: string) => {
+    switch (type) {
+      case 'daily_bets':
+      case 'high_stake':
+        return Target;
+      case 'daily_wins':
+      case 'win_streak':
+        return Trophy;
+      case 'different_cities':
+        return Target;
+      default:
+        return Trophy;
+    }
+  };
+
+  const getProgressPercentage = (progress: number, target: number) => {
+    return Math.min((progress / target) * 100, 100);
   };
 
   if (loading) {
@@ -57,71 +55,98 @@ export const DailyChallenges = () => {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Target className="h-5 w-5" />
+            <Trophy className="h-5 w-5" />
             Daily Challenges
           </CardTitle>
+          <CardDescription>Loading challenges...</CardDescription>
         </CardHeader>
-        <CardContent>
-          <p className="text-muted-foreground">Loading challenges...</p>
-        </CardContent>
       </Card>
     );
   }
 
+  const completedCount = challenges.filter(c => c.completed).length;
+
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Target className="h-5 w-5" />
-          Daily Challenges
-        </CardTitle>
-        <CardDescription>Complete challenges to earn bonus points!</CardDescription>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <Trophy className="h-5 w-5 text-primary" />
+              Daily Challenges
+            </CardTitle>
+            <CardDescription>
+              Complete challenges for bonus points • Resets at midnight
+            </CardDescription>
+          </div>
+          <Badge variant={completedCount === challenges.length ? "default" : "secondary"}>
+            {completedCount}/{challenges.length} Complete
+          </Badge>
+        </div>
       </CardHeader>
       <CardContent className="space-y-4">
         {challenges.map((challenge) => {
-          const { progress, completed } = getChallengeProgress(challenge.id);
-          const progressPercent = Math.min((progress / challenge.target_value) * 100, 100);
+          const Icon = getChallengeIcon(challenge.challenge_type);
+          const progressPercentage = getProgressPercentage(challenge.progress, challenge.target_value);
 
           return (
             <div
               key={challenge.id}
-              className="p-4 rounded-lg border bg-card/50 space-y-3"
+              className={`p-4 border rounded-lg transition-all ${
+                challenge.completed
+                  ? 'bg-primary/5 border-primary/20'
+                  : 'bg-card hover:bg-accent/50'
+              }`}
             >
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-1">
-                    <h4 className="font-semibold">{challenge.title}</h4>
-                    {completed && (
-                      <CheckCircle2 className="h-4 w-4 text-green-500" />
+              <div className="flex items-start justify-between mb-2">
+                <div className="flex items-start gap-3 flex-1">
+                  <div className={`p-2 rounded-lg ${
+                    challenge.completed ? 'bg-primary/10' : 'bg-muted'
+                  }`}>
+                    {challenge.completed ? (
+                      <CheckCircle2 className="h-5 w-5 text-primary" />
+                    ) : (
+                      <Icon className="h-5 w-5" />
                     )}
                   </div>
-                  <p className="text-sm text-muted-foreground">
-                    {challenge.description}
-                  </p>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <h4 className="font-semibold">{challenge.title}</h4>
+                      {challenge.completed && (
+                        <Badge variant="default" className="text-xs">
+                          Completed
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      {challenge.description}
+                    </p>
+                  </div>
                 </div>
-                <Badge variant="secondary" className="ml-2">
-                  <Trophy className="h-3 w-3 mr-1" />
+                <Badge variant="outline" className="ml-2">
                   +{challenge.reward_points}
                 </Badge>
               </div>
 
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Progress</span>
+              <div className="space-y-2 mt-3">
+                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                  <span>Progress</span>
                   <span className="font-medium">
-                    {progress} / {challenge.target_value}
+                    {challenge.progress} / {challenge.target_value}
                   </span>
                 </div>
-                <Progress value={progressPercent} className="h-2" />
+                <Progress value={progressPercentage} className="h-2" />
               </div>
             </div>
           );
         })}
 
         {challenges.length === 0 && (
-          <p className="text-center text-muted-foreground py-4">
-            No challenges available today. Check back tomorrow!
-          </p>
+          <div className="text-center py-8 text-muted-foreground">
+            <Clock className="h-12 w-12 mx-auto mb-3 opacity-50" />
+            <p>No challenges available today</p>
+            <p className="text-sm mt-1">Check back tomorrow!</p>
+          </div>
         )}
       </CardContent>
     </Card>
