@@ -12,6 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import WeatherDisplay from './WeatherDisplay';
 import { useChallengeTracker } from '@/hooks/useChallengeTracker';
 import { useAchievementTracker } from '@/hooks/useAchievementTracker';
+import { useLevelSystem } from '@/hooks/useLevelSystem';
 
 interface BettingSlipProps {
   onBack: () => void;
@@ -30,6 +31,7 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
   const { toast } = useToast();
   const { checkAndUpdateChallenges } = useChallengeTracker();
   const { checkAchievements } = useAchievementTracker();
+  const { awardXPForAction } = useLevelSystem();
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -114,6 +116,9 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
 
       // Check for newly unlocked achievements
       await checkAchievements();
+
+      // Award XP for placing bet
+      await awardXPForAction('BET_PLACED');
 
       toast({
         title: "Bet Placed!",

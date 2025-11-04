@@ -8,6 +8,7 @@ import { Bet } from '@/types/supabase-betting';
 import { useToast } from '@/hooks/use-toast';
 import { useChallengeTracker } from '@/hooks/useChallengeTracker';
 import { useAchievementTracker } from '@/hooks/useAchievementTracker';
+import { useLevelSystem } from '@/hooks/useLevelSystem';
 
 interface MyBetsProps {
   onBack: () => void;
@@ -20,6 +21,7 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
   const { toast } = useToast();
   const { checkAndUpdateChallenges } = useChallengeTracker();
   const { checkAchievements } = useAchievementTracker();
+  const { awardXPForAction } = useLevelSystem();
   
   useEffect(() => {
     const fetchBets = async () => {
@@ -59,6 +61,9 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
 
         // Check for newly unlocked achievements
         await checkAchievements();
+
+        // Award XP based on result
+        await awardXPForAction(result === 'win' ? 'BET_WON' : 'BET_LOST');
         
         toast({
           title: "Bet Won! 🎉",

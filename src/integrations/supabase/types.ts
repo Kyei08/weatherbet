@@ -249,23 +249,29 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          level: number
           points: number
           updated_at: string
           username: string
+          xp: number
         }
         Insert: {
           created_at?: string
           id?: string
+          level?: number
           points?: number
           updated_at?: string
           username: string
+          xp?: number
         }
         Update: {
           created_at?: string
           id?: string
+          level?: number
           points?: number
           updated_at?: string
           username?: string
+          xp?: number
         }
         Relationships: []
       }

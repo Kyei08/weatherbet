@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import { awardXP, XP_REWARDS } from './level-system';
 
 export interface Achievement {
   id: string;
@@ -138,6 +139,8 @@ export const checkAndUnlockAchievements = async (): Promise<string[]> => {
       if (!error) {
         // Award points
         await awardAchievementPoints(achievement.points_reward);
+        // Award XP for unlocking achievement
+        await awardXP(XP_REWARDS.ACHIEVEMENT_UNLOCKED);
         newlyUnlocked.push(achievement.title);
       }
     }

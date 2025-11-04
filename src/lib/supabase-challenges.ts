@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import { awardXP, XP_REWARDS } from './level-system';
 
 export interface Challenge {
   id: string;
@@ -113,6 +114,8 @@ export const updateChallengeProgress = async (
     // Award points if just completed
     if (completed && !existing.completed) {
       await awardChallengePoints(challenge.reward_points);
+      // Award XP for completing challenge
+      await awardXP(XP_REWARDS.CHALLENGE_COMPLETED);
     }
   } else {
     // Create new progress record
@@ -132,6 +135,8 @@ export const updateChallengeProgress = async (
     // Award points if completed on first insert
     if (completed) {
       await awardChallengePoints(challenge.reward_points);
+      // Award XP for completing challenge
+      await awardXP(XP_REWARDS.CHALLENGE_COMPLETED);
     }
   }
 };

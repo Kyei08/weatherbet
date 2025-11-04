@@ -10,6 +10,7 @@ import Leaderboard from './Leaderboard';
 import ActiveBetsWeather from './ActiveBetsWeather';
 import { DailyChallenges } from './DailyChallenges';
 import { Achievements } from './Achievements';
+import { LevelDisplay } from './LevelDisplay';
 
 const Dashboard = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -86,6 +87,9 @@ const Dashboard = () => {
 
         {/* Weather Alerts */}
         {bets.length > 0 && <ActiveBetsWeather bets={bets} />}
+
+        {/* Level Display */}
+        <LevelDisplay />
 
         {/* User Stats */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
