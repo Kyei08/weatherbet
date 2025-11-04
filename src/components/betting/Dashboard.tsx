@@ -9,6 +9,7 @@ import MyBets from './MyBets';
 import Leaderboard from './Leaderboard';
 import ActiveBetsWeather from './ActiveBetsWeather';
 import { DailyChallenges } from './DailyChallenges';
+import { Achievements } from './Achievements';
 
 const Dashboard = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -124,6 +125,9 @@ const Dashboard = () => {
 
         {/* Daily Challenges */}
         <DailyChallenges />
+
+        {/* Achievements */}
+        <Achievements />
 
         {/* Quick Actions */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

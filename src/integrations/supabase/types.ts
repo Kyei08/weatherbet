@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      achievements: {
+        Row: {
+          badge_icon: string
+          created_at: string
+          description: string
+          id: string
+          is_active: boolean
+          points_reward: number
+          requirement_type: string
+          requirement_value: number
+          title: string
+        }
+        Insert: {
+          badge_icon: string
+          created_at?: string
+          description: string
+          id?: string
+          is_active?: boolean
+          points_reward?: number
+          requirement_type: string
+          requirement_value: number
+          title: string
+        }
+        Update: {
+          badge_icon?: string
+          created_at?: string
+          description?: string
+          id?: string
+          is_active?: boolean
+          points_reward?: number
+          requirement_type?: string
+          requirement_value?: number
+          title?: string
+        }
+        Relationships: []
+      }
       bets: {
         Row: {
           bet_duration_days: number | null
@@ -132,6 +168,38 @@ export type Database = {
           username?: string | null
         }
         Relationships: []
+      }
+      user_achievements: {
+        Row: {
+          achievement_id: string
+          created_at: string
+          id: string
+          unlocked_at: string
+          user_id: string
+        }
+        Insert: {
+          achievement_id: string
+          created_at?: string
+          id?: string
+          unlocked_at?: string
+          user_id: string
+        }
+        Update: {
+          achievement_id?: string
+          created_at?: string
+          id?: string
+          unlocked_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_achievements_achievement_id_fkey"
+            columns: ["achievement_id"]
+            isOneToOne: false
+            referencedRelation: "achievements"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_challenges: {
         Row: {

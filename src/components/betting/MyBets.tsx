@@ -7,6 +7,7 @@ import { getBets, updateBetResult, getUser, updateUserPoints } from '@/lib/supab
 import { Bet } from '@/types/supabase-betting';
 import { useToast } from '@/hooks/use-toast';
 import { useChallengeTracker } from '@/hooks/useChallengeTracker';
+import { useAchievementTracker } from '@/hooks/useAchievementTracker';
 
 interface MyBetsProps {
   onBack: () => void;
@@ -18,7 +19,8 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
   const { checkAndUpdateChallenges } = useChallengeTracker();
-
+  const { checkAchievements } = useAchievementTracker();
+  
   useEffect(() => {
     const fetchBets = async () => {
       try {
@@ -54,6 +56,9 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
         
         // Track win for challenges
         await checkAndUpdateChallenges('bet_won');
+
+        // Check for newly unlocked achievements
+        await checkAchievements();
         
         toast({
           title: "Bet Won! 🎉",

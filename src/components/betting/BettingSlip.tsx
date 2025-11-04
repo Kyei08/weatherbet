@@ -11,6 +11,7 @@ import { CITIES, TEMPERATURE_RANGES, City } from '@/types/supabase-betting';
 import { useToast } from '@/hooks/use-toast';
 import WeatherDisplay from './WeatherDisplay';
 import { useChallengeTracker } from '@/hooks/useChallengeTracker';
+import { useAchievementTracker } from '@/hooks/useAchievementTracker';
 
 interface BettingSlipProps {
   onBack: () => void;
@@ -28,6 +29,7 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
   const { checkAndUpdateChallenges } = useChallengeTracker();
+  const { checkAchievements } = useAchievementTracker();
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -109,6 +111,9 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
         stake: stakeNum, 
         city: city as string 
       });
+
+      // Check for newly unlocked achievements
+      await checkAchievements();
 
       toast({
         title: "Bet Placed!",
