@@ -44,7 +44,7 @@ export const getShopItems = async (): Promise<ShopItem[]> => {
   }));
 };
 
-// Get user's active purchases (not used or not expired)
+// Get user's active purchases (not used and not expired)
 export const getActivePurchases = async (): Promise<PurchaseWithItem[]> => {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return [];
@@ -53,39 +53,25 @@ export const getActivePurchases = async (): Promise<PurchaseWithItem[]> => {
 
   const { data: purchases, error } = await supabase
     .from('user_purchases')
-    .select('*')
+    .select('*, item:shop_items(*)')
     .eq('user_id', user.id)
     .eq('used', false)
     .or(`expires_at.is.null,expires_at.gt.${now}`)
     .order('purchased_at', { ascending: false });
 
   if (error) throw error;
-  if (!purchases) return [];
 
-  // Fetch shop items separately
-  const itemIds = purchases.map(p => p.item_id);
-  const { data: items } = await supabase
-    .from('shop_items')
-    .select('*')
-    .in('id', itemIds);
-
-  if (!items) return [];
-
-  // Combine purchases with their items
-  return purchases.map(purchase => {
-    const item = items.find(i => i.id === purchase.item_id);
-    return {
-      ...purchase,
-      item: {
-        ...item,
-        item_type: item?.item_type as ShopItem['item_type'],
-      } as ShopItem,
-    };
-  }) as PurchaseWithItem[];
+  return (purchases || []).map(purchase => ({
+    ...purchase,
+    item: {
+      ...purchase.item,
+      item_type: purchase.item.item_type as ShopItem['item_type'],
+    } as ShopItem,
+  })) as PurchaseWithItem[];
 };
 
 // Purchase an item
-export const purchaseItem = async (itemId: string): Promise<void> => {
+export const purchaseItem = async (itemId: string): Promise<boolean> => {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('User not authenticated');
 
@@ -107,11 +93,12 @@ export const purchaseItem = async (itemId: string): Promise<void> => {
     .single();
 
   if (userError) throw userError;
-  if (!userData) throw new Error('User not found');
+  if (!userData) throw new Error('User data not found');
 
   // Check if user has enough points
   if (userData.points < item.price) {
-    throw new Error('Not enough points');
+    toast.error('Not enough points to purchase this item!');
+    return false;
   }
 
   // Deduct points
@@ -122,7 +109,7 @@ export const purchaseItem = async (itemId: string): Promise<void> => {
 
   if (updateError) throw updateError;
 
-  // Calculate expiration if duration-based
+  // Calculate expiration if duration is set
   let expiresAt = null;
   if (item.duration_hours) {
     const expires = new Date();
@@ -148,97 +135,60 @@ export const purchaseItem = async (itemId: string): Promise<void> => {
       .update({ points: userData.points - item.price + item.item_value })
       .eq('id', user.id);
   }
+
+  toast.success(`${item.title} purchased successfully!`);
+  return true;
 };
 
 // Use a purchased item (for one-time use items)
 export const useItem = async (purchaseId: string): Promise<void> => {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error('User not authenticated');
-
   const { error } = await supabase
     .from('user_purchases')
     .update({
       used: true,
       used_at: new Date().toISOString(),
     })
-    .eq('id', purchaseId)
-    .eq('user_id', user.id);
+    .eq('id', purchaseId);
 
   if (error) throw error;
 };
 
-// Get active boosts for betting calculations
-export interface ActiveBoosts {
-  oddsMultiplier: number;
-  maxStakeBoost: number;
-  hasInsurance: boolean;
-  insuranceValue: number;
-  hasStreakFreeze: boolean;
-}
-
-export const getActiveBoosts = async (): Promise<ActiveBoosts> => {
+// Get active multiplier bonuses from purchases
+export const getActiveMultipliers = async (): Promise<number> => {
   const purchases = await getActivePurchases();
-  
-  const boosts: ActiveBoosts = {
-    oddsMultiplier: 1,
-    maxStakeBoost: 0,
-    hasInsurance: false,
-    insuranceValue: 0,
-    hasStreakFreeze: false,
-  };
+  let multiplier = 1;
 
   for (const purchase of purchases) {
-    const item = purchase.item;
-    
-    switch (item.item_type) {
-      case 'temp_multiplier':
-        boosts.oddsMultiplier *= item.item_value;
-        break;
-      case 'stake_boost':
-        boosts.maxStakeBoost = Math.max(boosts.maxStakeBoost, item.item_value);
-        break;
-      case 'insurance':
-        boosts.hasInsurance = true;
-        boosts.insuranceValue = item.item_value;
-        break;
-      case 'streak_freeze':
-        boosts.hasStreakFreeze = true;
-        break;
+    if (purchase.item.item_type === 'temp_multiplier' && !purchase.used) {
+      multiplier *= purchase.item.item_value;
     }
   }
 
-  return boosts;
+  return multiplier;
 };
 
-// Apply insurance after a loss
-export const applyInsurance = async (stakeAmount: number): Promise<number> => {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return 0;
-
+// Check if user has active insurance
+export const hasActiveInsurance = async (): Promise<UserPurchase | null> => {
   const purchases = await getActivePurchases();
-  const insurancePurchase = purchases.find(p => p.item.item_type === 'insurance');
+  return purchases.find(p => p.item.item_type === 'insurance' && !p.used) || null;
+};
 
-  if (!insurancePurchase) return 0;
+// Check if user has active streak freeze
+export const hasActiveStreakFreeze = async (): Promise<UserPurchase | null> => {
+  const purchases = await getActivePurchases();
+  return purchases.find(p => p.item.item_type === 'streak_freeze' && !p.used) || null;
+};
 
-  // Mark insurance as used
-  await useItem(insurancePurchase.id);
+// Get max stake boost from purchases
+export const getMaxStakeBoost = async (): Promise<number> => {
+  const purchases = await getActivePurchases();
+  let maxBoost = 0;
 
-  // Calculate refund
-  const refund = Math.floor(stakeAmount * insurancePurchase.item.item_value);
-
-  // Add refund to user points
-  const { data: userData } = await supabase
-    .from('users')
-    .select('points')
-    .eq('id', user.id)
-    .single();
-
-  if (userData) {
-    await supabase
-      .from('users')
-      .update({ points: userData.points + refund })
-      .eq('id', user.id);
+  for (const purchase of purchases) {
+    if (purchase.item.item_type === 'stake_boost' && !purchase.used) {
+      maxBoost = Math.max(maxBoost, purchase.item.item_value);
+    }
   }
 
-  return refund;
+  return maxBoost;
 };

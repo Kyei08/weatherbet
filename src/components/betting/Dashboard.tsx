@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { getUser, getRecentBets } from '@/lib/supabase-auth-storage';
 import { User, Bet } from '@/types/supabase-betting';
-import { Coins, TrendingUp, Activity, Trophy, ShoppingBag } from 'lucide-react';
+import { Coins, TrendingUp, Activity, Trophy, ShoppingCart } from 'lucide-react';
 import BettingSlip from './BettingSlip';
 import MyBets from './MyBets';
 import Leaderboard from './Leaderboard';
@@ -167,19 +167,19 @@ const Dashboard = () => {
             variant="outline" 
             size="lg" 
             className="h-16 text-lg"
-            onClick={() => setActiveView('leaderboard')}
+            onClick={() => setActiveView('shop')}
           >
-            <Trophy className="mr-2 h-5 w-5" />
-            🏆 Leaderboard
+            <ShoppingCart className="mr-2 h-5 w-5" />
+            🛍️ Reward Shop
           </Button>
           <Button 
             variant="outline" 
             size="lg" 
             className="h-16 text-lg"
-            onClick={() => setActiveView('shop')}
+            onClick={() => setActiveView('leaderboard')}
           >
-            <ShoppingBag className="mr-2 h-5 w-5" />
-            🛒 Reward Shop
+            <Trophy className="mr-2 h-5 w-5" />
+            🏆 Leaderboard
           </Button>
         </div>
 
