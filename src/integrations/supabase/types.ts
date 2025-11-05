@@ -205,6 +205,45 @@ export type Database = {
         }
         Relationships: []
       }
+      shop_items: {
+        Row: {
+          created_at: string
+          description: string
+          duration_hours: number | null
+          id: string
+          is_active: boolean
+          item_icon: string
+          item_type: string
+          item_value: number
+          price: number
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          description: string
+          duration_hours?: number | null
+          id?: string
+          is_active?: boolean
+          item_icon: string
+          item_type: string
+          item_value: number
+          price: number
+          title: string
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          duration_hours?: number | null
+          id?: string
+          is_active?: boolean
+          item_icon?: string
+          item_type?: string
+          item_value?: number
+          price?: number
+          title?: string
+        }
+        Relationships: []
+      }
       user_achievements: {
         Row: {
           achievement_id: string
@@ -301,6 +340,39 @@ export type Database = {
           id?: string
           perk_id?: string
           unlocked_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_purchases: {
+        Row: {
+          created_at: string
+          expires_at: string | null
+          id: string
+          item_id: string
+          purchased_at: string
+          used: boolean
+          used_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          item_id: string
+          purchased_at?: string
+          used?: boolean
+          used_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          item_id?: string
+          purchased_at?: string
+          used?: boolean
+          used_at?: string | null
           user_id?: string
         }
         Relationships: []

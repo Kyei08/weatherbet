@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { getUser, getRecentBets } from '@/lib/supabase-auth-storage';
 import { User, Bet } from '@/types/supabase-betting';
-import { Coins, TrendingUp, Activity, Trophy } from 'lucide-react';
+import { Coins, TrendingUp, Activity, Trophy, ShoppingBag } from 'lucide-react';
 import BettingSlip from './BettingSlip';
 import MyBets from './MyBets';
 import Leaderboard from './Leaderboard';
@@ -12,11 +12,12 @@ import { DailyChallenges } from './DailyChallenges';
 import { Achievements } from './Achievements';
 import { LevelDisplay } from './LevelDisplay';
 import { Perks } from './Perks';
+import { Shop } from './Shop';
 
 const Dashboard = () => {
   const [user, setUser] = useState<User | null>(null);
   const [bets, setBets] = useState<Bet[]>([]);
-  const [activeView, setActiveView] = useState<'dashboard' | 'betting' | 'mybets' | 'leaderboard'>('dashboard');
+  const [activeView, setActiveView] = useState<'dashboard' | 'betting' | 'mybets' | 'leaderboard' | 'shop'>('dashboard');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -75,6 +76,10 @@ const Dashboard = () => {
 
   if (activeView === 'leaderboard') {
     return <Leaderboard onBack={() => setActiveView('dashboard')} />;
+  }
+
+  if (activeView === 'shop') {
+    return <Shop onBack={() => setActiveView('dashboard')} />;
   }
 
   return (
@@ -157,7 +162,7 @@ const Dashboard = () => {
         </div>
 
         {/* Action Buttons */}
-        <div className="flex justify-center">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Button 
             variant="outline" 
             size="lg" 
@@ -166,6 +171,15 @@ const Dashboard = () => {
           >
             <Trophy className="mr-2 h-5 w-5" />
             🏆 Leaderboard
+          </Button>
+          <Button 
+            variant="outline" 
+            size="lg" 
+            className="h-16 text-lg"
+            onClick={() => setActiveView('shop')}
+          >
+            <ShoppingBag className="mr-2 h-5 w-5" />
+            🛒 Reward Shop
           </Button>
         </div>
 
