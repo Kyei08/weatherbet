@@ -11,6 +11,7 @@ import ActiveBetsWeather from './ActiveBetsWeather';
 import { DailyChallenges } from './DailyChallenges';
 import { Achievements } from './Achievements';
 import { LevelDisplay } from './LevelDisplay';
+import { Perks } from './Perks';
 
 const Dashboard = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -132,6 +133,9 @@ const Dashboard = () => {
 
         {/* Achievements */}
         <Achievements />
+
+        {/* Unlockable Perks */}
+        <Perks />
 
         {/* Quick Actions */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

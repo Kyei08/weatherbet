@@ -1,7 +1,10 @@
 import { awardXP, XP_REWARDS } from '@/lib/level-system';
 import { toast } from 'sonner';
+import { usePerkTracker } from './usePerkTracker';
 
 export const useLevelSystem = () => {
+  const { checkPerks } = usePerkTracker();
+
   const awardXPForAction = async (action: keyof typeof XP_REWARDS) => {
     try {
       const xpAmount = XP_REWARDS[action];
@@ -21,6 +24,9 @@ export const useLevelSystem = () => {
             duration: 5000,
           }
         );
+
+        // Check for newly unlocked perks
+        await checkPerks(result.newLevel);
       }
 
       return result;

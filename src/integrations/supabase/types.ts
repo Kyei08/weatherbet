@@ -139,6 +139,42 @@ export type Database = {
         }
         Relationships: []
       }
+      perks: {
+        Row: {
+          created_at: string
+          description: string
+          id: string
+          is_active: boolean
+          perk_icon: string
+          perk_type: string
+          perk_value: number
+          title: string
+          unlock_level: number
+        }
+        Insert: {
+          created_at?: string
+          description: string
+          id?: string
+          is_active?: boolean
+          perk_icon: string
+          perk_type: string
+          perk_value: number
+          title: string
+          unlock_level: number
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          id?: string
+          is_active?: boolean
+          perk_icon?: string
+          perk_type?: string
+          perk_value?: number
+          title?: string
+          unlock_level?: number
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -244,6 +280,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      user_perks: {
+        Row: {
+          created_at: string
+          id: string
+          perk_id: string
+          unlocked_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          perk_id: string
+          unlocked_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          perk_id?: string
+          unlocked_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       users: {
         Row: {
