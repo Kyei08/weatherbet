@@ -53,19 +53,23 @@ export const getActivePurchases = async (): Promise<PurchaseWithItem[]> => {
 
   const { data: purchases, error } = await supabase
     .from('user_purchases')
-    .select('*, item:shop_items(*)')
+    .select(`
+      *,
+      shop_items (*)
+    `)
     .eq('user_id', user.id)
     .eq('used', false)
     .or(`expires_at.is.null,expires_at.gt.${now}`)
     .order('purchased_at', { ascending: false });
 
   if (error) throw error;
+  if (!purchases) return [];
 
-  return (purchases || []).map(purchase => ({
+  return purchases.map(purchase => ({
     ...purchase,
     item: {
-      ...purchase.item,
-      item_type: purchase.item.item_type as ShopItem['item_type'],
+      ...(purchase.shop_items as any),
+      item_type: (purchase.shop_items as any).item_type as ShopItem['item_type'],
     } as ShopItem,
   })) as PurchaseWithItem[];
 };
