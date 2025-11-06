@@ -139,6 +139,80 @@ export type Database = {
         }
         Relationships: []
       }
+      parlay_legs: {
+        Row: {
+          city: string
+          created_at: string
+          id: string
+          odds: number
+          parlay_id: string
+          prediction_type: string
+          prediction_value: string
+          result: string
+        }
+        Insert: {
+          city: string
+          created_at?: string
+          id?: string
+          odds: number
+          parlay_id: string
+          prediction_type: string
+          prediction_value: string
+          result?: string
+        }
+        Update: {
+          city?: string
+          created_at?: string
+          id?: string
+          odds?: number
+          parlay_id?: string
+          prediction_type?: string
+          prediction_value?: string
+          result?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "parlay_legs_parlay_id_fkey"
+            columns: ["parlay_id"]
+            isOneToOne: false
+            referencedRelation: "parlays"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      parlays: {
+        Row: {
+          combined_odds: number
+          created_at: string
+          expires_at: string | null
+          id: string
+          result: string
+          total_stake: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          combined_odds: number
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          result?: string
+          total_stake: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          combined_odds?: number
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          result?: string
+          total_stake?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       perks: {
         Row: {
           created_at: string

@@ -17,6 +17,23 @@ interface Bet {
   created_at: string;
 }
 
+interface Parlay {
+  id: string;
+  user_id: string;
+  total_stake: number;
+  combined_odds: number;
+  created_at: string;
+}
+
+interface ParlayLeg {
+  id: string;
+  parlay_id: string;
+  city: string;
+  prediction_type: string;
+  prediction_value: string;
+  odds: number;
+}
+
 interface WeatherData {
   main: {
     temp: number;
@@ -159,9 +176,134 @@ Deno.serve(async (req) => {
 
     console.log(`Successfully resolved ${resolvedCount} bets`);
 
+    // Now process parlays
+    const { data: pendingParlays, error: parlaysError } = await supabase
+      .from('parlays')
+      .select(`
+        *,
+        parlay_legs (*)
+      `)
+      .eq('result', 'pending')
+      .lt('created_at', oneHourAgo);
+
+    if (parlaysError) {
+      console.error('Error fetching pending parlays:', parlaysError);
+    }
+
+    console.log(`Found ${pendingParlays?.length || 0} pending parlays to resolve`);
+
+    let resolvedParlays = 0;
+
+    if (pendingParlays && pendingParlays.length > 0) {
+      for (const parlay of pendingParlays as any[]) {
+        try {
+          console.log(`Processing parlay ${parlay.id} with ${parlay.parlay_legs.length} legs`);
+          
+          let allLegsWin = true;
+
+          // Check each leg
+          for (const leg of parlay.parlay_legs) {
+            const weatherResponse = await fetch(
+              `https://api.openweathermap.org/data/2.5/weather?q=${leg.city}&appid=${openWeatherApiKey}&units=metric`
+            );
+
+            if (!weatherResponse.ok) {
+              console.error(`Failed to fetch weather for ${leg.city}: ${weatherResponse.status}`);
+              allLegsWin = false;
+              break;
+            }
+
+            const weatherData: WeatherData = await weatherResponse.json();
+            let legWins = false;
+
+            // Determine if this leg won
+            if (leg.prediction_type === 'rain') {
+              const isRaining = weatherData.weather.some(w => 
+                w.main.toLowerCase() === 'rain' || 
+                w.description.toLowerCase().includes('rain')
+              );
+              const predictedRain = leg.prediction_value.toLowerCase() === 'yes';
+              legWins = isRaining === predictedRain;
+            } else if (leg.prediction_type === 'temperature') {
+              const actualTemp = Math.round(weatherData.main.temp);
+              // Parse temperature range
+              const tempRange = leg.prediction_value;
+              if (tempRange.includes('-')) {
+                const [min, max] = tempRange.split('-').map(t => parseInt(t));
+                legWins = actualTemp >= min && actualTemp <= max;
+              } else {
+                const predictedTemp = parseInt(leg.prediction_value);
+                legWins = Math.abs(actualTemp - predictedTemp) <= 2;
+              }
+            }
+
+            console.log(`Leg ${leg.id} (${leg.city}): ${legWins ? 'WIN' : 'LOSS'}`);
+
+            if (!legWins) {
+              allLegsWin = false;
+              break;
+            }
+          }
+
+          const parlayResult = allLegsWin ? 'win' : 'loss';
+          const pointsChange = allLegsWin 
+            ? Math.round(parlay.total_stake * parlay.combined_odds) 
+            : -parlay.total_stake;
+
+          console.log(`Parlay ${parlay.id}: ${parlayResult} (${pointsChange} points)`);
+
+          // Update parlay result
+          const { error: updateParlayError } = await supabase
+            .from('parlays')
+            .update({ result: parlayResult })
+            .eq('id', parlay.id);
+
+          if (updateParlayError) {
+            console.error(`Error updating parlay ${parlay.id}:`, updateParlayError);
+            continue;
+          }
+
+          // Update user points
+          const { error: updatePointsError } = await supabase.rpc(
+            'update_user_points',
+            { 
+              user_uuid: parlay.user_id, 
+              points_change: pointsChange 
+            }
+          );
+
+          if (updatePointsError?.code === '42883') {
+            const { data: user } = await supabase
+              .from('users')
+              .select('points')
+              .eq('id', parlay.user_id)
+              .single();
+
+            if (user) {
+              const newPoints = Math.max(0, user.points + pointsChange);
+              await supabase
+                .from('users')
+                .update({ points: newPoints })
+                .eq('id', parlay.user_id);
+            }
+          } else if (updatePointsError) {
+            console.error(`Error updating points for user ${parlay.user_id}:`, updatePointsError);
+            continue;
+          }
+
+          resolvedParlays++;
+        } catch (error) {
+          console.error(`Error processing parlay ${parlay.id}:`, error);
+        }
+      }
+    }
+
+    console.log(`Successfully resolved ${resolvedParlays} parlays`);
+
     return new Response(JSON.stringify({ 
-      message: `Resolved ${resolvedCount} bets`,
-      resolved: resolvedCount 
+      message: `Resolved ${resolvedCount} bets and ${resolvedParlays} parlays`,
+      resolved: resolvedCount,
+      resolvedParlays 
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });

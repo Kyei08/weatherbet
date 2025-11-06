@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, RefreshCw } from 'lucide-react';
 import { getBets, updateBetResult, getUser, updateUserPoints } from '@/lib/supabase-auth-storage';
+import { getParlays, updateParlayResult, ParlayWithLegs } from '@/lib/supabase-parlays';
 import { Bet } from '@/types/supabase-betting';
 import { useToast } from '@/hooks/use-toast';
 import { useChallengeTracker } from '@/hooks/useChallengeTracker';
@@ -17,6 +18,7 @@ interface MyBetsProps {
 
 const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
   const [bets, setBets] = useState<Bet[]>([]);
+  const [parlays, setParlays] = useState<ParlayWithLegs[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
   const { checkAndUpdateChallenges } = useChallengeTracker();
@@ -24,23 +26,31 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
   const { awardXPForAction } = useLevelSystem();
   
   useEffect(() => {
-    const fetchBets = async () => {
+    const fetchData = async () => {
       try {
-        const data = await getBets();
-        setBets(data);
+        const [betsData, parlaysData] = await Promise.all([
+          getBets(),
+          getParlays()
+        ]);
+        setBets(betsData);
+        setParlays(parlaysData);
       } catch (error) {
-        console.error('Error fetching bets:', error);
+        console.error('Error fetching data:', error);
       } finally {
         setLoading(false);
       }
     };
-    fetchBets();
+    fetchData();
   }, []);
 
   const refreshBets = async () => {
     try {
-      const data = await getBets();
-      setBets(data);
+      const [betsData, parlaysData] = await Promise.all([
+        getBets(),
+        getParlays()
+      ]);
+      setBets(betsData);
+      setParlays(parlaysData);
       onRefresh();
     } catch (error) {
       console.error('Error refreshing bets:', error);
@@ -70,6 +80,7 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
           description: `You won ${winnings} points!`,
         });
       } else {
+        await awardXPForAction('BET_LOST');
         toast({
           title: "Bet Lost 😞",
           description: `Better luck next time!`,
@@ -87,8 +98,46 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
     }
   };
 
+  const handleParlaySettle = async (parlay: ParlayWithLegs, result: 'win' | 'loss') => {
+    try {
+      await updateParlayResult(parlay.id, result);
+      
+      if (result === 'win') {
+        const user = await getUser();
+        const winnings = Math.floor(parlay.total_stake * Number(parlay.combined_odds));
+        await updateUserPoints(user.points + winnings);
+        
+        await checkAndUpdateChallenges('bet_won');
+        await checkAchievements();
+        await awardXPForAction('BET_WON');
+        
+        toast({
+          title: "Parlay Won! 🎉",
+          description: `You won ${winnings} points!`,
+        });
+      } else {
+        await awardXPForAction('BET_LOST');
+        toast({
+          title: "Parlay Lost 😞",
+          description: `Better luck next time!`,
+        });
+      }
+      
+      await refreshBets();
+    } catch (error) {
+      console.error('Error settling parlay:', error);
+      toast({
+        title: "Error",
+        description: "Failed to settle parlay. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const pendingBets = bets.filter(bet => bet.result === 'pending');
   const settledBets = bets.filter(bet => bet.result !== 'pending');
+  const pendingParlays = parlays.filter(p => p.result === 'pending');
+  const settledParlays = parlays.filter(p => p.result !== 'pending');
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -136,7 +185,7 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
         {pendingBets.length > 0 && (
           <Card>
             <CardHeader>
-              <CardTitle>Pending Bets ({pendingBets.length})</CardTitle>
+              <CardTitle>Pending Single Bets ({pendingBets.length})</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
@@ -189,11 +238,82 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
           </Card>
         )}
 
+        {/* Pending Parlays */}
+        {pendingParlays.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Pending Parlays ({pendingParlays.length})</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {pendingParlays.map((parlay) => (
+                  <div key={parlay.id} className="border-2 border-primary/20 rounded-lg p-4 space-y-3 bg-gradient-primary/5">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <h3 className="font-semibold text-lg flex items-center gap-2">
+                          💰 {parlay.parlay_legs.length}-Leg Parlay
+                        </h3>
+                        <p className="text-sm text-muted-foreground">{formatDate(parlay.created_at)}</p>
+                      </div>
+                      <div className="text-right">
+                        <Badge variant={getBadgeVariant(parlay.result)}>
+                          {parlay.result.toUpperCase()}
+                        </Badge>
+                        <p className="text-sm mt-1 font-bold">Stake: {parlay.total_stake} pts</p>
+                        <p className="text-sm font-bold text-primary">Odds: {Number(parlay.combined_odds).toFixed(2)}x</p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Potential: {Math.floor(parlay.total_stake * Number(parlay.combined_odds))} pts
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Parlay Legs */}
+                    <div className="space-y-2 pl-4 border-l-2 border-primary/30">
+                      {parlay.parlay_legs.map((leg, idx) => (
+                        <div key={leg.id} className="text-sm">
+                          <span className="font-medium">Leg {idx + 1}: {leg.city}</span>
+                          <span className="text-muted-foreground ml-2">
+                            {leg.prediction_type === 'rain' 
+                              ? `Rain: ${leg.prediction_value}` 
+                              : `Temp: ${leg.prediction_value}°C`
+                            } ({Number(leg.odds).toFixed(2)}x)
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                    
+                    {/* Manual Settlement Buttons */}
+                    <div className="flex gap-2 pt-2 border-t">
+                      <p className="text-sm text-muted-foreground mr-auto">Manual Settlement:</p>
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        onClick={() => handleParlaySettle(parlay, 'win')}
+                        className="text-green-600 border-green-200 hover:bg-green-50"
+                      >
+                        Mark as Win
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        onClick={() => handleParlaySettle(parlay, 'loss')}
+                        className="text-red-600 border-red-200 hover:bg-red-50"
+                      >
+                        Mark as Loss
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Settled Bets */}
         {settledBets.length > 0 && (
           <Card>
             <CardHeader>
-              <CardTitle>Bet History ({settledBets.length})</CardTitle>
+              <CardTitle>Single Bet History ({settledBets.length})</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
@@ -227,8 +347,60 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
           </Card>
         )}
 
+        {/* Settled Parlays */}
+        {settledParlays.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Parlay History ({settledParlays.length})</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {settledParlays.map((parlay) => (
+                  <div key={parlay.id} className="border rounded-lg p-4 space-y-3">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <h3 className="font-semibold text-lg flex items-center gap-2">
+                          💰 {parlay.parlay_legs.length}-Leg Parlay
+                        </h3>
+                        <p className="text-sm text-muted-foreground">{formatDate(parlay.created_at)}</p>
+                      </div>
+                      <div className="text-right">
+                        <Badge variant={getBadgeVariant(parlay.result)}>
+                          {parlay.result.toUpperCase()}
+                        </Badge>
+                        <p className="text-sm mt-1">Stake: {parlay.total_stake} pts</p>
+                        <p className="text-sm">Odds: {Number(parlay.combined_odds).toFixed(2)}x</p>
+                        {parlay.result === 'win' && (
+                          <p className="text-sm font-bold text-green-600">
+                            Won: {Math.floor(parlay.total_stake * Number(parlay.combined_odds))} pts
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Parlay Legs */}
+                    <div className="space-y-1 pl-4 border-l-2 border-muted">
+                      {parlay.parlay_legs.map((leg, idx) => (
+                        <div key={leg.id} className="text-sm text-muted-foreground">
+                          <span className="font-medium">Leg {idx + 1}: {leg.city}</span>
+                          <span className="ml-2">
+                            {leg.prediction_type === 'rain' 
+                              ? `Rain: ${leg.prediction_value}` 
+                              : `Temp: ${leg.prediction_value}°C`
+                            } ({Number(leg.odds).toFixed(2)}x)
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* No Bets */}
-        {bets.length === 0 && (
+        {bets.length === 0 && parlays.length === 0 && (
           <Card>
             <CardContent className="text-center py-12">
               <p className="text-muted-foreground text-lg">No bets placed yet</p>
