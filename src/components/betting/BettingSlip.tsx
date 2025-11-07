@@ -5,7 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Activity } from 'lucide-react';
 import { getUser, addBet, updateUserPoints } from '@/lib/supabase-auth-storage';
 import { CITIES, TEMPERATURE_RANGES, City } from '@/types/supabase-betting';
 import { useToast } from '@/hooks/use-toast';
@@ -13,6 +13,8 @@ import WeatherDisplay from './WeatherDisplay';
 import { useChallengeTracker } from '@/hooks/useChallengeTracker';
 import { useAchievementTracker } from '@/hooks/useAchievementTracker';
 import { useLevelSystem } from '@/hooks/useLevelSystem';
+import { calculateDynamicOdds, formatLiveOdds } from '@/lib/dynamic-odds';
+import { supabase } from '@/integrations/supabase/client';
 
 interface BettingSlipProps {
   onBack: () => void;
@@ -28,6 +30,8 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
   const [betDuration, setBetDuration] = useState<string>('');
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+  const [weatherForecast, setWeatherForecast] = useState<any[]>([]);
+  const [loadingWeather, setLoadingWeather] = useState(false);
   const { toast } = useToast();
   const { checkAndUpdateChallenges } = useChallengeTracker();
   const { checkAchievements } = useAchievementTracker();
@@ -45,16 +49,54 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
     fetchUser();
   }, []);
 
-  const getRainOdds = () => 2.0;
-  const getTempOdds = () => {
-    const range = TEMPERATURE_RANGES.find(r => r.value === tempRange);
-    return range?.odds || 2.0;
-  };
+  // Fetch weather forecast when city changes
+  useEffect(() => {
+    const fetchWeather = async () => {
+      if (!city) {
+        setWeatherForecast([]);
+        return;
+      }
+
+      setLoadingWeather(true);
+      try {
+        const { data, error } = await supabase.functions.invoke('get-weather', {
+          body: { city },
+        });
+
+        if (error) throw error;
+        if (data?.forecast) {
+          setWeatherForecast(data.forecast);
+        }
+      } catch (error) {
+        console.error('Error fetching weather:', error);
+      } finally {
+        setLoadingWeather(false);
+      }
+    };
+
+    fetchWeather();
+  }, [city]);
 
   const getCurrentOdds = () => {
-    if (predictionType === 'rain') return getRainOdds();
-    if (predictionType === 'temperature') return getTempOdds();
-    return 0;
+    if (!predictionType || !betDuration) return 0;
+    
+    const predictionValue = predictionType === 'rain' ? rainPrediction : tempRange;
+    if (!predictionValue) return 0;
+
+    // Use dynamic odds if we have forecast data
+    if (weatherForecast.length > 0) {
+      return calculateDynamicOdds({
+        predictionType,
+        predictionValue,
+        forecast: weatherForecast,
+        daysAhead: parseInt(betDuration) || 1,
+      });
+    }
+
+    // Fallback to static odds
+    if (predictionType === 'rain') return 2.0;
+    const range = TEMPERATURE_RANGES.find(r => r.value === tempRange);
+    return range?.odds || 2.0;
   };
 
   const getPotentialWin = () => {
@@ -184,13 +226,24 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
               </Select>
             </div>
 
+            {/* Live Odds Indicator */}
+            {city && weatherForecast.length > 0 && (
+              <div className="flex items-center gap-2 p-3 bg-primary/10 rounded-lg">
+                <Activity className="h-4 w-4 text-primary animate-pulse" />
+                <span className="text-sm font-medium">Live Odds Active</span>
+                <span className="text-xs text-muted-foreground ml-auto">
+                  Based on current forecast
+                </span>
+              </div>
+            )}
+
             {/* Prediction Type */}
             <div className="space-y-3">
               <Label>Prediction Type</Label>
               <RadioGroup value={predictionType} onValueChange={(value) => setPredictionType(value as 'rain' | 'temperature')}>
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="rain" id="rain" />
-                  <Label htmlFor="rain">Rain Prediction (2.0x odds)</Label>
+                  <Label htmlFor="rain">Rain Prediction</Label>
                 </div>
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="temperature" id="temperature" />
@@ -206,11 +259,11 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
                 <RadioGroup value={rainPrediction} onValueChange={(value) => setRainPrediction(value as 'yes' | 'no')}>
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem value="yes" id="rain-yes" />
-                    <Label htmlFor="rain-yes">Yes (2.0x)</Label>
+                    <Label htmlFor="rain-yes">Yes</Label>
                   </div>
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem value="no" id="rain-no" />
-                    <Label htmlFor="rain-no">No (2.0x)</Label>
+                    <Label htmlFor="rain-no">No</Label>
                   </div>
                 </RadioGroup>
               </div>
@@ -227,7 +280,7 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
                   <SelectContent>
                     {TEMPERATURE_RANGES.map((range) => (
                       <SelectItem key={range.value} value={range.value}>
-                        {range.label} ({range.odds}x odds)
+                        {range.label}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -295,7 +348,12 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
                     </div>
                     <div className="flex justify-between">
                       <span>Odds:</span>
-                      <span className="font-medium">{getCurrentOdds()}x</span>
+                      <span className="font-medium flex items-center gap-2">
+                        {formatLiveOdds(getCurrentOdds())}
+                        {weatherForecast.length > 0 && (
+                          <span className="text-xs text-primary">LIVE</span>
+                        )}
+                      </span>
                     </div>
                     <div className="flex justify-between font-bold text-primary">
                       <span>Potential Win:</span>

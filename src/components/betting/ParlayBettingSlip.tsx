@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { ArrowLeft, Plus, X, TrendingUp } from 'lucide-react';
+import { ArrowLeft, Plus, X, TrendingUp, Activity } from 'lucide-react';
 import { CITIES, TEMPERATURE_RANGES } from '@/types/betting';
 import { createParlay, ParlayPrediction } from '@/lib/supabase-parlays';
 import { getUser, updateUserPoints } from '@/lib/supabase-auth-storage';
@@ -13,6 +13,8 @@ import { useToast } from '@/hooks/use-toast';
 import { useChallengeTracker } from '@/hooks/useChallengeTracker';
 import { useAchievementTracker } from '@/hooks/useAchievementTracker';
 import { useLevelSystem } from '@/hooks/useLevelSystem';
+import { calculateDynamicOdds, formatLiveOdds } from '@/lib/dynamic-odds';
+import { supabase } from '@/integrations/supabase/client';
 
 interface ParlayBettingSlipProps {
   onBack: () => void;
@@ -41,6 +43,7 @@ const ParlayBettingSlip = ({ onBack, onBetPlaced }: ParlayBettingSlipProps) => {
   const [betDuration, setBetDuration] = useState('1');
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+  const [weatherForecasts, setWeatherForecasts] = useState<Record<string, any[]>>({});
   const { toast } = useToast();
   const { checkAndUpdateChallenges } = useChallengeTracker();
   const { checkAchievements } = useAchievementTracker();
@@ -49,6 +52,37 @@ const ParlayBettingSlip = ({ onBack, onBetPlaced }: ParlayBettingSlipProps) => {
   useEffect(() => {
     loadUser();
   }, []);
+
+  // Fetch weather forecasts for all selected cities
+  useEffect(() => {
+    const fetchWeatherForCities = async () => {
+      const citiesToFetch = predictions
+        .map(p => p.city)
+        .filter(city => city && !weatherForecasts[city]);
+
+      if (citiesToFetch.length === 0) return;
+
+      const newForecasts: Record<string, any[]> = { ...weatherForecasts };
+
+      for (const city of citiesToFetch) {
+        try {
+          const { data, error } = await supabase.functions.invoke('get-weather', {
+            body: { city },
+          });
+
+          if (!error && data?.forecast) {
+            newForecasts[city] = data.forecast;
+          }
+        } catch (error) {
+          console.error(`Error fetching weather for ${city}:`, error);
+        }
+      }
+
+      setWeatherForecasts(newForecasts);
+    };
+
+    fetchWeatherForCities();
+  }, [predictions.map(p => p.city).join(',')]);
 
   const loadUser = async () => {
     try {
@@ -102,18 +136,28 @@ const ParlayBettingSlip = ({ onBack, onBetPlaced }: ParlayBettingSlipProps) => {
     setPredictions(predictions.map(p => p.id === id ? { ...p, ...updates } : p));
   };
 
-  const getRainOdds = () => 1.8;
-  
-  const getTempOdds = (range: string) => {
-    const tempRange = TEMPERATURE_RANGES.find(r => r.value === range);
-    return tempRange?.odds || 2.0;
-  };
-
   const getPredictionOdds = (pred: PredictionFormData): number => {
-    if (pred.predictionType === 'rain') {
-      return getRainOdds();
+    if (!pred.city) return 2.0;
+
+    const predictionValue = pred.predictionType === 'rain' 
+      ? pred.rainPrediction 
+      : pred.temperatureRange;
+
+    // Use dynamic odds if we have forecast data for this city
+    const forecast = weatherForecasts[pred.city];
+    if (forecast && forecast.length > 0) {
+      return calculateDynamicOdds({
+        predictionType: pred.predictionType,
+        predictionValue,
+        forecast,
+        daysAhead: parseInt(betDuration) || 1,
+      });
     }
-    return getTempOdds(pred.temperatureRange);
+
+    // Fallback to static odds
+    if (pred.predictionType === 'rain') return 1.8;
+    const tempRange = TEMPERATURE_RANGES.find(r => r.value === pred.temperatureRange);
+    return tempRange?.odds || 2.0;
   };
 
   const getCombinedOdds = (): number => {
@@ -223,6 +267,17 @@ const ParlayBettingSlip = ({ onBack, onBetPlaced }: ParlayBettingSlipProps) => {
           </p>
         </div>
 
+        {/* Live Odds Indicator */}
+        {predictions.some(p => p.city && weatherForecasts[p.city]) && (
+          <div className="flex items-center gap-2 p-3 bg-primary/10 rounded-lg">
+            <Activity className="h-4 w-4 text-primary animate-pulse" />
+            <span className="text-sm font-medium">Live Odds Active</span>
+            <span className="text-xs text-muted-foreground ml-auto">
+              Based on current forecasts
+            </span>
+          </div>
+        )}
+
         {/* Predictions */}
         <div className="space-y-4">
           <div className="flex items-center justify-between">
@@ -283,7 +338,7 @@ const ParlayBettingSlip = ({ onBack, onBetPlaced }: ParlayBettingSlipProps) => {
                   >
                     <div className="flex items-center space-x-2">
                       <RadioGroupItem value="rain" id={`${pred.id}-rain`} />
-                      <Label htmlFor={`${pred.id}-rain`}>Rain ({getRainOdds()}x)</Label>
+                      <Label htmlFor={`${pred.id}-rain`}>Rain</Label>
                     </div>
                     <div className="flex items-center space-x-2">
                       <RadioGroupItem value="temperature" id={`${pred.id}-temp`} />
@@ -326,7 +381,7 @@ const ParlayBettingSlip = ({ onBack, onBetPlaced }: ParlayBettingSlipProps) => {
                       <SelectContent>
                         {TEMPERATURE_RANGES.map(range => (
                           <SelectItem key={range.value} value={range.value}>
-                            {range.label} ({range.odds}x)
+                            {range.label}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -377,7 +432,10 @@ const ParlayBettingSlip = ({ onBack, onBetPlaced }: ParlayBettingSlipProps) => {
               <span className="font-medium">Combined Odds:</span>
               <span className="text-lg font-bold flex items-center gap-2">
                 <TrendingUp className="h-5 w-5 text-primary" />
-                {getCombinedOdds().toFixed(2)}x
+                {formatLiveOdds(getCombinedOdds())}
+                {predictions.some(p => p.city && weatherForecasts[p.city]) && (
+                  <span className="text-xs text-primary">LIVE</span>
+                )}
               </span>
             </div>
             <div className="flex justify-between">
