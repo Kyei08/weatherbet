@@ -56,7 +56,10 @@ export type Database = {
           city: string
           created_at: string
           expires_at: string | null
+          has_insurance: boolean
           id: string
+          insurance_cost: number | null
+          insurance_payout_percentage: number | null
           odds: number
           prediction_type: string
           prediction_value: string
@@ -71,7 +74,10 @@ export type Database = {
           city: string
           created_at?: string
           expires_at?: string | null
+          has_insurance?: boolean
           id?: string
+          insurance_cost?: number | null
+          insurance_payout_percentage?: number | null
           odds: number
           prediction_type: string
           prediction_value: string
@@ -86,7 +92,10 @@ export type Database = {
           city?: string
           created_at?: string
           expires_at?: string | null
+          has_insurance?: boolean
           id?: string
+          insurance_cost?: number | null
+          insurance_payout_percentage?: number | null
           odds?: number
           prediction_type?: string
           prediction_value?: string
@@ -185,7 +194,10 @@ export type Database = {
           combined_odds: number
           created_at: string
           expires_at: string | null
+          has_insurance: boolean
           id: string
+          insurance_cost: number | null
+          insurance_payout_percentage: number | null
           result: string
           total_stake: number
           updated_at: string
@@ -195,7 +207,10 @@ export type Database = {
           combined_odds: number
           created_at?: string
           expires_at?: string | null
+          has_insurance?: boolean
           id?: string
+          insurance_cost?: number | null
+          insurance_payout_percentage?: number | null
           result?: string
           total_stake: number
           updated_at?: string
@@ -205,7 +220,10 @@ export type Database = {
           combined_odds?: number
           created_at?: string
           expires_at?: string | null
+          has_insurance?: boolean
           id?: string
+          insurance_cost?: number | null
+          insurance_payout_percentage?: number | null
           result?: string
           total_stake?: number
           updated_at?: string

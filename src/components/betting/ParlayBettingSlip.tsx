@@ -44,6 +44,7 @@ const ParlayBettingSlip = ({ onBack, onBetPlaced }: ParlayBettingSlipProps) => {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [weatherForecasts, setWeatherForecasts] = useState<Record<string, any[]>>({});
+  const [hasInsurance, setHasInsurance] = useState(false);
   const { toast } = useToast();
   const { checkAndUpdateChallenges } = useChallengeTracker();
   const { checkAchievements } = useAchievementTracker();
@@ -167,9 +168,25 @@ const ParlayBettingSlip = ({ onBack, onBetPlaced }: ParlayBettingSlipProps) => {
     }, 1);
   };
 
+  const getInsuranceCost = () => {
+    const stakeNum = parseInt(stake) || 0;
+    return Math.floor(stakeNum * 0.2); // 20% of stake for parlays (higher risk)
+  };
+
+  const getInsurancePayout = () => {
+    const stakeNum = parseInt(stake) || 0;
+    return Math.floor(stakeNum * 0.75); // Get back 75% of stake on loss
+  };
+
+  const getTotalCost = () => {
+    const stakeNum = parseInt(stake) || 0;
+    return hasInsurance ? stakeNum + getInsuranceCost() : stakeNum;
+  };
+
   const getPotentialWin = (): number => {
     const stakeNum = parseInt(stake) || 0;
-    return Math.floor(stakeNum * getCombinedOdds());
+    const winAmount = Math.floor(stakeNum * getCombinedOdds());
+    return hasInsurance ? winAmount - getInsuranceCost() : winAmount;
   };
 
   const canPlaceParlay = (): boolean => {
@@ -177,7 +194,8 @@ const ParlayBettingSlip = ({ onBack, onBetPlaced }: ParlayBettingSlipProps) => {
     if (!predictions.every(p => p.city)) return false;
     
     const stakeNum = parseInt(stake);
-    if (!stakeNum || stakeNum < 10 || stakeNum > (user?.points || 0)) return false;
+    const totalCost = getTotalCost();
+    if (!stakeNum || stakeNum < 10 || totalCost > (user?.points || 0)) return false;
     
     // Check for duplicate city predictions
     const cities = predictions.map(p => p.city);
@@ -193,6 +211,7 @@ const ParlayBettingSlip = ({ onBack, onBetPlaced }: ParlayBettingSlipProps) => {
     setLoading(true);
     try {
       const stakeNum = parseInt(stake);
+      const totalCost = getTotalCost();
       
       // Convert predictions to the format needed
       const parlayPredictions: ParlayPrediction[] = predictions.map(pred => ({
@@ -204,11 +223,24 @@ const ParlayBettingSlip = ({ onBack, onBetPlaced }: ParlayBettingSlipProps) => {
         odds: getPredictionOdds(pred),
       }));
 
-      // Deduct stake
-      await updateUserPoints(user.points - stakeNum);
+      // Deduct total cost (stake + insurance)
+      await updateUserPoints(user.points - totalCost);
 
-      // Create parlay
-      await createParlay(stakeNum, parlayPredictions, parseInt(betDuration));
+      // Create parlay with insurance
+      const parlayId = await createParlay(stakeNum, parlayPredictions, parseInt(betDuration));
+      
+      // Update parlay with insurance details if purchased
+      if (hasInsurance) {
+        const { supabase } = await import('@/integrations/supabase/client');
+        await supabase
+          .from('parlays')
+          .update({
+            has_insurance: true,
+            insurance_cost: getInsuranceCost(),
+            insurance_payout_percentage: 0.75,
+          })
+          .eq('id', parlayId);
+      }
 
       // Track achievements and challenges
       await checkAndUpdateChallenges('bet_placed', { 
@@ -220,7 +252,9 @@ const ParlayBettingSlip = ({ onBack, onBetPlaced }: ParlayBettingSlipProps) => {
 
       toast({
         title: 'Parlay Placed! 🎯',
-        description: `${predictions.length}-leg parlay with ${getCombinedOdds().toFixed(2)}x odds. Good luck!`,
+        description: hasInsurance
+          ? `${predictions.length}-leg parlay with ${getCombinedOdds().toFixed(2)}x odds and insurance protection!`
+          : `${predictions.length}-leg parlay with ${getCombinedOdds().toFixed(2)}x odds. Good luck!`,
       });
 
       onBetPlaced();
@@ -425,6 +459,37 @@ const ParlayBettingSlip = ({ onBack, onBetPlaced }: ParlayBettingSlipProps) => {
           </div>
         </div>
 
+        {/* Bet Insurance */}
+        {stake && parseInt(stake) >= 10 && (
+          <Card className="border-2 border-primary/20">
+            <CardContent className="pt-4">
+              <div className="flex items-start justify-between gap-4">
+                <div className="space-y-2 flex-1">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      id="parlay-insurance"
+                      checked={hasInsurance}
+                      onChange={(e) => setHasInsurance(e.target.checked)}
+                      className="h-4 w-4 rounded border-border"
+                    />
+                    <Label htmlFor="parlay-insurance" className="font-semibold cursor-pointer">
+                      🛡️ Parlay Insurance
+                    </Label>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Protect your parlay! If it loses, get back <span className="font-medium text-foreground">{getInsurancePayout()} points</span> (75% of stake)
+                  </p>
+                  <div className="flex items-center justify-between text-sm">
+                    <span>Insurance Cost:</span>
+                    <span className="font-medium">{getInsuranceCost()} points (20% of stake)</span>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Summary */}
         {predictions.every(p => p.city) && stake && (
           <div className="bg-gradient-primary/10 p-4 rounded-lg space-y-2">
@@ -442,10 +507,28 @@ const ParlayBettingSlip = ({ onBack, onBetPlaced }: ParlayBettingSlipProps) => {
               <span>Stake:</span>
               <span className="font-medium">{stake} points</span>
             </div>
-            <div className="flex justify-between text-lg font-bold text-primary">
-              <span>Potential Win:</span>
-              <span>{getPotentialWin()} points</span>
+            {hasInsurance && (
+              <>
+                <div className="flex justify-between text-muted-foreground">
+                  <span>Insurance:</span>
+                  <span>+{getInsuranceCost()} points</span>
+                </div>
+                <div className="flex justify-between font-medium border-t pt-2">
+                  <span>Total Cost:</span>
+                  <span>{getTotalCost()} points</span>
+                </div>
+              </>
+            )}
+            <div className="flex justify-between text-lg font-bold text-success">
+              <span>If Win:</span>
+              <span>+{getPotentialWin()} points</span>
             </div>
+            {hasInsurance && (
+              <div className="flex justify-between font-bold text-primary">
+                <span>If Lose (Insured):</span>
+                <span>-{parseInt(stake) - getInsurancePayout()} points</span>
+              </div>
+            )}
           </div>
         )}
 

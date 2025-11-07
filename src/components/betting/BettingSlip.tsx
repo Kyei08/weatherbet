@@ -32,6 +32,7 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
   const [loading, setLoading] = useState(false);
   const [weatherForecast, setWeatherForecast] = useState<any[]>([]);
   const [loadingWeather, setLoadingWeather] = useState(false);
+  const [hasInsurance, setHasInsurance] = useState(false);
   const { toast } = useToast();
   const { checkAndUpdateChallenges } = useChallengeTracker();
   const { checkAchievements } = useAchievementTracker();
@@ -99,9 +100,25 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
     return range?.odds || 2.0;
   };
 
+  const getInsuranceCost = () => {
+    const stakeNum = parseInt(stake) || 0;
+    return Math.floor(stakeNum * 0.15); // 15% of stake
+  };
+
+  const getInsurancePayout = () => {
+    const stakeNum = parseInt(stake) || 0;
+    return Math.floor(stakeNum * 0.8); // Get back 80% of stake on loss
+  };
+
+  const getTotalCost = () => {
+    const stakeNum = parseInt(stake) || 0;
+    return hasInsurance ? stakeNum + getInsuranceCost() : stakeNum;
+  };
+
   const getPotentialWin = () => {
     const stakeNum = parseInt(stake) || 0;
-    return Math.floor(stakeNum * getCurrentOdds());
+    const winAmount = Math.floor(stakeNum * getCurrentOdds());
+    return hasInsurance ? winAmount - getInsuranceCost() : winAmount; // Subtract insurance cost from winnings
   };
 
   const getBetDeadline = () => {
@@ -114,6 +131,7 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
 
   const canPlaceBet = () => {
     const stakeNum = parseInt(stake) || 0;
+    const totalCost = getTotalCost();
     return (
       city &&
       predictionType &&
@@ -121,7 +139,7 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
       betDuration &&
       stakeNum >= 10 &&
       stakeNum <= 100 &&
-      stakeNum <= user.points
+      totalCost <= user.points
     );
   };
 
@@ -132,9 +150,10 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
     try {
       const stakeNum = parseInt(stake);
       const predictionValue = predictionType === 'rain' ? rainPrediction : tempRange;
+      const totalCost = getTotalCost();
 
-      // Deduct stake from user points
-      await updateUserPoints(user.points - stakeNum);
+      // Deduct total cost (stake + insurance) from user points
+      await updateUserPoints(user.points - totalCost);
 
       // Add bet
       const targetDate = getBetDeadline();
@@ -148,6 +167,9 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
         target_date: targetDate,
         expires_at: targetDate,
         bet_duration_days: parseInt(betDuration),
+        has_insurance: hasInsurance,
+        insurance_cost: hasInsurance ? getInsuranceCost() : 0,
+        insurance_payout_percentage: 0.8,
       } as any);
 
       // Track challenge progress
@@ -164,7 +186,9 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
 
       toast({
         title: "Bet Placed!",
-        description: `Your ${stakeNum} point bet on ${city} has been placed.`,
+        description: hasInsurance 
+          ? `Your ${stakeNum} point bet on ${city} has been placed with insurance protection.`
+          : `Your ${stakeNum} point bet on ${city} has been placed.`,
       });
 
       onBetPlaced();
@@ -318,6 +342,37 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
               />
             </div>
 
+            {/* Bet Insurance */}
+            {stake && parseInt(stake) >= 10 && (
+              <Card className="border-2 border-primary/20">
+                <CardContent className="pt-4">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="space-y-2 flex-1">
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          id="insurance"
+                          checked={hasInsurance}
+                          onChange={(e) => setHasInsurance(e.target.checked)}
+                          className="h-4 w-4 rounded border-border"
+                        />
+                        <Label htmlFor="insurance" className="font-semibold cursor-pointer">
+                          🛡️ Bet Insurance
+                        </Label>
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        Protect your bet! If you lose, get back <span className="font-medium text-foreground">{getInsurancePayout()} points</span> (80% of stake)
+                      </p>
+                      <div className="flex items-center justify-between text-sm">
+                        <span>Insurance Cost:</span>
+                        <span className="font-medium">{getInsuranceCost()} points (15% of stake)</span>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             {/* Bet Summary */}
             {city && predictionType && (predictionType === 'rain' ? rainPrediction : tempRange) && stake && betDuration && (
               <Card className="bg-muted">
@@ -346,6 +401,18 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
                       <span>Stake:</span>
                       <span className="font-medium">{stake} points</span>
                     </div>
+                    {hasInsurance && (
+                      <>
+                        <div className="flex justify-between text-muted-foreground">
+                          <span>Insurance:</span>
+                          <span>+{getInsuranceCost()} points</span>
+                        </div>
+                        <div className="flex justify-between font-medium border-t pt-2">
+                          <span>Total Cost:</span>
+                          <span>{getTotalCost()} points</span>
+                        </div>
+                      </>
+                    )}
                     <div className="flex justify-between">
                       <span>Odds:</span>
                       <span className="font-medium flex items-center gap-2">
@@ -355,10 +422,16 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
                         )}
                       </span>
                     </div>
-                    <div className="flex justify-between font-bold text-primary">
-                      <span>Potential Win:</span>
-                      <span>{getPotentialWin()} points</span>
+                    <div className="flex justify-between font-bold text-success">
+                      <span>If Win:</span>
+                      <span>+{getPotentialWin()} points</span>
                     </div>
+                    {hasInsurance && (
+                      <div className="flex justify-between font-bold text-primary">
+                        <span>If Lose (Insured):</span>
+                        <span>-{parseInt(stake) - getInsurancePayout()} points</span>
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>

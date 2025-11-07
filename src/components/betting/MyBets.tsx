@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, RefreshCw } from 'lucide-react';
+import { ArrowLeft, RefreshCw, Shield } from 'lucide-react';
 import { getBets, updateBetResult, getUser, updateUserPoints } from '@/lib/supabase-auth-storage';
 import { getParlays, updateParlayResult, ParlayWithLegs } from '@/lib/supabase-parlays';
 import { Bet } from '@/types/supabase-betting';
@@ -61,8 +61,9 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
     try {
       await updateBetResult(bet.id, result);
       
+      const user = await getUser();
+      
       if (result === 'win') {
-        const user = await getUser();
         const winnings = Math.floor(bet.stake * Number(bet.odds));
         await updateUserPoints(user.points + winnings);
         
@@ -73,18 +74,31 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
         await checkAchievements();
 
         // Award XP based on result
-        await awardXPForAction(result === 'win' ? 'BET_WON' : 'BET_LOST');
+        await awardXPForAction('BET_WON');
         
         toast({
           title: "Bet Won! 🎉",
           description: `You won ${winnings} points!`,
         });
       } else {
+        // Handle loss with insurance
+        const betData = bet as any;
+        if (betData.has_insurance && betData.insurance_payout_percentage) {
+          const insurancePayout = Math.floor(bet.stake * betData.insurance_payout_percentage);
+          await updateUserPoints(user.points + insurancePayout);
+          
+          toast({
+            title: "Bet Lost (Insured) 🛡️",
+            description: `Insurance returned ${insurancePayout} points!`,
+          });
+        } else {
+          toast({
+            title: "Bet Lost 😞",
+            description: `Better luck next time!`,
+          });
+        }
+        
         await awardXPForAction('BET_LOST');
-        toast({
-          title: "Bet Lost 😞",
-          description: `Better luck next time!`,
-        });
       }
       
       await refreshBets();
@@ -102,8 +116,9 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
     try {
       await updateParlayResult(parlay.id, result);
       
+      const user = await getUser();
+      
       if (result === 'win') {
-        const user = await getUser();
         const winnings = Math.floor(parlay.total_stake * Number(parlay.combined_odds));
         await updateUserPoints(user.points + winnings);
         
@@ -116,11 +131,23 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
           description: `You won ${winnings} points!`,
         });
       } else {
+        // Handle loss with insurance
+        if (parlay.has_insurance && parlay.insurance_payout_percentage) {
+          const insurancePayout = Math.floor(parlay.total_stake * parlay.insurance_payout_percentage);
+          await updateUserPoints(user.points + insurancePayout);
+          
+          toast({
+            title: "Parlay Lost (Insured) 🛡️",
+            description: `Insurance returned ${insurancePayout} points!`,
+          });
+        } else {
+          toast({
+            title: "Parlay Lost 😞",
+            description: `Better luck next time!`,
+          });
+        }
+        
         await awardXPForAction('BET_LOST');
-        toast({
-          title: "Parlay Lost 😞",
-          description: `Better luck next time!`,
-        });
       }
       
       await refreshBets();
@@ -202,12 +229,23 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
                         </p>
                         <p className="text-sm text-muted-foreground">{formatDate(bet.created_at)}</p>
                       </div>
-                      <div className="text-right">
-                        <Badge variant={getBadgeVariant(bet.result)}>
-                          {bet.result.toUpperCase()}
-                        </Badge>
+                      <div className="text-right space-y-1">
+                        <div className="flex items-center gap-2 justify-end">
+                          <Badge variant={getBadgeVariant(bet.result)}>
+                            {bet.result.toUpperCase()}
+                          </Badge>
+                          {(bet as any).has_insurance && (
+                            <Badge variant="outline" className="bg-primary/10 border-primary/30">
+                              <Shield className="h-3 w-3 mr-1" />
+                              INSURED
+                            </Badge>
+                          )}
+                        </div>
                         <p className="text-sm mt-1">Stake: {bet.stake} pts</p>
                         <p className="text-sm">Odds: {bet.odds}x</p>
+                        {(bet as any).has_insurance && (
+                          <p className="text-xs text-primary">Protected: {Math.floor(bet.stake * ((bet as any).insurance_payout_percentage || 0.8))} pts</p>
+                        )}
                       </div>
                     </div>
                     
@@ -255,15 +293,26 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
                         </h3>
                         <p className="text-sm text-muted-foreground">{formatDate(parlay.created_at)}</p>
                       </div>
-                      <div className="text-right">
-                        <Badge variant={getBadgeVariant(parlay.result)}>
-                          {parlay.result.toUpperCase()}
-                        </Badge>
+                      <div className="text-right space-y-1">
+                        <div className="flex items-center gap-2 justify-end">
+                          <Badge variant={getBadgeVariant(parlay.result)}>
+                            {parlay.result.toUpperCase()}
+                          </Badge>
+                          {parlay.has_insurance && (
+                            <Badge variant="outline" className="bg-primary/10 border-primary/30">
+                              <Shield className="h-3 w-3 mr-1" />
+                              INSURED
+                            </Badge>
+                          )}
+                        </div>
                         <p className="text-sm mt-1 font-bold">Stake: {parlay.total_stake} pts</p>
                         <p className="text-sm font-bold text-primary">Odds: {Number(parlay.combined_odds).toFixed(2)}x</p>
                         <p className="text-xs text-muted-foreground mt-1">
                           Potential: {Math.floor(parlay.total_stake * Number(parlay.combined_odds))} pts
                         </p>
+                        {parlay.has_insurance && (
+                          <p className="text-xs text-primary">Protected: {Math.floor(parlay.total_stake * (parlay.insurance_payout_percentage || 0.75))} pts</p>
+                        )}
                       </div>
                     </div>
 

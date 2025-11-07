@@ -124,7 +124,25 @@ Deno.serve(async (req) => {
         }
 
         const result = isWin ? 'win' : 'loss';
-        const pointsChange = isWin ? Math.round(bet.stake * bet.odds) : -bet.stake;
+        
+        // Calculate points change considering insurance
+        let pointsChange: number;
+        if (isWin) {
+          // Win: give back stake + winnings
+          pointsChange = Math.round(bet.stake * bet.odds);
+        } else {
+          // Loss: check if insured
+          const betData = bet as any;
+          if (betData.has_insurance && betData.insurance_payout_percentage) {
+            // Insured loss: return insurance payout
+            const insurancePayout = Math.floor(bet.stake * betData.insurance_payout_percentage);
+            pointsChange = insurancePayout;
+            console.log(`Bet ${bet.id} has insurance - returning ${insurancePayout} points`);
+          } else {
+            // Uninsured loss: lose stake (already deducted, no change)
+            pointsChange = 0;
+          }
+        }
 
         console.log(`Bet ${bet.id}: ${result} (${pointsChange} points)`);
 
@@ -246,9 +264,24 @@ Deno.serve(async (req) => {
           }
 
           const parlayResult = allLegsWin ? 'win' : 'loss';
-          const pointsChange = allLegsWin 
-            ? Math.round(parlay.total_stake * parlay.combined_odds) 
-            : -parlay.total_stake;
+          
+          // Calculate points change considering insurance
+          let pointsChange: number;
+          if (allLegsWin) {
+            // Win: give back stake + winnings
+            pointsChange = Math.round(parlay.total_stake * parlay.combined_odds);
+          } else {
+            // Loss: check if insured
+            if (parlay.has_insurance && parlay.insurance_payout_percentage) {
+              // Insured loss: return insurance payout
+              const insurancePayout = Math.floor(parlay.total_stake * parlay.insurance_payout_percentage);
+              pointsChange = insurancePayout;
+              console.log(`Parlay ${parlay.id} has insurance - returning ${insurancePayout} points`);
+            } else {
+              // Uninsured loss: lose stake (already deducted, no change)
+              pointsChange = 0;
+            }
+          }
 
           console.log(`Parlay ${parlay.id}: ${parlayResult} (${pointsChange} points)`);
 
