@@ -3,8 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, RefreshCw, Shield } from 'lucide-react';
-import { getBets, updateBetResult, getUser, updateUserPoints } from '@/lib/supabase-auth-storage';
-import { getParlays, updateParlayResult, ParlayWithLegs } from '@/lib/supabase-parlays';
+import { getBets, updateBetResult, getUser, updateUserPoints, cashOutBet } from '@/lib/supabase-auth-storage';
+import { getParlays, updateParlayResult, ParlayWithLegs, cashOutParlay } from '@/lib/supabase-parlays';
 import { Bet } from '@/types/supabase-betting';
 import { useToast } from '@/hooks/use-toast';
 import { useChallengeTracker } from '@/hooks/useChallengeTracker';
@@ -112,6 +112,56 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
     }
   };
 
+  const calculateCashOut = (stake: number, odds: number): number => {
+    const potentialWin = Math.floor(stake * odds);
+    // Cash out is 65% of potential win
+    return Math.floor(potentialWin * 0.65);
+  };
+
+  const handleCashOut = async (bet: Bet) => {
+    try {
+      const cashoutAmount = calculateCashOut(bet.stake, Number(bet.odds));
+      
+      await cashOutBet(bet.id, cashoutAmount);
+      
+      toast({
+        title: "Bet Cashed Out! 💰",
+        description: `You received ${cashoutAmount} points`,
+      });
+      
+      await refreshBets();
+    } catch (error) {
+      console.error('Error cashing out bet:', error);
+      toast({
+        title: "Error",
+        description: "Failed to cash out bet. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleParlayCashOut = async (parlay: ParlayWithLegs) => {
+    try {
+      const cashoutAmount = calculateCashOut(parlay.total_stake, Number(parlay.combined_odds));
+      
+      await cashOutParlay(parlay.id, cashoutAmount);
+      
+      toast({
+        title: "Parlay Cashed Out! 💰",
+        description: `You received ${cashoutAmount} points`,
+      });
+      
+      await refreshBets();
+    } catch (error) {
+      console.error('Error cashing out parlay:', error);
+      toast({
+        title: "Error",
+        description: "Failed to cash out parlay. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleParlaySettle = async (parlay: ParlayWithLegs, result: 'win' | 'loss') => {
     try {
       await updateParlayResult(parlay.id, result);
@@ -165,6 +215,11 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
   const settledBets = bets.filter(bet => bet.result !== 'pending');
   const pendingParlays = parlays.filter(p => p.result === 'pending');
   const settledParlays = parlays.filter(p => p.result !== 'pending');
+  
+  const getCashOutBadgeVariant = (result: string) => {
+    if (result === 'cashed_out') return 'outline';
+    return getBadgeVariant(result);
+  };
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -179,8 +234,14 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
     switch (result) {
       case 'win': return 'default';
       case 'loss': return 'destructive';
+      case 'cashed_out': return 'outline';
       default: return 'secondary';
     }
+  };
+  
+  const formatResult = (result: string) => {
+    if (result === 'cashed_out') return 'CASHED OUT';
+    return result.toUpperCase();
   };
 
   if (loading) {
@@ -249,8 +310,23 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
                       </div>
                     </div>
                     
+                    {/* Cash Out Section */}
+                    <div className="flex items-center justify-between pt-2 border-t bg-accent/10 -mx-4 -mb-3 px-4 py-3 rounded-b-lg">
+                      <div>
+                        <p className="text-sm font-semibold text-primary">Cash Out Available</p>
+                        <p className="text-xs text-muted-foreground">Get {calculateCashOut(bet.stake, Number(bet.odds))} pts now (65% of potential win)</p>
+                      </div>
+                      <Button 
+                        size="sm" 
+                        onClick={() => handleCashOut(bet)}
+                        className="bg-gradient-primary"
+                      >
+                        Cash Out
+                      </Button>
+                    </div>
+                    
                     {/* Manual Settlement Buttons */}
-                    <div className="flex gap-2 pt-2 border-t">
+                    <div className="flex gap-2 pt-2 border-t mt-2">
                       <p className="text-sm text-muted-foreground mr-auto">Manual Settlement:</p>
                       <Button 
                         size="sm" 
@@ -331,8 +407,23 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
                       ))}
                     </div>
                     
+                    {/* Cash Out Section */}
+                    <div className="flex items-center justify-between pt-2 border-t bg-accent/10 -mx-4 -mb-3 px-4 py-3 rounded-b-lg">
+                      <div>
+                        <p className="text-sm font-semibold text-primary">Cash Out Available</p>
+                        <p className="text-xs text-muted-foreground">Get {calculateCashOut(parlay.total_stake, Number(parlay.combined_odds))} pts now (65% of potential win)</p>
+                      </div>
+                      <Button 
+                        size="sm" 
+                        onClick={() => handleParlayCashOut(parlay)}
+                        className="bg-gradient-primary"
+                      >
+                        Cash Out
+                      </Button>
+                    </div>
+                    
                     {/* Manual Settlement Buttons */}
-                    <div className="flex gap-2 pt-2 border-t">
+                    <div className="flex gap-2 pt-2 border-t mt-2">
                       <p className="text-sm text-muted-foreground mr-auto">Manual Settlement:</p>
                       <Button 
                         size="sm" 
@@ -379,12 +470,14 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
                       <p className="text-xs text-muted-foreground">{formatDate(bet.created_at)}</p>
                     </div>
                     <div className="text-right">
-                      <Badge variant={getBadgeVariant(bet.result)}>
-                        {bet.result.toUpperCase()}
+                      <Badge variant={getCashOutBadgeVariant(bet.result)}>
+                        {formatResult(bet.result)}
                       </Badge>
                       <p className="text-sm mt-1">
                         {bet.result === 'win' 
                           ? `+${Math.floor(bet.stake * Number(bet.odds))} pts`
+                          : bet.result === 'cashed_out'
+                          ? `+${(bet as any).cashout_amount || 0} pts`
                           : `-${bet.stake} pts`
                         }
                       </p>
@@ -414,14 +507,19 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
                         <p className="text-sm text-muted-foreground">{formatDate(parlay.created_at)}</p>
                       </div>
                       <div className="text-right">
-                        <Badge variant={getBadgeVariant(parlay.result)}>
-                          {parlay.result.toUpperCase()}
+                        <Badge variant={getCashOutBadgeVariant(parlay.result)}>
+                          {formatResult(parlay.result)}
                         </Badge>
                         <p className="text-sm mt-1">Stake: {parlay.total_stake} pts</p>
                         <p className="text-sm">Odds: {Number(parlay.combined_odds).toFixed(2)}x</p>
                         {parlay.result === 'win' && (
                           <p className="text-sm font-bold text-green-600">
                             Won: {Math.floor(parlay.total_stake * Number(parlay.combined_odds))} pts
+                          </p>
+                        )}
+                        {parlay.result === 'cashed_out' && (
+                          <p className="text-sm font-bold text-primary">
+                            Cashed Out: {parlay.cashout_amount || 0} pts
                           </p>
                         )}
                       </div>

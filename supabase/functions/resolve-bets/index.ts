@@ -63,14 +63,15 @@ Deno.serve(async (req) => {
 
     console.log('Starting bet resolution process...');
 
-    // Get all pending bets that are at least 1 hour old
+    // Get all pending bets that are at least 1 hour old (excluding cashed out)
     const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
     
     const { data: pendingBets, error: betsError } = await supabase
       .from('bets')
       .select('*')
       .eq('result', 'pending')
-      .lt('created_at', oneHourAgo);
+      .lt('created_at', oneHourAgo)
+      .is('cashed_out_at', null);
 
     if (betsError) {
       console.error('Error fetching pending bets:', betsError);
@@ -194,7 +195,7 @@ Deno.serve(async (req) => {
 
     console.log(`Successfully resolved ${resolvedCount} bets`);
 
-    // Now process parlays
+    // Now process parlays (excluding cashed out)
     const { data: pendingParlays, error: parlaysError } = await supabase
       .from('parlays')
       .select(`
@@ -202,7 +203,8 @@ Deno.serve(async (req) => {
         parlay_legs (*)
       `)
       .eq('result', 'pending')
-      .lt('created_at', oneHourAgo);
+      .lt('created_at', oneHourAgo)
+      .is('cashed_out_at', null);
 
     if (parlaysError) {
       console.error('Error fetching pending parlays:', parlaysError);

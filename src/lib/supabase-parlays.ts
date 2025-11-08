@@ -89,7 +89,7 @@ export const getParlays = async (limit?: number): Promise<ParlayWithLegs[]> => {
 
 export const updateParlayResult = async (
   parlayId: string,
-  result: 'win' | 'loss'
+  result: 'win' | 'loss' | 'cashed_out'
 ): Promise<void> => {
   const { error } = await supabase
     .from('parlays')
@@ -97,6 +97,38 @@ export const updateParlayResult = async (
     .eq('id', parlayId);
 
   if (error) throw error;
+};
+
+export const cashOutParlay = async (parlayId: string, cashoutAmount: number): Promise<void> => {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Not authenticated');
+
+  // Update parlay status to cashed_out
+  const { error: parlayError } = await supabase
+    .from('parlays')
+    .update({ 
+      result: 'cashed_out',
+      cashed_out_at: new Date().toISOString(),
+      cashout_amount: cashoutAmount
+    })
+    .eq('id', parlayId)
+    .eq('user_id', user.id);
+
+  if (parlayError) throw parlayError;
+
+  // Update user points - import from supabase-auth-storage
+  const { data: userData } = await supabase
+    .from('users')
+    .select('points')
+    .eq('id', user.id)
+    .single();
+
+  if (userData) {
+    await supabase
+      .from('users')
+      .update({ points: userData.points + cashoutAmount })
+      .eq('id', user.id);
+  }
 };
 
 export const updateParlayLegResult = async (

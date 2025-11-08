@@ -53,6 +53,8 @@ export type Database = {
       bets: {
         Row: {
           bet_duration_days: number | null
+          cashed_out_at: string | null
+          cashout_amount: number | null
           city: string
           created_at: string
           expires_at: string | null
@@ -71,6 +73,8 @@ export type Database = {
         }
         Insert: {
           bet_duration_days?: number | null
+          cashed_out_at?: string | null
+          cashout_amount?: number | null
           city: string
           created_at?: string
           expires_at?: string | null
@@ -89,6 +93,8 @@ export type Database = {
         }
         Update: {
           bet_duration_days?: number | null
+          cashed_out_at?: string | null
+          cashout_amount?: number | null
           city?: string
           created_at?: string
           expires_at?: string | null
@@ -191,6 +197,8 @@ export type Database = {
       }
       parlays: {
         Row: {
+          cashed_out_at: string | null
+          cashout_amount: number | null
           combined_odds: number
           created_at: string
           expires_at: string | null
@@ -204,6 +212,8 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          cashed_out_at?: string | null
+          cashout_amount?: number | null
           combined_odds: number
           created_at?: string
           expires_at?: string | null
@@ -217,6 +227,8 @@ export type Database = {
           user_id: string
         }
         Update: {
+          cashed_out_at?: string | null
+          cashout_amount?: number | null
           combined_odds?: number
           created_at?: string
           expires_at?: string | null
