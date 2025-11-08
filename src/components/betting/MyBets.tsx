@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, RefreshCw, Shield } from 'lucide-react';
+import { ArrowLeft, RefreshCw, Shield, TrendingUp } from 'lucide-react';
 import { getBets, updateBetResult, getUser, updateUserPoints, cashOutBet } from '@/lib/supabase-auth-storage';
 import { getParlays, updateParlayResult, ParlayWithLegs, cashOutParlay } from '@/lib/supabase-parlays';
 import { Bet } from '@/types/supabase-betting';
@@ -10,6 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useChallengeTracker } from '@/hooks/useChallengeTracker';
 import { useAchievementTracker } from '@/hooks/useAchievementTracker';
 import { useLevelSystem } from '@/hooks/useLevelSystem';
+import { calculateDynamicCashOut, calculateDynamicParlayCashOut } from '@/lib/dynamic-cashout';
 
 interface MyBetsProps {
   onBack: () => void;
@@ -20,6 +21,8 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
   const [bets, setBets] = useState<Bet[]>([]);
   const [parlays, setParlays] = useState<ParlayWithLegs[]>([]);
   const [loading, setLoading] = useState(true);
+  const [cashOutCalculations, setCashOutCalculations] = useState<Record<string, any>>({});
+  const [calculatingCashOuts, setCalculatingCashOuts] = useState(false);
   const { toast } = useToast();
   const { checkAndUpdateChallenges } = useChallengeTracker();
   const { checkAchievements } = useAchievementTracker();
@@ -34,6 +37,9 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
         ]);
         setBets(betsData);
         setParlays(parlaysData);
+        
+        // Calculate dynamic cash-outs for pending bets
+        await calculateAllCashOuts(betsData, parlaysData);
       } catch (error) {
         console.error('Error fetching data:', error);
       } finally {
@@ -43,6 +49,54 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
     fetchData();
   }, []);
 
+  const calculateAllCashOuts = async (betsData: Bet[], parlaysData: ParlayWithLegs[]) => {
+    setCalculatingCashOuts(true);
+    const calculations: Record<string, any> = {};
+    
+    try {
+      // Calculate for pending single bets
+      const pendingBets = betsData.filter(bet => bet.result === 'pending');
+      for (const bet of pendingBets) {
+        try {
+          const calc = await calculateDynamicCashOut(
+            bet.stake,
+            Number(bet.odds),
+            bet.city,
+            bet.prediction_type,
+            bet.prediction_value,
+            bet.created_at,
+            bet.expires_at
+          );
+          calculations[bet.id] = calc;
+        } catch (error) {
+          console.error(`Error calculating cash-out for bet ${bet.id}:`, error);
+        }
+      }
+      
+      // Calculate for pending parlays
+      const pendingParlays = parlaysData.filter(p => p.result === 'pending');
+      for (const parlay of pendingParlays) {
+        try {
+          const calc = await calculateDynamicParlayCashOut(
+            parlay.total_stake,
+            Number(parlay.combined_odds),
+            parlay.parlay_legs,
+            parlay.created_at,
+            parlay.expires_at
+          );
+          calculations[parlay.id] = calc;
+        } catch (error) {
+          console.error(`Error calculating cash-out for parlay ${parlay.id}:`, error);
+        }
+      }
+    } catch (error) {
+      console.error('Error calculating cash-outs:', error);
+    } finally {
+      setCashOutCalculations(calculations);
+      setCalculatingCashOuts(false);
+    }
+  };
+
   const refreshBets = async () => {
     try {
       const [betsData, parlaysData] = await Promise.all([
@@ -51,6 +105,7 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
       ]);
       setBets(betsData);
       setParlays(parlaysData);
+      await calculateAllCashOuts(betsData, parlaysData);
       onRefresh();
     } catch (error) {
       console.error('Error refreshing bets:', error);
@@ -112,21 +167,23 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
     }
   };
 
-  const calculateCashOut = (stake: number, odds: number): number => {
-    const potentialWin = Math.floor(stake * odds);
-    // Cash out is 65% of potential win
-    return Math.floor(potentialWin * 0.65);
-  };
-
   const handleCashOut = async (bet: Bet) => {
     try {
-      const cashoutAmount = calculateCashOut(bet.stake, Number(bet.odds));
-      
-      await cashOutBet(bet.id, cashoutAmount);
+      const calculation = cashOutCalculations[bet.id];
+      if (!calculation) {
+        toast({
+          title: "Error",
+          description: "Cash-out calculation not available. Please refresh.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      await cashOutBet(bet.id, calculation.amount);
       
       toast({
         title: "Bet Cashed Out! 💰",
-        description: `You received ${cashoutAmount} points`,
+        description: `You received ${calculation.amount} points (${calculation.percentage}% of potential win)`,
       });
       
       await refreshBets();
@@ -142,13 +199,21 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
 
   const handleParlayCashOut = async (parlay: ParlayWithLegs) => {
     try {
-      const cashoutAmount = calculateCashOut(parlay.total_stake, Number(parlay.combined_odds));
-      
-      await cashOutParlay(parlay.id, cashoutAmount);
+      const calculation = cashOutCalculations[parlay.id];
+      if (!calculation) {
+        toast({
+          title: "Error",
+          description: "Cash-out calculation not available. Please refresh.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      await cashOutParlay(parlay.id, calculation.amount);
       
       toast({
         title: "Parlay Cashed Out! 💰",
-        description: `You received ${cashoutAmount} points`,
+        description: `You received ${calculation.amount} points (${calculation.percentage}% of potential win)`,
       });
       
       await refreshBets();
@@ -310,20 +375,52 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
                       </div>
                     </div>
                     
-                    {/* Cash Out Section */}
-                    <div className="flex items-center justify-between pt-2 border-t bg-accent/10 -mx-4 -mb-3 px-4 py-3 rounded-b-lg">
-                      <div>
-                        <p className="text-sm font-semibold text-primary">Cash Out Available</p>
-                        <p className="text-xs text-muted-foreground">Get {calculateCashOut(bet.stake, Number(bet.odds))} pts now (65% of potential win)</p>
+                    {/* Dynamic Cash Out Section */}
+                    {cashOutCalculations[bet.id] ? (
+                      <div className="pt-2 border-t bg-gradient-to-br from-primary/5 to-accent/10 -mx-4 -mb-3 px-4 py-3 rounded-b-lg">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <p className="text-sm font-semibold text-primary">Dynamic Cash Out</p>
+                              <Badge variant="outline" className="text-xs">
+                                <TrendingUp className="h-3 w-3 mr-1" />
+                                {cashOutCalculations[bet.id].percentage}%
+                              </Badge>
+                            </div>
+                            <p className="text-xs text-muted-foreground mb-1">
+                              {cashOutCalculations[bet.id].reasoning}
+                            </p>
+                            <div className="flex gap-3 text-xs">
+                              {cashOutCalculations[bet.id].timeBonus > 0 && (
+                                <span className="text-muted-foreground">
+                                  ⏱️ Time: +{cashOutCalculations[bet.id].timeBonus}%
+                                </span>
+                              )}
+                              {cashOutCalculations[bet.id].weatherBonus > 0 && (
+                                <span className="text-muted-foreground">
+                                  🌤️ Weather: +{cashOutCalculations[bet.id].weatherBonus}%
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <Button 
+                            size="sm" 
+                            onClick={() => handleCashOut(bet)}
+                            className="bg-gradient-primary ml-4"
+                            disabled={calculatingCashOuts}
+                          >
+                            Cash Out
+                            <span className="ml-2 font-bold">{cashOutCalculations[bet.id].amount} pts</span>
+                          </Button>
+                        </div>
                       </div>
-                      <Button 
-                        size="sm" 
-                        onClick={() => handleCashOut(bet)}
-                        className="bg-gradient-primary"
-                      >
-                        Cash Out
-                      </Button>
-                    </div>
+                    ) : (
+                      <div className="pt-2 border-t bg-accent/10 -mx-4 -mb-3 px-4 py-3 rounded-b-lg">
+                        <p className="text-sm text-muted-foreground text-center">
+                          {calculatingCashOuts ? 'Calculating cash-out value...' : 'Cash-out unavailable'}
+                        </p>
+                      </div>
+                    )}
                     
                     {/* Manual Settlement Buttons */}
                     <div className="flex gap-2 pt-2 border-t mt-2">
@@ -407,20 +504,52 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
                       ))}
                     </div>
                     
-                    {/* Cash Out Section */}
-                    <div className="flex items-center justify-between pt-2 border-t bg-accent/10 -mx-4 -mb-3 px-4 py-3 rounded-b-lg">
-                      <div>
-                        <p className="text-sm font-semibold text-primary">Cash Out Available</p>
-                        <p className="text-xs text-muted-foreground">Get {calculateCashOut(parlay.total_stake, Number(parlay.combined_odds))} pts now (65% of potential win)</p>
+                    {/* Dynamic Cash Out Section */}
+                    {cashOutCalculations[parlay.id] ? (
+                      <div className="pt-2 border-t bg-gradient-to-br from-primary/5 to-accent/10 -mx-4 -mb-3 px-4 py-3 rounded-b-lg">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <p className="text-sm font-semibold text-primary">Dynamic Parlay Cash Out</p>
+                              <Badge variant="outline" className="text-xs">
+                                <TrendingUp className="h-3 w-3 mr-1" />
+                                {cashOutCalculations[parlay.id].percentage}%
+                              </Badge>
+                            </div>
+                            <p className="text-xs text-muted-foreground mb-1">
+                              {cashOutCalculations[parlay.id].reasoning}
+                            </p>
+                            <div className="flex gap-3 text-xs">
+                              {cashOutCalculations[parlay.id].timeBonus > 0 && (
+                                <span className="text-muted-foreground">
+                                  ⏱️ Time: +{cashOutCalculations[parlay.id].timeBonus}%
+                                </span>
+                              )}
+                              {cashOutCalculations[parlay.id].weatherBonus > 0 && (
+                                <span className="text-muted-foreground">
+                                  🌤️ Weather: +{cashOutCalculations[parlay.id].weatherBonus}%
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <Button 
+                            size="sm" 
+                            onClick={() => handleParlayCashOut(parlay)}
+                            className="bg-gradient-primary ml-4"
+                            disabled={calculatingCashOuts}
+                          >
+                            Cash Out
+                            <span className="ml-2 font-bold">{cashOutCalculations[parlay.id].amount} pts</span>
+                          </Button>
+                        </div>
                       </div>
-                      <Button 
-                        size="sm" 
-                        onClick={() => handleParlayCashOut(parlay)}
-                        className="bg-gradient-primary"
-                      >
-                        Cash Out
-                      </Button>
-                    </div>
+                    ) : (
+                      <div className="pt-2 border-t bg-accent/10 -mx-4 -mb-3 px-4 py-3 rounded-b-lg">
+                        <p className="text-sm text-muted-foreground text-center">
+                          {calculatingCashOuts ? 'Calculating cash-out value...' : 'Cash-out unavailable'}
+                        </p>
+                      </div>
+                    )}
                     
                     {/* Manual Settlement Buttons */}
                     <div className="flex gap-2 pt-2 border-t mt-2">
