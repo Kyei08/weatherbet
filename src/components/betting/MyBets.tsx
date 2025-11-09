@@ -11,6 +11,7 @@ import { useChallengeTracker } from '@/hooks/useChallengeTracker';
 import { useAchievementTracker } from '@/hooks/useAchievementTracker';
 import { useLevelSystem } from '@/hooks/useLevelSystem';
 import { calculateDynamicCashOut, calculateDynamicParlayCashOut } from '@/lib/dynamic-cashout';
+import CashOutHistoryChart from './CashOutHistoryChart';
 
 interface MyBetsProps {
   onBack: () => void;
@@ -413,6 +414,17 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
                             <span className="ml-2 font-bold">{cashOutCalculations[bet.id].amount} pts</span>
                           </Button>
                         </div>
+                        
+                        {/* Cash-Out History Chart */}
+                        <CashOutHistoryChart
+                          stake={bet.stake}
+                          odds={Number(bet.odds)}
+                          city={bet.city}
+                          predictionType={bet.prediction_type}
+                          predictionValue={bet.prediction_value}
+                          createdAt={bet.created_at}
+                          expiresAt={bet.expires_at}
+                        />
                       </div>
                     ) : (
                       <div className="pt-2 border-t bg-accent/10 -mx-4 -mb-3 px-4 py-3 rounded-b-lg">
@@ -542,6 +554,18 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
                             <span className="ml-2 font-bold">{cashOutCalculations[parlay.id].amount} pts</span>
                           </Button>
                         </div>
+                        
+                        {/* Cash-Out History Chart */}
+                        <CashOutHistoryChart
+                          stake={parlay.total_stake}
+                          odds={Number(parlay.combined_odds)}
+                          createdAt={parlay.created_at}
+                          expiresAt={parlay.expires_at}
+                          isParlay={true}
+                          parlayLegs={parlay.parlay_legs}
+                          combinedOdds={Number(parlay.combined_odds)}
+                          totalStake={parlay.total_stake}
+                        />
                       </div>
                     ) : (
                       <div className="pt-2 border-t bg-accent/10 -mx-4 -mb-3 px-4 py-3 rounded-b-lg">
