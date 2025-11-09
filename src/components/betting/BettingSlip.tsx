@@ -5,7 +5,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { ArrowLeft, Activity } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { ArrowLeft, Activity, Sparkles, Clock, Zap } from 'lucide-react';
 import { getUser, addBet, updateUserPoints } from '@/lib/supabase-auth-storage';
 import { CITIES, TEMPERATURE_RANGES, City } from '@/types/supabase-betting';
 import { useToast } from '@/hooks/use-toast';
@@ -15,6 +16,7 @@ import { useAchievementTracker } from '@/hooks/useAchievementTracker';
 import { useLevelSystem } from '@/hooks/useLevelSystem';
 import { calculateDynamicOdds, formatLiveOdds } from '@/lib/dynamic-odds';
 import { supabase } from '@/integrations/supabase/client';
+import { getActivePurchases, getActiveMultipliers, getMaxStakeBoost, PurchaseWithItem } from '@/lib/supabase-shop';
 
 interface BettingSlipProps {
   onBack: () => void;
@@ -33,6 +35,9 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
   const [weatherForecast, setWeatherForecast] = useState<any[]>([]);
   const [loadingWeather, setLoadingWeather] = useState(false);
   const [hasInsurance, setHasInsurance] = useState(false);
+  const [activePurchases, setActivePurchases] = useState<PurchaseWithItem[]>([]);
+  const [activeMultiplier, setActiveMultiplier] = useState(1);
+  const [maxStakeBoost, setMaxStakeBoost] = useState(0);
   const { toast } = useToast();
   const { checkAndUpdateChallenges } = useChallengeTracker();
   const { checkAchievements } = useAchievementTracker();
@@ -48,6 +53,25 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
       }
     };
     fetchUser();
+  }, []);
+
+  // Fetch active shop bonuses
+  useEffect(() => {
+    const fetchBonuses = async () => {
+      try {
+        const [purchases, multiplier, stakeBoost] = await Promise.all([
+          getActivePurchases(),
+          getActiveMultipliers(),
+          getMaxStakeBoost(),
+        ]);
+        setActivePurchases(purchases);
+        setActiveMultiplier(multiplier);
+        setMaxStakeBoost(stakeBoost);
+      } catch (error) {
+        console.error('Error fetching bonuses:', error);
+      }
+    };
+    fetchBonuses();
   }, []);
 
   // Fetch weather forecast when city changes
@@ -117,8 +141,32 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
 
   const getPotentialWin = () => {
     const stakeNum = parseInt(stake) || 0;
-    const winAmount = Math.floor(stakeNum * getCurrentOdds());
-    return hasInsurance ? winAmount - getInsuranceCost() : winAmount; // Subtract insurance cost from winnings
+    const baseWin = Math.floor(stakeNum * getCurrentOdds());
+    const multipliedWin = Math.floor(baseWin * activeMultiplier);
+    return hasInsurance ? multipliedWin - getInsuranceCost() : multipliedWin;
+  };
+
+  const getBaseWin = () => {
+    const stakeNum = parseInt(stake) || 0;
+    return Math.floor(stakeNum * getCurrentOdds());
+  };
+
+  const getMaxStake = () => {
+    return 100 + maxStakeBoost;
+  };
+
+  const formatTimeRemaining = (expiresAt: string) => {
+    const now = new Date();
+    const expires = new Date(expiresAt);
+    const diff = expires.getTime() - now.getTime();
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    
+    if (hours > 24) {
+      const days = Math.floor(hours / 24);
+      return `${days}d ${hours % 24}h`;
+    }
+    return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
   };
 
   const getBetDeadline = () => {
@@ -138,7 +186,7 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
       (predictionType === 'rain' ? rainPrediction : tempRange) &&
       betDuration &&
       stakeNum >= 10 &&
-      stakeNum <= 100 &&
+      stakeNum <= getMaxStake() &&
       totalCost <= user.points
     );
   };
@@ -230,6 +278,48 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
             <p className="text-muted-foreground">Available Balance: {user.points.toLocaleString()} points</p>
           </CardHeader>
           <CardContent className="space-y-6">
+            {/* Active Shop Bonuses */}
+            {activePurchases.length > 0 && (
+              <Card className="border-2 border-primary/30 bg-primary/5">
+                <CardContent className="pt-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Sparkles className="h-4 w-4 text-primary" />
+                    <span className="font-semibold">Active Bonuses</span>
+                  </div>
+                  <div className="space-y-2">
+                    {activePurchases.map((purchase) => (
+                      <div key={purchase.id} className="flex items-center justify-between p-2 bg-background/50 rounded">
+                        <div className="flex items-center gap-2">
+                          <span className="text-lg">{purchase.item.item_icon}</span>
+                          <div>
+                            <p className="text-sm font-medium">{purchase.item.title}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {purchase.item.item_type === 'temp_multiplier' && `${purchase.item.item_value}x Multiplier`}
+                              {purchase.item.item_type === 'stake_boost' && `+${purchase.item.item_value} Max Stake`}
+                              {purchase.item.item_type === 'bonus_points' && `+${purchase.item.item_value} Points`}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {purchase.expires_at ? (
+                            <Badge variant="secondary" className="flex items-center gap-1">
+                              <Clock className="h-3 w-3" />
+                              {formatTimeRemaining(purchase.expires_at)}
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="flex items-center gap-1">
+                              <Zap className="h-3 w-3" />
+                              One-time
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             {/* Weather Display */}
             {city && <WeatherDisplay city={city} />}
             
@@ -331,11 +421,18 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
 
             {/* Stake */}
             <div className="space-y-2">
-              <Label>Stake (10-100 points)</Label>
+              <Label>
+                Stake (10-{getMaxStake()} points)
+                {maxStakeBoost > 0 && (
+                  <span className="ml-2 text-xs text-primary font-medium">
+                    +{maxStakeBoost} from boost!
+                  </span>
+                )}
+              </Label>
               <Input
                 type="number"
                 min="10"
-                max="100"
+                max={getMaxStake()}
                 value={stake}
                 onChange={(e) => setStake(e.target.value)}
                 placeholder="Enter stake amount"
@@ -422,6 +519,21 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
                         )}
                       </span>
                     </div>
+                    {activeMultiplier > 1 && (
+                      <>
+                        <div className="flex justify-between text-muted-foreground">
+                          <span>Base Win:</span>
+                          <span>{getBaseWin()} points</span>
+                        </div>
+                        <div className="flex justify-between text-primary">
+                          <span className="flex items-center gap-1">
+                            <Sparkles className="h-3 w-3" />
+                            Multiplier ({activeMultiplier}x):
+                          </span>
+                          <span>+{getPotentialWin() - getBaseWin()} points</span>
+                        </div>
+                      </>
+                    )}
                     <div className="flex justify-between font-bold text-success">
                       <span>If Win:</span>
                       <span>+{getPotentialWin()} points</span>
