@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, TrendingUp, TrendingDown, Trophy, Target, Zap, MapPin } from 'lucide-react';
+import { ArrowLeft, TrendingUp, TrendingDown, Trophy, Target, Zap, MapPin, Calendar } from 'lucide-react';
 import { getBets } from '@/lib/supabase-auth-storage';
 import { Bet } from '@/types/supabase-betting';
 import {
@@ -17,9 +17,12 @@ interface AnalyticsProps {
   onBack: () => void;
 }
 
+type TimeFilter = 'today' | 'week' | 'month' | 'all';
+
 const Analytics = ({ onBack }: AnalyticsProps) => {
   const [bets, setBets] = useState<Bet[]>([]);
   const [loading, setLoading] = useState(true);
+  const [timeFilter, setTimeFilter] = useState<TimeFilter>('all');
 
   useEffect(() => {
     loadBets();
@@ -37,6 +40,27 @@ const Analytics = ({ onBack }: AnalyticsProps) => {
     }
   };
 
+  const getFilteredBets = () => {
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const startOfWeek = new Date(now);
+    startOfWeek.setDate(now.getDate() - 7);
+    const startOfMonth = new Date(now);
+    startOfMonth.setDate(now.getDate() - 30);
+
+    switch (timeFilter) {
+      case 'today':
+        return bets.filter(bet => new Date(bet.created_at) >= startOfToday);
+      case 'week':
+        return bets.filter(bet => new Date(bet.created_at) >= startOfWeek);
+      case 'month':
+        return bets.filter(bet => new Date(bet.created_at) >= startOfMonth);
+      case 'all':
+      default:
+        return bets;
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -45,10 +69,11 @@ const Analytics = ({ onBack }: AnalyticsProps) => {
     );
   }
 
-  const stats = calculateBettingStats(bets);
-  const cityPerformance = getCityPerformance(bets);
-  const profitLoss = getProfitLossOverTime(bets);
-  const predictionStats = getPredictionTypeStats(bets);
+  const filteredBets = getFilteredBets();
+  const stats = calculateBettingStats(filteredBets);
+  const cityPerformance = getCityPerformance(filteredBets);
+  const profitLoss = getProfitLossOverTime(filteredBets);
+  const predictionStats = getPredictionTypeStats(filteredBets);
 
   const profitLossConfig = {
     cumulativeProfit: {
@@ -63,14 +88,54 @@ const Analytics = ({ onBack }: AnalyticsProps) => {
     <div className="min-h-screen bg-background p-4">
       <div className="max-w-6xl mx-auto space-y-6">
         {/* Header */}
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="sm" onClick={onBack}>
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-          <div>
-            <h1 className="text-3xl font-bold">📊 Analytics Dashboard</h1>
-            <p className="text-muted-foreground">Your complete betting performance overview</p>
+        <div className="flex flex-col gap-4">
+          <div className="flex items-center gap-4">
+            <Button variant="ghost" size="sm" onClick={onBack}>
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+            <div>
+              <h1 className="text-3xl font-bold">📊 Analytics Dashboard</h1>
+              <p className="text-muted-foreground">Your complete betting performance overview</p>
+            </div>
           </div>
+
+          {/* Time Filters */}
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-2 flex-wrap">
+                <Calendar className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm text-muted-foreground mr-2">Period:</span>
+                <Button
+                  variant={timeFilter === 'today' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setTimeFilter('today')}
+                >
+                  Today
+                </Button>
+                <Button
+                  variant={timeFilter === 'week' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setTimeFilter('week')}
+                >
+                  Last 7 Days
+                </Button>
+                <Button
+                  variant={timeFilter === 'month' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setTimeFilter('month')}
+                >
+                  Last 30 Days
+                </Button>
+                <Button
+                  variant={timeFilter === 'all' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setTimeFilter('all')}
+                >
+                  All Time
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Key Metrics */}
