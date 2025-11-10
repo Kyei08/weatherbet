@@ -17,6 +17,7 @@ import { useLevelSystem } from '@/hooks/useLevelSystem';
 import { calculateDynamicOdds, formatLiveOdds } from '@/lib/dynamic-odds';
 import { supabase } from '@/integrations/supabase/client';
 import { getActivePurchases, getActiveMultipliers, getMaxStakeBoost, PurchaseWithItem } from '@/lib/supabase-shop';
+import { recordBonusEarning } from '@/lib/supabase-bonus-tracker';
 
 interface BettingSlipProps {
   onBack: () => void;
@@ -205,7 +206,7 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
 
       // Add bet
       const targetDate = getBetDeadline();
-      await addBet({
+      const betData = await addBet({
         city: city as City,
         prediction_type: predictionType as 'rain' | 'temperature',
         prediction_value: predictionValue as string,
@@ -219,6 +220,33 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
         insurance_cost: hasInsurance ? getInsuranceCost() : 0,
         insurance_payout_percentage: 0.8,
       } as any);
+
+      // Record bonus earnings if multiplier was applied
+      if (activeMultiplier > 1) {
+        const baseWin = getBaseWin();
+        const totalWin = getPotentialWin();
+        const bonusAmount = totalWin - baseWin;
+        await recordBonusEarning(
+          'multiplier',
+          bonusAmount,
+          baseWin,
+          undefined,
+          betData?.id
+        );
+      }
+
+      // Record bonus if stake boost was used
+      const normalMaxStake = 100;
+      if (stakeNum > normalMaxStake) {
+        const boostAmount = stakeNum - normalMaxStake;
+        await recordBonusEarning(
+          'stake_boost',
+          boostAmount,
+          normalMaxStake,
+          undefined,
+          betData?.id
+        );
+      }
 
       // Track challenge progress
       await checkAndUpdateChallenges('bet_placed', { 

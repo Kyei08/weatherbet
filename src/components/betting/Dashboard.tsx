@@ -14,6 +14,7 @@ import { Achievements } from './Achievements';
 import { LevelDisplay } from './LevelDisplay';
 import { Perks } from './Perks';
 import { Shop } from './Shop';
+import { BonusTracker } from './BonusTracker';
 
 const Dashboard = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -140,6 +141,9 @@ const Dashboard = () => {
 
         {/* Daily Challenges */}
         <DailyChallenges />
+
+        {/* Bonus Tracker */}
+        <BonusTracker />
 
         {/* Achievements */}
         <Achievements />

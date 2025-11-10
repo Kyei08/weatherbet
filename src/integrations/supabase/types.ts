@@ -121,6 +121,42 @@ export type Database = {
           },
         ]
       }
+      bonus_earnings: {
+        Row: {
+          base_amount: number
+          bet_id: string | null
+          bonus_amount: number
+          bonus_type: string
+          created_at: string
+          id: string
+          item_id: string | null
+          parlay_id: string | null
+          user_id: string
+        }
+        Insert: {
+          base_amount: number
+          bet_id?: string | null
+          bonus_amount: number
+          bonus_type: string
+          created_at?: string
+          id?: string
+          item_id?: string | null
+          parlay_id?: string | null
+          user_id: string
+        }
+        Update: {
+          base_amount?: number
+          bet_id?: string | null
+          bonus_amount?: number
+          bonus_type?: string
+          created_at?: string
+          id?: string
+          item_id?: string | null
+          parlay_id?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       challenges: {
         Row: {
           challenge_type: string
