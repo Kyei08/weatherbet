@@ -1,7 +1,11 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, TrendingUp, TrendingDown, Trophy, Target, Zap, MapPin, Calendar } from 'lucide-react';
+import { ArrowLeft, TrendingUp, TrendingDown, Trophy, Target, Zap, MapPin, Calendar as CalendarIcon } from 'lucide-react';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
 import { getBets } from '@/lib/supabase-auth-storage';
 import { Bet } from '@/types/supabase-betting';
 import {
@@ -17,12 +21,18 @@ interface AnalyticsProps {
   onBack: () => void;
 }
 
-type TimeFilter = 'today' | 'week' | 'month' | 'all';
+type TimeFilter = 'today' | 'week' | 'month' | 'all' | 'custom';
+
+interface DateRange {
+  from: Date | undefined;
+  to: Date | undefined;
+}
 
 const Analytics = ({ onBack }: AnalyticsProps) => {
   const [bets, setBets] = useState<Bet[]>([]);
   const [loading, setLoading] = useState(true);
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('all');
+  const [dateRange, setDateRange] = useState<DateRange>({ from: undefined, to: undefined });
 
   useEffect(() => {
     loadBets();
@@ -55,6 +65,16 @@ const Analytics = ({ onBack }: AnalyticsProps) => {
         return bets.filter(bet => new Date(bet.created_at) >= startOfWeek);
       case 'month':
         return bets.filter(bet => new Date(bet.created_at) >= startOfMonth);
+      case 'custom':
+        if (!dateRange.from) return bets;
+        return bets.filter(bet => {
+          const betDate = new Date(bet.created_at);
+          const fromDate = new Date(dateRange.from!);
+          fromDate.setHours(0, 0, 0, 0);
+          const toDate = dateRange.to ? new Date(dateRange.to) : new Date();
+          toDate.setHours(23, 59, 59, 999);
+          return betDate >= fromDate && betDate <= toDate;
+        });
       case 'all':
       default:
         return bets;
@@ -103,7 +123,7 @@ const Analytics = ({ onBack }: AnalyticsProps) => {
           <Card>
             <CardContent className="pt-6">
               <div className="flex items-center gap-2 flex-wrap">
-                <Calendar className="h-4 w-4 text-muted-foreground" />
+                <CalendarIcon className="h-4 w-4 text-muted-foreground" />
                 <span className="text-sm text-muted-foreground mr-2">Period:</span>
                 <Button
                   variant={timeFilter === 'today' ? 'default' : 'outline'}
@@ -133,6 +153,48 @@ const Analytics = ({ onBack }: AnalyticsProps) => {
                 >
                   All Time
                 </Button>
+                
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant={timeFilter === 'custom' ? 'default' : 'outline'}
+                      size="sm"
+                      className={cn(
+                        "justify-start text-left font-normal",
+                        !dateRange.from && timeFilter === 'custom' && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {dateRange.from ? (
+                        dateRange.to ? (
+                          <>
+                            {format(dateRange.from, "MMM dd")} - {format(dateRange.to, "MMM dd, yyyy")}
+                          </>
+                        ) : (
+                          format(dateRange.from, "MMM dd, yyyy")
+                        )
+                      ) : (
+                        <span>Custom Range</span>
+                      )}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="range"
+                      selected={{ from: dateRange.from, to: dateRange.to }}
+                      onSelect={(range) => {
+                        setDateRange({ from: range?.from, to: range?.to });
+                        if (range?.from) {
+                          setTimeFilter('custom');
+                        }
+                      }}
+                      numberOfMonths={2}
+                      disabled={(date) => date > new Date()}
+                      initialFocus
+                      className={cn("p-3 pointer-events-auto")}
+                    />
+                  </PopoverContent>
+                </Popover>
               </div>
             </CardContent>
           </Card>
