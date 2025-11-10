@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { ArrowLeft, Plus, X, TrendingUp, Activity } from 'lucide-react';
+import { ArrowLeft, Plus, X, TrendingUp } from 'lucide-react';
 import { CITIES, TEMPERATURE_RANGES } from '@/types/betting';
 import { createParlay, ParlayPrediction } from '@/lib/supabase-parlays';
 import { getUser, updateUserPoints } from '@/lib/supabase-auth-storage';
@@ -13,8 +13,6 @@ import { useToast } from '@/hooks/use-toast';
 import { useChallengeTracker } from '@/hooks/useChallengeTracker';
 import { useAchievementTracker } from '@/hooks/useAchievementTracker';
 import { useLevelSystem } from '@/hooks/useLevelSystem';
-import { calculateDynamicOdds, formatLiveOdds } from '@/lib/dynamic-odds';
-import { supabase } from '@/integrations/supabase/client';
 
 interface ParlayBettingSlipProps {
   onBack: () => void;
@@ -43,8 +41,6 @@ const ParlayBettingSlip = ({ onBack, onBetPlaced }: ParlayBettingSlipProps) => {
   const [betDuration, setBetDuration] = useState('1');
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(false);
-  const [weatherForecasts, setWeatherForecasts] = useState<Record<string, any[]>>({});
-  const [hasInsurance, setHasInsurance] = useState(false);
   const { toast } = useToast();
   const { checkAndUpdateChallenges } = useChallengeTracker();
   const { checkAchievements } = useAchievementTracker();
@@ -53,37 +49,6 @@ const ParlayBettingSlip = ({ onBack, onBetPlaced }: ParlayBettingSlipProps) => {
   useEffect(() => {
     loadUser();
   }, []);
-
-  // Fetch weather forecasts for all selected cities
-  useEffect(() => {
-    const fetchWeatherForCities = async () => {
-      const citiesToFetch = predictions
-        .map(p => p.city)
-        .filter(city => city && !weatherForecasts[city]);
-
-      if (citiesToFetch.length === 0) return;
-
-      const newForecasts: Record<string, any[]> = { ...weatherForecasts };
-
-      for (const city of citiesToFetch) {
-        try {
-          const { data, error } = await supabase.functions.invoke('get-weather', {
-            body: { city },
-          });
-
-          if (!error && data?.forecast) {
-            newForecasts[city] = data.forecast;
-          }
-        } catch (error) {
-          console.error(`Error fetching weather for ${city}:`, error);
-        }
-      }
-
-      setWeatherForecasts(newForecasts);
-    };
-
-    fetchWeatherForCities();
-  }, [predictions.map(p => p.city).join(',')]);
 
   const loadUser = async () => {
     try {
@@ -137,28 +102,18 @@ const ParlayBettingSlip = ({ onBack, onBetPlaced }: ParlayBettingSlipProps) => {
     setPredictions(predictions.map(p => p.id === id ? { ...p, ...updates } : p));
   };
 
-  const getPredictionOdds = (pred: PredictionFormData): number => {
-    if (!pred.city) return 2.0;
-
-    const predictionValue = pred.predictionType === 'rain' 
-      ? pred.rainPrediction 
-      : pred.temperatureRange;
-
-    // Use dynamic odds if we have forecast data for this city
-    const forecast = weatherForecasts[pred.city];
-    if (forecast && forecast.length > 0) {
-      return calculateDynamicOdds({
-        predictionType: pred.predictionType,
-        predictionValue,
-        forecast,
-        daysAhead: parseInt(betDuration) || 1,
-      });
-    }
-
-    // Fallback to static odds
-    if (pred.predictionType === 'rain') return 1.8;
-    const tempRange = TEMPERATURE_RANGES.find(r => r.value === pred.temperatureRange);
+  const getRainOdds = () => 1.8;
+  
+  const getTempOdds = (range: string) => {
+    const tempRange = TEMPERATURE_RANGES.find(r => r.value === range);
     return tempRange?.odds || 2.0;
+  };
+
+  const getPredictionOdds = (pred: PredictionFormData): number => {
+    if (pred.predictionType === 'rain') {
+      return getRainOdds();
+    }
+    return getTempOdds(pred.temperatureRange);
   };
 
   const getCombinedOdds = (): number => {
@@ -168,25 +123,9 @@ const ParlayBettingSlip = ({ onBack, onBetPlaced }: ParlayBettingSlipProps) => {
     }, 1);
   };
 
-  const getInsuranceCost = () => {
-    const stakeNum = parseInt(stake) || 0;
-    return Math.floor(stakeNum * 0.2); // 20% of stake for parlays (higher risk)
-  };
-
-  const getInsurancePayout = () => {
-    const stakeNum = parseInt(stake) || 0;
-    return Math.floor(stakeNum * 0.75); // Get back 75% of stake on loss
-  };
-
-  const getTotalCost = () => {
-    const stakeNum = parseInt(stake) || 0;
-    return hasInsurance ? stakeNum + getInsuranceCost() : stakeNum;
-  };
-
   const getPotentialWin = (): number => {
     const stakeNum = parseInt(stake) || 0;
-    const winAmount = Math.floor(stakeNum * getCombinedOdds());
-    return hasInsurance ? winAmount - getInsuranceCost() : winAmount;
+    return Math.floor(stakeNum * getCombinedOdds());
   };
 
   const canPlaceParlay = (): boolean => {
@@ -194,8 +133,7 @@ const ParlayBettingSlip = ({ onBack, onBetPlaced }: ParlayBettingSlipProps) => {
     if (!predictions.every(p => p.city)) return false;
     
     const stakeNum = parseInt(stake);
-    const totalCost = getTotalCost();
-    if (!stakeNum || stakeNum < 10 || totalCost > (user?.points || 0)) return false;
+    if (!stakeNum || stakeNum < 10 || stakeNum > (user?.points || 0)) return false;
     
     // Check for duplicate city predictions
     const cities = predictions.map(p => p.city);
@@ -211,7 +149,6 @@ const ParlayBettingSlip = ({ onBack, onBetPlaced }: ParlayBettingSlipProps) => {
     setLoading(true);
     try {
       const stakeNum = parseInt(stake);
-      const totalCost = getTotalCost();
       
       // Convert predictions to the format needed
       const parlayPredictions: ParlayPrediction[] = predictions.map(pred => ({
@@ -223,24 +160,11 @@ const ParlayBettingSlip = ({ onBack, onBetPlaced }: ParlayBettingSlipProps) => {
         odds: getPredictionOdds(pred),
       }));
 
-      // Deduct total cost (stake + insurance)
-      await updateUserPoints(user.points - totalCost);
+      // Deduct stake
+      await updateUserPoints(user.points - stakeNum);
 
-      // Create parlay with insurance
-      const parlayId = await createParlay(stakeNum, parlayPredictions, parseInt(betDuration));
-      
-      // Update parlay with insurance details if purchased
-      if (hasInsurance) {
-        const { supabase } = await import('@/integrations/supabase/client');
-        await supabase
-          .from('parlays')
-          .update({
-            has_insurance: true,
-            insurance_cost: getInsuranceCost(),
-            insurance_payout_percentage: 0.75,
-          })
-          .eq('id', parlayId);
-      }
+      // Create parlay
+      await createParlay(stakeNum, parlayPredictions, parseInt(betDuration));
 
       // Track achievements and challenges
       await checkAndUpdateChallenges('bet_placed', { 
@@ -252,9 +176,7 @@ const ParlayBettingSlip = ({ onBack, onBetPlaced }: ParlayBettingSlipProps) => {
 
       toast({
         title: 'Parlay Placed! 🎯',
-        description: hasInsurance
-          ? `${predictions.length}-leg parlay with ${getCombinedOdds().toFixed(2)}x odds and insurance protection!`
-          : `${predictions.length}-leg parlay with ${getCombinedOdds().toFixed(2)}x odds. Good luck!`,
+        description: `${predictions.length}-leg parlay with ${getCombinedOdds().toFixed(2)}x odds. Good luck!`,
       });
 
       onBetPlaced();
@@ -300,17 +222,6 @@ const ParlayBettingSlip = ({ onBack, onBetPlaced }: ParlayBettingSlipProps) => {
             Combine 2-10 predictions for multiplied odds! All predictions must win for the parlay to pay out.
           </p>
         </div>
-
-        {/* Live Odds Indicator */}
-        {predictions.some(p => p.city && weatherForecasts[p.city]) && (
-          <div className="flex items-center gap-2 p-3 bg-primary/10 rounded-lg">
-            <Activity className="h-4 w-4 text-primary animate-pulse" />
-            <span className="text-sm font-medium">Live Odds Active</span>
-            <span className="text-xs text-muted-foreground ml-auto">
-              Based on current forecasts
-            </span>
-          </div>
-        )}
 
         {/* Predictions */}
         <div className="space-y-4">
@@ -372,7 +283,7 @@ const ParlayBettingSlip = ({ onBack, onBetPlaced }: ParlayBettingSlipProps) => {
                   >
                     <div className="flex items-center space-x-2">
                       <RadioGroupItem value="rain" id={`${pred.id}-rain`} />
-                      <Label htmlFor={`${pred.id}-rain`}>Rain</Label>
+                      <Label htmlFor={`${pred.id}-rain`}>Rain ({getRainOdds()}x)</Label>
                     </div>
                     <div className="flex items-center space-x-2">
                       <RadioGroupItem value="temperature" id={`${pred.id}-temp`} />
@@ -415,7 +326,7 @@ const ParlayBettingSlip = ({ onBack, onBetPlaced }: ParlayBettingSlipProps) => {
                       <SelectContent>
                         {TEMPERATURE_RANGES.map(range => (
                           <SelectItem key={range.value} value={range.value}>
-                            {range.label}
+                            {range.label} ({range.odds}x)
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -459,37 +370,6 @@ const ParlayBettingSlip = ({ onBack, onBetPlaced }: ParlayBettingSlipProps) => {
           </div>
         </div>
 
-        {/* Bet Insurance */}
-        {stake && parseInt(stake) >= 10 && (
-          <Card className="border-2 border-primary/20">
-            <CardContent className="pt-4">
-              <div className="flex items-start justify-between gap-4">
-                <div className="space-y-2 flex-1">
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      id="parlay-insurance"
-                      checked={hasInsurance}
-                      onChange={(e) => setHasInsurance(e.target.checked)}
-                      className="h-4 w-4 rounded border-border"
-                    />
-                    <Label htmlFor="parlay-insurance" className="font-semibold cursor-pointer">
-                      🛡️ Parlay Insurance
-                    </Label>
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    Protect your parlay! If it loses, get back <span className="font-medium text-foreground">{getInsurancePayout()} points</span> (75% of stake)
-                  </p>
-                  <div className="flex items-center justify-between text-sm">
-                    <span>Insurance Cost:</span>
-                    <span className="font-medium">{getInsuranceCost()} points (20% of stake)</span>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
         {/* Summary */}
         {predictions.every(p => p.city) && stake && (
           <div className="bg-gradient-primary/10 p-4 rounded-lg space-y-2">
@@ -497,38 +377,17 @@ const ParlayBettingSlip = ({ onBack, onBetPlaced }: ParlayBettingSlipProps) => {
               <span className="font-medium">Combined Odds:</span>
               <span className="text-lg font-bold flex items-center gap-2">
                 <TrendingUp className="h-5 w-5 text-primary" />
-                {formatLiveOdds(getCombinedOdds())}
-                {predictions.some(p => p.city && weatherForecasts[p.city]) && (
-                  <span className="text-xs text-primary">LIVE</span>
-                )}
+                {getCombinedOdds().toFixed(2)}x
               </span>
             </div>
             <div className="flex justify-between">
               <span>Stake:</span>
               <span className="font-medium">{stake} points</span>
             </div>
-            {hasInsurance && (
-              <>
-                <div className="flex justify-between text-muted-foreground">
-                  <span>Insurance:</span>
-                  <span>+{getInsuranceCost()} points</span>
-                </div>
-                <div className="flex justify-between font-medium border-t pt-2">
-                  <span>Total Cost:</span>
-                  <span>{getTotalCost()} points</span>
-                </div>
-              </>
-            )}
-            <div className="flex justify-between text-lg font-bold text-success">
-              <span>If Win:</span>
-              <span>+{getPotentialWin()} points</span>
+            <div className="flex justify-between text-lg font-bold text-primary">
+              <span>Potential Win:</span>
+              <span>{getPotentialWin()} points</span>
             </div>
-            {hasInsurance && (
-              <div className="flex justify-between font-bold text-primary">
-                <span>If Lose (Insured):</span>
-                <span>-{parseInt(stake) - getInsurancePayout()} points</span>
-              </div>
-            )}
           </div>
         )}
 

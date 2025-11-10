@@ -53,15 +53,10 @@ export type Database = {
       bets: {
         Row: {
           bet_duration_days: number | null
-          cashed_out_at: string | null
-          cashout_amount: number | null
           city: string
           created_at: string
           expires_at: string | null
-          has_insurance: boolean
           id: string
-          insurance_cost: number | null
-          insurance_payout_percentage: number | null
           odds: number
           prediction_type: string
           prediction_value: string
@@ -73,15 +68,10 @@ export type Database = {
         }
         Insert: {
           bet_duration_days?: number | null
-          cashed_out_at?: string | null
-          cashout_amount?: number | null
           city: string
           created_at?: string
           expires_at?: string | null
-          has_insurance?: boolean
           id?: string
-          insurance_cost?: number | null
-          insurance_payout_percentage?: number | null
           odds: number
           prediction_type: string
           prediction_value: string
@@ -93,15 +83,10 @@ export type Database = {
         }
         Update: {
           bet_duration_days?: number | null
-          cashed_out_at?: string | null
-          cashout_amount?: number | null
           city?: string
           created_at?: string
           expires_at?: string | null
-          has_insurance?: boolean
           id?: string
-          insurance_cost?: number | null
-          insurance_payout_percentage?: number | null
           odds?: number
           prediction_type?: string
           prediction_value?: string
@@ -120,42 +105,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      bonus_earnings: {
-        Row: {
-          base_amount: number
-          bet_id: string | null
-          bonus_amount: number
-          bonus_type: string
-          created_at: string
-          id: string
-          item_id: string | null
-          parlay_id: string | null
-          user_id: string
-        }
-        Insert: {
-          base_amount: number
-          bet_id?: string | null
-          bonus_amount: number
-          bonus_type: string
-          created_at?: string
-          id?: string
-          item_id?: string | null
-          parlay_id?: string | null
-          user_id: string
-        }
-        Update: {
-          base_amount?: number
-          bet_id?: string | null
-          bonus_amount?: number
-          bonus_type?: string
-          created_at?: string
-          id?: string
-          item_id?: string | null
-          parlay_id?: string | null
-          user_id?: string
-        }
-        Relationships: []
       }
       challenges: {
         Row: {
@@ -233,45 +182,30 @@ export type Database = {
       }
       parlays: {
         Row: {
-          cashed_out_at: string | null
-          cashout_amount: number | null
           combined_odds: number
           created_at: string
           expires_at: string | null
-          has_insurance: boolean
           id: string
-          insurance_cost: number | null
-          insurance_payout_percentage: number | null
           result: string
           total_stake: number
           updated_at: string
           user_id: string
         }
         Insert: {
-          cashed_out_at?: string | null
-          cashout_amount?: number | null
           combined_odds: number
           created_at?: string
           expires_at?: string | null
-          has_insurance?: boolean
           id?: string
-          insurance_cost?: number | null
-          insurance_payout_percentage?: number | null
           result?: string
           total_stake: number
           updated_at?: string
           user_id: string
         }
         Update: {
-          cashed_out_at?: string | null
-          cashout_amount?: number | null
           combined_odds?: number
           created_at?: string
           expires_at?: string | null
-          has_insurance?: boolean
           id?: string
-          insurance_cost?: number | null
-          insurance_payout_percentage?: number | null
           result?: string
           total_stake?: number
           updated_at?: string
