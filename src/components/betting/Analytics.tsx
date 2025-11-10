@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, TrendingUp, TrendingDown, Trophy, Target, Zap, MapPin, Calendar as CalendarIcon } from 'lucide-react';
+import { ArrowLeft, TrendingUp, TrendingDown, Trophy, Target, Zap, MapPin, Calendar as CalendarIcon, ArrowUpDown } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { format } from 'date-fns';
@@ -33,6 +35,9 @@ const Analytics = ({ onBack }: AnalyticsProps) => {
   const [loading, setLoading] = useState(true);
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('all');
   const [dateRange, setDateRange] = useState<DateRange>({ from: undefined, to: undefined });
+  const [comparisonMode, setComparisonMode] = useState(false);
+  const [compareTimeFilter, setCompareTimeFilter] = useState<TimeFilter>('all');
+  const [compareDateRange, setCompareDateRange] = useState<DateRange>({ from: undefined, to: undefined });
 
   useEffect(() => {
     loadBets();
@@ -50,7 +55,7 @@ const Analytics = ({ onBack }: AnalyticsProps) => {
     }
   };
 
-  const getFilteredBets = () => {
+  const getFilteredBets = (filter: TimeFilter = timeFilter, range: DateRange = dateRange) => {
     const now = new Date();
     const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const startOfWeek = new Date(now);
@@ -58,7 +63,7 @@ const Analytics = ({ onBack }: AnalyticsProps) => {
     const startOfMonth = new Date(now);
     startOfMonth.setDate(now.getDate() - 30);
 
-    switch (timeFilter) {
+    switch (filter) {
       case 'today':
         return bets.filter(bet => new Date(bet.created_at) >= startOfToday);
       case 'week':
@@ -66,12 +71,12 @@ const Analytics = ({ onBack }: AnalyticsProps) => {
       case 'month':
         return bets.filter(bet => new Date(bet.created_at) >= startOfMonth);
       case 'custom':
-        if (!dateRange.from) return bets;
+        if (!range.from) return bets;
         return bets.filter(bet => {
           const betDate = new Date(bet.created_at);
-          const fromDate = new Date(dateRange.from!);
+          const fromDate = new Date(range.from!);
           fromDate.setHours(0, 0, 0, 0);
-          const toDate = dateRange.to ? new Date(dateRange.to) : new Date();
+          const toDate = range.to ? new Date(range.to) : new Date();
           toDate.setHours(23, 59, 59, 999);
           return betDate >= fromDate && betDate <= toDate;
         });
@@ -94,6 +99,9 @@ const Analytics = ({ onBack }: AnalyticsProps) => {
   const cityPerformance = getCityPerformance(filteredBets);
   const profitLoss = getProfitLossOverTime(filteredBets);
   const predictionStats = getPredictionTypeStats(filteredBets);
+
+  const compareFilteredBets = comparisonMode ? getFilteredBets(compareTimeFilter, compareDateRange) : [];
+  const compareStats = comparisonMode ? calculateBettingStats(compareFilteredBets) : null;
 
   const profitLossConfig = {
     cumulativeProfit: {
@@ -122,9 +130,32 @@ const Analytics = ({ onBack }: AnalyticsProps) => {
           {/* Time Filters */}
           <Card>
             <CardContent className="pt-6">
-              <div className="flex items-center gap-2 flex-wrap">
-                <CalendarIcon className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm text-muted-foreground mr-2">Period:</span>
+              <div className="space-y-4">
+                {/* Comparison Mode Toggle */}
+                <div className="flex items-center gap-3 pb-3 border-b">
+                  <Switch
+                    id="comparison-mode"
+                    checked={comparisonMode}
+                    onCheckedChange={setComparisonMode}
+                  />
+                  <Label htmlFor="comparison-mode" className="flex items-center gap-2 cursor-pointer">
+                    <ArrowUpDown className="h-4 w-4" />
+                    <span className="font-medium">Comparison Mode</span>
+                  </Label>
+                  {comparisonMode && (
+                    <span className="text-xs text-muted-foreground ml-auto">
+                      Compare two periods side-by-side
+                    </span>
+                  )}
+                </div>
+
+                {/* Period 1 Filters */}
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <CalendarIcon className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm text-muted-foreground mr-2">
+                      {comparisonMode ? 'Period 1:' : 'Period:'}
+                    </span>
                 <Button
                   variant={timeFilter === 'today' ? 'default' : 'outline'}
                   size="sm"
@@ -195,6 +226,88 @@ const Analytics = ({ onBack }: AnalyticsProps) => {
                     />
                   </PopoverContent>
                 </Popover>
+                  </div>
+                </div>
+
+                {/* Period 2 Filters (Comparison Mode) */}
+                {comparisonMode && (
+                  <div className="space-y-2 pt-3 border-t">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <CalendarIcon className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm text-muted-foreground mr-2">Period 2:</span>
+                      <Button
+                        variant={compareTimeFilter === 'today' ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setCompareTimeFilter('today')}
+                      >
+                        Today
+                      </Button>
+                      <Button
+                        variant={compareTimeFilter === 'week' ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setCompareTimeFilter('week')}
+                      >
+                        Last 7 Days
+                      </Button>
+                      <Button
+                        variant={compareTimeFilter === 'month' ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setCompareTimeFilter('month')}
+                      >
+                        Last 30 Days
+                      </Button>
+                      <Button
+                        variant={compareTimeFilter === 'all' ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setCompareTimeFilter('all')}
+                      >
+                        All Time
+                      </Button>
+                      
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant={compareTimeFilter === 'custom' ? 'default' : 'outline'}
+                            size="sm"
+                            className={cn(
+                              "justify-start text-left font-normal",
+                              !compareDateRange.from && compareTimeFilter === 'custom' && "text-muted-foreground"
+                            )}
+                          >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {compareDateRange.from ? (
+                              compareDateRange.to ? (
+                                <>
+                                  {format(compareDateRange.from, "MMM dd")} - {format(compareDateRange.to, "MMM dd, yyyy")}
+                                </>
+                              ) : (
+                                format(compareDateRange.from, "MMM dd, yyyy")
+                              )
+                            ) : (
+                              <span>Custom Range</span>
+                            )}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="range"
+                            selected={{ from: compareDateRange.from, to: compareDateRange.to }}
+                            onSelect={(range) => {
+                              setCompareDateRange({ from: range?.from, to: range?.to });
+                              if (range?.from) {
+                                setCompareTimeFilter('custom');
+                              }
+                            }}
+                            numberOfMonths={2}
+                            disabled={(date) => date > new Date()}
+                            initialFocus
+                            className={cn("p-3 pointer-events-auto")}
+                          />
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -206,6 +319,15 @@ const Analytics = ({ onBack }: AnalyticsProps) => {
             <CardContent className="pt-6">
               <div className="text-center space-y-2">
                 <div className="text-3xl font-bold text-primary">{stats.totalBets}</div>
+                {comparisonMode && compareStats && (
+                  <div className="flex items-center justify-center gap-1 text-xs">
+                    <span className={stats.totalBets >= compareStats.totalBets ? 'text-primary' : 'text-destructive'}>
+                      {stats.totalBets >= compareStats.totalBets ? '↑' : '↓'}
+                      {Math.abs(stats.totalBets - compareStats.totalBets)}
+                    </span>
+                    <span className="text-muted-foreground">vs {compareStats.totalBets}</span>
+                  </div>
+                )}
                 <div className="text-sm text-muted-foreground">Total Bets</div>
               </div>
             </CardContent>
@@ -215,6 +337,15 @@ const Analytics = ({ onBack }: AnalyticsProps) => {
             <CardContent className="pt-6">
               <div className="text-center space-y-2">
                 <div className="text-3xl font-bold text-primary">{stats.winRate.toFixed(1)}%</div>
+                {comparisonMode && compareStats && (
+                  <div className="flex items-center justify-center gap-1 text-xs">
+                    <span className={stats.winRate >= compareStats.winRate ? 'text-primary' : 'text-destructive'}>
+                      {stats.winRate >= compareStats.winRate ? '↑' : '↓'}
+                      {Math.abs(stats.winRate - compareStats.winRate).toFixed(1)}%
+                    </span>
+                    <span className="text-muted-foreground">vs {compareStats.winRate.toFixed(1)}%</span>
+                  </div>
+                )}
                 <div className="text-sm text-muted-foreground">Win Rate</div>
               </div>
             </CardContent>
@@ -226,6 +357,15 @@ const Analytics = ({ onBack }: AnalyticsProps) => {
                 <div className={`text-3xl font-bold ${stats.netProfit >= 0 ? 'text-primary' : 'text-destructive'}`}>
                   {stats.netProfit >= 0 ? '+' : ''}{stats.netProfit.toLocaleString()}
                 </div>
+                {comparisonMode && compareStats && (
+                  <div className="flex items-center justify-center gap-1 text-xs">
+                    <span className={stats.netProfit >= compareStats.netProfit ? 'text-primary' : 'text-destructive'}>
+                      {stats.netProfit >= compareStats.netProfit ? '↑' : '↓'}
+                      {Math.abs(stats.netProfit - compareStats.netProfit).toLocaleString()}
+                    </span>
+                    <span className="text-muted-foreground">vs {compareStats.netProfit >= 0 ? '+' : ''}{compareStats.netProfit.toLocaleString()}</span>
+                  </div>
+                )}
                 <div className="text-sm text-muted-foreground">Net Profit</div>
               </div>
             </CardContent>
@@ -235,6 +375,15 @@ const Analytics = ({ onBack }: AnalyticsProps) => {
             <CardContent className="pt-6">
               <div className="text-center space-y-2">
                 <div className="text-3xl font-bold text-primary">{stats.currentStreak}</div>
+                {comparisonMode && compareStats && (
+                  <div className="flex items-center justify-center gap-1 text-xs">
+                    <span className={stats.currentStreak >= compareStats.currentStreak ? 'text-primary' : 'text-destructive'}>
+                      {stats.currentStreak >= compareStats.currentStreak ? '↑' : '↓'}
+                      {Math.abs(stats.currentStreak - compareStats.currentStreak)}
+                    </span>
+                    <span className="text-muted-foreground">vs {compareStats.currentStreak}</span>
+                  </div>
+                )}
                 <div className="text-sm text-muted-foreground">Current Streak</div>
               </div>
             </CardContent>
