@@ -14,11 +14,13 @@ import { Achievements } from './Achievements';
 import { LevelDisplay } from './LevelDisplay';
 import { Perks } from './Perks';
 import { Shop } from './Shop';
+import { BonusTracker } from './BonusTracker';
+import Analytics from './Analytics';
 
 const Dashboard = () => {
   const [user, setUser] = useState<User | null>(null);
   const [bets, setBets] = useState<Bet[]>([]);
-  const [activeView, setActiveView] = useState<'dashboard' | 'betting' | 'parlay' | 'mybets' | 'leaderboard' | 'shop'>('dashboard');
+  const [activeView, setActiveView] = useState<'dashboard' | 'betting' | 'parlay' | 'mybets' | 'leaderboard' | 'shop' | 'analytics'>('dashboard');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -87,6 +89,10 @@ const Dashboard = () => {
     return <Shop onBack={() => setActiveView('dashboard')} />;
   }
 
+  if (activeView === 'analytics') {
+    return <Analytics onBack={() => setActiveView('dashboard')} />;
+  }
+
   return (
     <div className="min-h-screen bg-background p-4">
       <div className="max-w-4xl mx-auto space-y-6">
@@ -141,6 +147,9 @@ const Dashboard = () => {
         {/* Daily Challenges */}
         <DailyChallenges />
 
+        {/* Bonus Tracker */}
+        <BonusTracker />
+
         {/* Achievements */}
         <Achievements />
 
@@ -175,7 +184,7 @@ const Dashboard = () => {
         </div>
 
         {/* Action Buttons */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Button 
             variant="outline" 
             size="lg" 
@@ -184,6 +193,15 @@ const Dashboard = () => {
           >
             <ShoppingCart className="mr-2 h-5 w-5" />
             🛍️ Reward Shop
+          </Button>
+          <Button 
+            variant="outline" 
+            size="lg" 
+            className="h-16 text-lg"
+            onClick={() => setActiveView('analytics')}
+          >
+            <TrendingUp className="mr-2 h-5 w-5" />
+            📊 Analytics
           </Button>
           <Button 
             variant="outline" 

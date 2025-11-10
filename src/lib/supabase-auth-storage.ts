@@ -156,13 +156,37 @@ export const addBet = async (bet: Omit<BetInsert, 'id' | 'user_id' | 'created_at
   return data;
 };
 
-export const updateBetResult = async (betId: string, result: 'win' | 'loss'): Promise<void> => {
+export const updateBetResult = async (betId: string, result: 'win' | 'loss' | 'cashed_out'): Promise<void> => {
   const { error } = await supabase
     .from('bets')
     .update({ result })
     .eq('id', betId);
 
   if (error) throw error;
+};
+
+export const cashOutBet = async (betId: string, cashoutAmount: number): Promise<void> => {
+  const userId = await getCurrentUserId();
+  if (!userId) throw new Error('User not authenticated');
+
+  // Update bet status to cashed_out
+  const { error: betError } = await supabase
+    .from('bets')
+    .update({ 
+      result: 'cashed_out',
+      cashed_out_at: new Date().toISOString(),
+      cashout_amount: cashoutAmount
+    })
+    .eq('id', betId)
+    .eq('user_id', userId);
+
+  if (betError) throw betError;
+
+  // Update user points
+  const user = await getUser();
+  if (user) {
+    await updateUserPoints(user.points + cashoutAmount);
+  }
 };
 
 export const getLeaderboard = async (): Promise<User[]> => {

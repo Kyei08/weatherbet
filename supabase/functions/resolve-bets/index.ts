@@ -63,14 +63,15 @@ Deno.serve(async (req) => {
 
     console.log('Starting bet resolution process...');
 
-    // Get all pending bets that are at least 1 hour old
+    // Get all pending bets that are at least 1 hour old (excluding cashed out)
     const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
     
     const { data: pendingBets, error: betsError } = await supabase
       .from('bets')
       .select('*')
       .eq('result', 'pending')
-      .lt('created_at', oneHourAgo);
+      .lt('created_at', oneHourAgo)
+      .is('cashed_out_at', null);
 
     if (betsError) {
       console.error('Error fetching pending bets:', betsError);
@@ -124,7 +125,25 @@ Deno.serve(async (req) => {
         }
 
         const result = isWin ? 'win' : 'loss';
-        const pointsChange = isWin ? Math.round(bet.stake * bet.odds) : -bet.stake;
+        
+        // Calculate points change considering insurance
+        let pointsChange: number;
+        if (isWin) {
+          // Win: give back stake + winnings
+          pointsChange = Math.round(bet.stake * bet.odds);
+        } else {
+          // Loss: check if insured
+          const betData = bet as any;
+          if (betData.has_insurance && betData.insurance_payout_percentage) {
+            // Insured loss: return insurance payout
+            const insurancePayout = Math.floor(bet.stake * betData.insurance_payout_percentage);
+            pointsChange = insurancePayout;
+            console.log(`Bet ${bet.id} has insurance - returning ${insurancePayout} points`);
+          } else {
+            // Uninsured loss: lose stake (already deducted, no change)
+            pointsChange = 0;
+          }
+        }
 
         console.log(`Bet ${bet.id}: ${result} (${pointsChange} points)`);
 
@@ -176,7 +195,7 @@ Deno.serve(async (req) => {
 
     console.log(`Successfully resolved ${resolvedCount} bets`);
 
-    // Now process parlays
+    // Now process parlays (excluding cashed out)
     const { data: pendingParlays, error: parlaysError } = await supabase
       .from('parlays')
       .select(`
@@ -184,7 +203,8 @@ Deno.serve(async (req) => {
         parlay_legs (*)
       `)
       .eq('result', 'pending')
-      .lt('created_at', oneHourAgo);
+      .lt('created_at', oneHourAgo)
+      .is('cashed_out_at', null);
 
     if (parlaysError) {
       console.error('Error fetching pending parlays:', parlaysError);
@@ -246,9 +266,24 @@ Deno.serve(async (req) => {
           }
 
           const parlayResult = allLegsWin ? 'win' : 'loss';
-          const pointsChange = allLegsWin 
-            ? Math.round(parlay.total_stake * parlay.combined_odds) 
-            : -parlay.total_stake;
+          
+          // Calculate points change considering insurance
+          let pointsChange: number;
+          if (allLegsWin) {
+            // Win: give back stake + winnings
+            pointsChange = Math.round(parlay.total_stake * parlay.combined_odds);
+          } else {
+            // Loss: check if insured
+            if (parlay.has_insurance && parlay.insurance_payout_percentage) {
+              // Insured loss: return insurance payout
+              const insurancePayout = Math.floor(parlay.total_stake * parlay.insurance_payout_percentage);
+              pointsChange = insurancePayout;
+              console.log(`Parlay ${parlay.id} has insurance - returning ${insurancePayout} points`);
+            } else {
+              // Uninsured loss: lose stake (already deducted, no change)
+              pointsChange = 0;
+            }
+          }
 
           console.log(`Parlay ${parlay.id}: ${parlayResult} (${pointsChange} points)`);
 
