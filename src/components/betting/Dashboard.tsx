@@ -3,7 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { getUser, getRecentBets } from '@/lib/supabase-auth-storage';
 import { User, Bet } from '@/types/supabase-betting';
-import { Coins, TrendingUp, Activity, Trophy, ShoppingCart, Layers } from 'lucide-react';
+import { Coins, TrendingUp, Activity, Trophy, ShoppingCart, Layers, History } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import BettingSlip from './BettingSlip';
 import ParlayBettingSlip from './ParlayBettingSlip';
 import MyBets from './MyBets';
@@ -18,6 +19,7 @@ import { BonusTracker } from './BonusTracker';
 import Analytics from './Analytics';
 
 const Dashboard = () => {
+  const navigate = useNavigate();
   const [user, setUser] = useState<User | null>(null);
   const [bets, setBets] = useState<Bet[]>([]);
   const [activeView, setActiveView] = useState<'dashboard' | 'betting' | 'parlay' | 'mybets' | 'leaderboard' | 'shop' | 'analytics'>('dashboard');
@@ -184,7 +186,7 @@ const Dashboard = () => {
         </div>
 
         {/* Action Buttons */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <Button 
             variant="outline" 
             size="lg" 
@@ -192,7 +194,16 @@ const Dashboard = () => {
             onClick={() => setActiveView('shop')}
           >
             <ShoppingCart className="mr-2 h-5 w-5" />
-            🛍️ Reward Shop
+            🛍️ Shop
+          </Button>
+          <Button 
+            variant="outline" 
+            size="lg" 
+            className="h-16 text-lg"
+            onClick={() => navigate('/purchase-history')}
+          >
+            <History className="mr-2 h-5 w-5" />
+            📜 History
           </Button>
           <Button 
             variant="outline" 
