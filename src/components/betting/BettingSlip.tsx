@@ -19,6 +19,14 @@ import { calculateDynamicOdds, formatLiveOdds, getProbabilityPercentage } from '
 import { supabase } from '@/integrations/supabase/client';
 import { getActivePurchases, getActiveMultipliers, getMaxStakeBoost, PurchaseWithItem, useItem } from '@/lib/supabase-shop';
 import { recordBonusEarning } from '@/lib/supabase-bonus-tracker';
+import { z } from 'zod';
+
+const betSchema = z.object({
+  city: z.string().trim().min(1, 'City is required'),
+  stake: z.number().int('Stake must be a whole number').min(10, 'Minimum stake is 10 points').max(100000, 'Maximum stake is 100,000 points'),
+  betDuration: z.number().int().min(1, 'Duration must be at least 1 day').max(7, 'Maximum duration is 7 days'),
+  predictionType: z.enum(['rain', 'temperature'] as const, { errorMap: () => ({ message: 'Invalid prediction type' }) }),
+});
 
 interface BettingSlipProps {
   onBack: () => void;
@@ -211,6 +219,38 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
     if (!canPlaceBet() || loading) return;
 
     setLoading(true);
+
+    // Validate inputs
+    const validation = betSchema.safeParse({
+      city,
+      stake: parseInt(stake),
+      betDuration: parseInt(betDuration),
+      predictionType,
+    });
+
+    if (!validation.success) {
+      const errors = validation.error.flatten().fieldErrors;
+      const errorMessage = Object.values(errors).flat()[0] || 'Invalid bet parameters';
+      toast({
+        title: 'Validation Error',
+        description: errorMessage,
+        variant: 'destructive',
+      });
+      setLoading(false);
+      return;
+    }
+
+    // Validate city is in allowed list
+    if (!CITIES.includes(city as City)) {
+      toast({
+        title: 'Invalid City',
+        description: 'Please select a valid city from the list.',
+        variant: 'destructive',
+      });
+      setLoading(false);
+      return;
+    }
+
     try {
       const stakeNum = parseInt(stake);
       const predictionValue = predictionType === 'rain' ? rainPrediction : tempRange;

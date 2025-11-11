@@ -189,15 +189,17 @@ export const cashOutBet = async (betId: string, cashoutAmount: number): Promise<
   }
 };
 
-export const getLeaderboard = async (): Promise<User[]> => {
-  const { data, error } = await supabase
-    .from('users')
-    .select('*')
-    .order('points', { ascending: false })
-    .limit(10);
+export const getLeaderboard = async () => {
+  try {
+    const { data, error } = await supabase
+      .rpc('get_leaderboard', { limit_count: 10 });
 
-  if (error) throw error;
-  return data || [];
+    if (error) throw error;
+    return data || [];
+  } catch (error) {
+    console.error('Error fetching leaderboard:', error);
+    throw error;
+  }
 };
 
 // Challenge management

@@ -15,6 +15,16 @@ import { useAchievementTracker } from '@/hooks/useAchievementTracker';
 import { useLevelSystem } from '@/hooks/useLevelSystem';
 import { calculateDynamicOdds, formatLiveOdds, getProbabilityPercentage } from '@/lib/dynamic-odds';
 import { supabase } from '@/integrations/supabase/client';
+import { z } from 'zod';
+
+const parlaySchema = z.object({
+  stake: z.number().int('Stake must be a whole number').min(10, 'Minimum stake is 10 points').max(100000, 'Maximum stake is 100,000 points'),
+  betDuration: z.number().int().min(1, 'Duration must be at least 1 day').max(7, 'Maximum duration is 7 days'),
+  predictions: z.array(z.object({
+    city: z.string().trim().min(1, 'City is required'),
+    predictionType: z.enum(['rain', 'temperature'] as const),
+  })).min(2, 'Parlay must have at least 2 predictions').max(5, 'Maximum 5 predictions per parlay'),
+});
 
 interface ParlayBettingSlipProps {
   onBack: () => void;
@@ -209,6 +219,38 @@ const ParlayBettingSlip = ({ onBack, onBetPlaced }: ParlayBettingSlipProps) => {
     if (!canPlaceParlay()) return;
 
     setLoading(true);
+
+    // Validate inputs
+    const validation = parlaySchema.safeParse({
+      stake: parseInt(stake),
+      betDuration: parseInt(betDuration),
+      predictions: predictions.map(p => ({ city: p.city, predictionType: p.predictionType })),
+    });
+
+    if (!validation.success) {
+      const errors = validation.error.flatten().fieldErrors;
+      const errorMessage = Object.values(errors).flat()[0] || 'Invalid parlay parameters';
+      toast({
+        title: 'Validation Error',
+        description: errorMessage,
+        variant: 'destructive',
+      });
+      setLoading(false);
+      return;
+    }
+
+    // Validate all cities are in allowed list
+    const invalidCity = predictions.find(p => !CITIES.includes(p.city as any));
+    if (invalidCity) {
+      toast({
+        title: 'Invalid City',
+        description: 'Please select valid cities from the list.',
+        variant: 'destructive',
+      });
+      setLoading(false);
+      return;
+    }
+
     try {
       const stakeNum = parseInt(stake);
       const totalCost = getTotalCost();

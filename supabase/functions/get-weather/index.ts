@@ -5,6 +5,24 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Simple in-memory cache with 10-minute expiration
+const CACHE_DURATION = 10 * 60 * 1000; // 10 minutes
+const weatherCache = new Map<string, { data: any; timestamp: number }>();
+
+// Allowed cities list for validation
+const ALLOWED_CITIES = [
+  'New York',
+  'Tokyo',
+  'London',
+  'Paris',
+  'Sydney',
+  'Cape Town',
+  'Sao Paulo',
+  'Mumbai',
+  'Cairo',
+  'Toronto',
+];
+
 // Helper function to process forecast data into daily summaries
 function processForecastData(forecastList: any[]): any[] {
   const dailyData = new Map();
@@ -57,6 +75,19 @@ const CITY_COORDS: Record<string, { lat: number; lon: number }> = {
   'Toronto': { lat: 43.6532, lon: -79.3832 },
 };
 
+function getCachedWeather(city: string) {
+  const cached = weatherCache.get(city);
+  if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+    console.log(`Returning cached weather for ${city}`);
+    return cached.data;
+  }
+  return null;
+}
+
+function setCachedWeather(city: string, data: any) {
+  weatherCache.set(city, { data, timestamp: Date.now() });
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -64,13 +95,60 @@ serve(async (req) => {
   }
 
   try {
-    const { city } = await req.json();
+    const body = await req.json();
+    const { city } = body;
     
-    if (!city || !CITY_COORDS[city]) {
+    // Input validation
+    if (!city || typeof city !== 'string') {
       return new Response(
-        JSON.stringify({ error: 'Invalid city' }),
+        JSON.stringify({ error: 'City is required and must be a string' }),
         { 
           status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
+    }
+
+    const trimmedCity = city.trim();
+
+    // Validate city length
+    if (trimmedCity.length === 0 || trimmedCity.length > 50) {
+      return new Response(
+        JSON.stringify({ error: 'City name must be between 1 and 50 characters' }),
+        { 
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
+    }
+
+    // Validate against allowed cities list
+    if (!ALLOWED_CITIES.includes(trimmedCity)) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid city. Please select from the allowed cities list.' }),
+        { 
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
+    }
+
+    if (!CITY_COORDS[trimmedCity]) {
+      return new Response(
+        JSON.stringify({ error: 'City coordinates not found' }),
+        { 
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
+    }
+
+    // Check cache first
+    const cachedData = getCachedWeather(trimmedCity);
+    if (cachedData) {
+      return new Response(
+        JSON.stringify(cachedData),
+        { 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         }
       );
@@ -88,9 +166,9 @@ serve(async (req) => {
       );
     }
 
-    const coords = CITY_COORDS[city];
+    const coords = CITY_COORDS[trimmedCity];
     
-    console.log(`Fetching weather for ${city}...`);
+    console.log(`Fetching weather for ${trimmedCity}...`);
     
     // Fetch current weather (free tier API)
     const currentUrl = `https://api.openweathermap.org/data/2.5/weather?lat=${coords.lat}&lon=${coords.lon}&units=metric&appid=${apiKey}`;
@@ -122,26 +200,31 @@ serve(async (req) => {
     }
     
     const forecastData = forecastResponse.ok ? await forecastResponse.json() : null;
-    console.log(`Weather fetched successfully for ${city}`);
+    console.log(`Weather fetched successfully for ${trimmedCity}`);
 
     // Process forecast data - group by day and get daily highs/lows
     const dailyForecast = forecastData?.list ? processForecastData(forecastData.list) : [];
 
+    const responseData = {
+      city: trimmedCity,
+      current: {
+        temperature: Math.round(currentData.main.temp),
+        feels_like: Math.round(currentData.main.feels_like),
+        humidity: currentData.main.humidity,
+        pressure: currentData.main.pressure,
+        wind_speed: Math.round(currentData.wind.speed * 3.6), // Convert m/s to km/h
+        condition: currentData.weather[0].main,
+        description: currentData.weather[0].description,
+        icon: currentData.weather[0].icon,
+      },
+      forecast: dailyForecast,
+    };
+
+    // Cache the response
+    setCachedWeather(trimmedCity, responseData);
+
     return new Response(
-      JSON.stringify({
-        city,
-        current: {
-          temperature: Math.round(currentData.main.temp),
-          feels_like: Math.round(currentData.main.feels_like),
-          humidity: currentData.main.humidity,
-          pressure: currentData.main.pressure,
-          wind_speed: Math.round(currentData.wind.speed * 3.6), // Convert m/s to km/h
-          condition: currentData.weather[0].main,
-          description: currentData.weather[0].description,
-          icon: currentData.weather[0].icon,
-        },
-        forecast: dailyForecast,
-      }),
+      JSON.stringify(responseData),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       }

@@ -9,6 +9,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { z } from 'zod';
+
+const authSchema = z.object({
+  email: z.string().trim().email('Invalid email address').max(255, 'Email is too long'),
+  password: z.string().min(8, 'Password must be at least 8 characters').max(100, 'Password is too long')
+});
 
 const Auth = () => {
   const [loading, setLoading] = useState(false);
@@ -34,18 +40,28 @@ const Auth = () => {
     setLoading(true);
     setError('');
 
+    // Validate inputs
+    const validation = authSchema.safeParse({ email: email.trim(), password });
+    
+    if (!validation.success) {
+      const errors = validation.error.flatten().fieldErrors;
+      setError(errors.email?.[0] || errors.password?.[0] || 'Validation failed');
+      setLoading(false);
+      return;
+    }
+
     const redirectUrl = `${window.location.origin}/`;
     
-    const { error } = await supabase.auth.signUp({
-      email,
+    const { error: signUpError } = await supabase.auth.signUp({
+      email: email.trim(),
       password,
       options: {
         emailRedirectTo: redirectUrl
       }
     });
 
-    if (error) {
-      setError(error.message);
+    if (signUpError) {
+      setError(signUpError.message);
     } else {
       toast({
         title: "Account created successfully!",
@@ -60,13 +76,23 @@ const Auth = () => {
     setLoading(true);
     setError('');
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
+    // Validate inputs
+    const validation = authSchema.safeParse({ email: email.trim(), password });
+    
+    if (!validation.success) {
+      const errors = validation.error.flatten().fieldErrors;
+      setError(errors.email?.[0] || errors.password?.[0] || 'Validation failed');
+      setLoading(false);
+      return;
+    }
+
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email: email.trim(),
       password,
     });
 
-    if (error) {
-      setError(error.message);
+    if (signInError) {
+      setError(signInError.message);
     } else {
       navigate('/');
       toast({

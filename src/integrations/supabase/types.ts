@@ -560,6 +560,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_leaderboard: {
+        Args: { limit_count?: number }
+        Returns: {
+          level: number
+          points: number
+          username: string
+          xp: number
+        }[]
+      }
       update_user_points: {
         Args: { points_change: number; user_uuid: string }
         Returns: undefined

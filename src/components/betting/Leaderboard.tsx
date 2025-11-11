@@ -4,14 +4,20 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, Trophy, Medal, Award } from 'lucide-react';
 import { getLeaderboard } from '@/lib/supabase-auth-storage';
-import { User } from '@/types/supabase-betting';
+
+interface LeaderboardEntry {
+  username: string;
+  points: number;
+  level: number;
+  xp: number;
+}
 
 interface LeaderboardProps {
   onBack: () => void;
 }
 
 const Leaderboard = ({ onBack }: LeaderboardProps) => {
-  const [users, setUsers] = useState<User[]>([]);
+  const [users, setUsers] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -102,7 +108,7 @@ const Leaderboard = ({ onBack }: LeaderboardProps) => {
                   const rank = index + 1;
                   return (
                     <div
-                      key={user.id}
+                      key={`${user.username}-${index}`}
                       className={`flex items-center justify-between p-4 rounded-lg border ${
                         rank <= 3 ? 'bg-muted/50' : ''
                       }`}
@@ -117,7 +123,7 @@ const Leaderboard = ({ onBack }: LeaderboardProps) => {
                         <div>
                           <p className="font-semibold">{user.username}</p>
                           <p className="text-sm text-muted-foreground">
-                            Member since {new Date(user.created_at).toLocaleDateString()}
+                            Level {user.level} • {user.xp} XP
                           </p>
                         </div>
                       </div>
