@@ -18,6 +18,7 @@ import {
   getBettingPatterns,
   getROIOverTime,
 } from '@/lib/betting-analytics';
+import CategoryStatistics from './CategoryStatistics';
 import { Area, AreaChart, Bar, BarChart, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis, Cell, CartesianGrid, Legend } from 'recharts';
 import { ChartContainer, ChartTooltipContent } from '@/components/ui/chart';
 import { useNavigate } from 'react-router-dom';
@@ -779,46 +780,9 @@ const Analytics = ({ onBack }: AnalyticsProps) => {
           </Card>
         )}
 
-        {/* Prediction Type Comparison */}
+        {/* Category Statistics Dashboard */}
         {predictionStats.length > 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Prediction Type Performance</CardTitle>
-              <CardDescription>Compare your success with rain vs temperature predictions</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid md:grid-cols-2 gap-4">
-                {predictionStats.map((stat) => (
-                  <div key={stat.type} className="p-4 border rounded-lg space-y-3">
-                    <div className="flex items-center justify-between">
-                      <h3 className="font-semibold text-lg">{stat.type}</h3>
-                      <span className="text-2xl">{stat.type === 'Rain' ? '🌧️' : '🌡️'}</span>
-                    </div>
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Total Bets</span>
-                        <span className="font-medium">{stat.bets}</span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Wins</span>
-                        <span className="font-medium text-primary">{stat.wins}</span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Win Rate</span>
-                        <span className="font-medium">{stat.winRate.toFixed(1)}%</span>
-                      </div>
-                      <div className="w-full bg-secondary rounded-full h-2 mt-2">
-                        <div
-                          className="bg-primary h-2 rounded-full transition-all"
-                          style={{ width: `${stat.winRate}%` }}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+          <CategoryStatistics stats={predictionStats} />
         )}
       </div>
     </div>

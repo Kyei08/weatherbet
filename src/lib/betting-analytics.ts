@@ -42,7 +42,12 @@ export interface PredictionTypeStats {
   type: string;
   bets: number;
   wins: number;
+  losses: number;
   winRate: number;
+  avgOdds: number;
+  netProfit: number;
+  totalStaked: number;
+  roi: number;
 }
 
 export const calculateBettingStats = (bets: Bet[]): BettingStats => {
@@ -208,23 +213,45 @@ export const getProfitLossOverTime = (bets: Bet[]): ProfitLossPoint[] => {
 export const getPredictionTypeStats = (bets: Bet[]): PredictionTypeStats[] => {
   const settledBets = bets.filter(b => b.result !== 'pending');
   
-  const rainBets = settledBets.filter(b => b.prediction_type === 'rain');
-  const tempBets = settledBets.filter(b => b.prediction_type === 'temperature');
-
-  return [
-    {
-      type: 'Rain',
-      bets: rainBets.length,
-      wins: rainBets.filter(b => b.result === 'win').length,
-      winRate: rainBets.length > 0 ? (rainBets.filter(b => b.result === 'win').length / rainBets.length) * 100 : 0,
-    },
-    {
-      type: 'Temperature',
-      bets: tempBets.length,
-      wins: tempBets.filter(b => b.result === 'win').length,
-      winRate: tempBets.length > 0 ? (tempBets.filter(b => b.result === 'win').length / tempBets.length) * 100 : 0,
-    },
-  ];
+  const categories = ['rain', 'temperature', 'rainfall', 'snow', 'wind', 'dew_point', 'pressure', 'cloud_coverage'];
+  
+  return categories.map(category => {
+    const categoryBets = settledBets.filter(b => b.prediction_type === category);
+    const wins = categoryBets.filter(b => b.result === 'win');
+    const losses = categoryBets.filter(b => b.result === 'loss');
+    
+    const totalStaked = categoryBets.reduce((sum, b) => sum + b.stake, 0);
+    const totalWinnings = wins.reduce((sum, b) => sum + Math.floor(b.stake * Number(b.odds)), 0);
+    const netProfit = totalWinnings - losses.reduce((sum, b) => sum + b.stake, 0);
+    const avgOdds = categoryBets.length > 0 
+      ? categoryBets.reduce((sum, b) => sum + Number(b.odds), 0) / categoryBets.length 
+      : 0;
+    const roi = totalStaked > 0 ? (netProfit / totalStaked) * 100 : 0;
+    
+    // Format category name
+    const typeNames: Record<string, string> = {
+      'rain': 'Rain',
+      'temperature': 'Temperature',
+      'rainfall': 'Rainfall',
+      'snow': 'Snow',
+      'wind': 'Wind',
+      'dew_point': 'Dew Point',
+      'pressure': 'Pressure',
+      'cloud_coverage': 'Cloud Coverage'
+    };
+    
+    return {
+      type: typeNames[category] || category,
+      bets: categoryBets.length,
+      wins: wins.length,
+      losses: losses.length,
+      winRate: categoryBets.length > 0 ? (wins.length / categoryBets.length) * 100 : 0,
+      avgOdds,
+      netProfit,
+      totalStaked,
+      roi,
+    };
+  }).filter(stat => stat.bets > 0); // Only return categories with bets
 };
 
 export interface BettingPattern {
