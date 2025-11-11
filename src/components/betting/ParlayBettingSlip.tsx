@@ -20,7 +20,8 @@ import { format, addDays, startOfDay, endOfDay, setHours, setMinutes, setSeconds
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Clock, Calendar } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { formatRands } from '@/lib/currency';
+import { formatCurrency } from '@/lib/currency';
+import { useCurrencyMode } from '@/contexts/CurrencyModeContext';
 
 // Get user's timezone
 const getUserTimezone = () => {
@@ -71,6 +72,7 @@ interface PredictionFormData {
 }
 
 const ParlayBettingSlip = ({ onBack, onBetPlaced }: ParlayBettingSlipProps) => {
+  const { mode } = useCurrencyMode();
   const [predictions, setPredictions] = useState<PredictionFormData[]>([
     {
       id: crypto.randomUUID(),
@@ -271,7 +273,8 @@ const ParlayBettingSlip = ({ onBack, onBetPlaced }: ParlayBettingSlipProps) => {
     
     const stakeNum = parseInt(stake);
     const totalCost = getTotalCost();
-    if (!stakeNum || stakeNum < 10 || totalCost > (user?.points || 0)) return false;
+    const userBalance = mode === 'real' ? (user?.balance_cents || 0) : (user?.points || 0);
+    if (!stakeNum || stakeNum < 10 || totalCost > userBalance) return false;
     
     // Check for duplicate city predictions
     const cities = predictions.map(p => p.city);
@@ -353,8 +356,8 @@ const ParlayBettingSlip = ({ onBack, onBetPlaced }: ParlayBettingSlipProps) => {
       // Deduct total cost (stake + insurance)
       await updateUserPoints(user.points - totalCost);
 
-      // Create parlay with insurance
-      const parlayId = await createParlay(stakeNum, parlayPredictions, getDaysAhead(), selectedDay);
+      // Create parlay with insurance and currency type
+      const parlayId = await createParlay(stakeNum, parlayPredictions, getDaysAhead(), selectedDay, hasInsurance, mode);
       
       // Update parlay with insurance details if purchased
       if (hasInsurance) {
@@ -809,17 +812,17 @@ const ParlayBettingSlip = ({ onBack, onBetPlaced }: ParlayBettingSlipProps) => {
         </div>
 
         <div>
-          <Label>Stake (Points)</Label>
+          <Label>Stake Amount</Label>
             <Input
               type="number"
-              placeholder="Minimum 10 points"
+              placeholder={`Minimum ${formatCurrency(10, mode)}`}
               value={stake}
               onChange={(e) => setStake(e.target.value)}
               min="10"
-              max={user.points}
+              max={mode === 'real' ? user.balance_cents : user.points}
             />
             <p className="text-sm text-muted-foreground mt-1">
-              Available: {formatRands(user.points)}
+              Available: {formatCurrency(mode === 'real' ? user.balance_cents : user.points, mode)}
             </p>
           </div>
         </div>
@@ -847,7 +850,7 @@ const ParlayBettingSlip = ({ onBack, onBetPlaced }: ParlayBettingSlipProps) => {
                   </p>
                   <div className="flex items-center justify-between text-sm">
                     <span>Insurance Cost:</span>
-                    <span className="font-medium">{getInsuranceCost()} points (20% of stake)</span>
+                    <span className="font-medium">{formatCurrency(getInsuranceCost(), mode)} (20% of stake)</span>
                   </div>
                 </div>
               </div>
@@ -870,28 +873,28 @@ const ParlayBettingSlip = ({ onBack, onBetPlaced }: ParlayBettingSlipProps) => {
             </div>
             <div className="flex justify-between">
               <span>Stake:</span>
-              <span className="font-medium">{stake} points</span>
+              <span className="font-medium">{formatCurrency(parseInt(stake) || 0, mode)}</span>
             </div>
             {hasInsurance && (
               <>
                 <div className="flex justify-between text-muted-foreground">
                   <span>Insurance:</span>
-                  <span>+{getInsuranceCost()} points</span>
+                  <span>+{formatCurrency(getInsuranceCost(), mode)}</span>
                 </div>
                 <div className="flex justify-between font-medium border-t pt-2">
                   <span>Total Cost:</span>
-                  <span>{getTotalCost()} points</span>
+                  <span>{formatCurrency(getTotalCost(), mode)}</span>
                 </div>
               </>
             )}
             <div className="flex justify-between text-lg font-bold text-success">
               <span>If Win:</span>
-              <span>+{getPotentialWin()} points</span>
+              <span>+{formatCurrency(getPotentialWin(), mode)}</span>
             </div>
             {hasInsurance && (
               <div className="flex justify-between font-bold text-primary">
                 <span>If Lose (Insured):</span>
-                <span>-{parseInt(stake) - getInsurancePayout()} points</span>
+                <span>-{formatCurrency(parseInt(stake) - getInsurancePayout(), mode)}</span>
               </div>
             )}
           </div>

@@ -16,7 +16,8 @@ import { z } from 'zod';
 import { createCombinedBet } from '@/lib/supabase-combined-bets';
 import { calculateDynamicOdds, calculateCategoryOdds } from '@/lib/dynamic-odds';
 import WeatherDisplay from './WeatherDisplay';
-import { formatRands } from '@/lib/currency';
+import { formatCurrency } from '@/lib/currency';
+import { useCurrencyMode } from '@/contexts/CurrencyModeContext';
 
 const getUserTimezone = () => Intl.DateTimeFormat().resolvedOptions().timeZone;
 
@@ -58,6 +59,7 @@ interface CategorySelection {
 }
 
 export function CombinedBettingSlip({ onBack, onBetPlaced }: CombinedBettingSlipProps) {
+  const { mode } = useCurrencyMode();
   const [city, setCity] = useState<City>('New York');
   const [selectedDay, setSelectedDay] = useState<Date>(getNext7Days()[0]);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
@@ -218,7 +220,9 @@ export function CombinedBettingSlip({ onBack, onBetPlaced }: CombinedBettingSlip
 
     if (!validation.success) return false;
     if (Object.keys(categoryValues).length !== selectedCategories.length) return false;
-    if (getTotalCost() > user.points) return false;
+    
+    const userBalance = mode === 'real' ? user.balance_cents : user.points;
+    if (getTotalCost() > userBalance) return false;
 
     return true;
   };
@@ -244,7 +248,7 @@ export function CombinedBettingSlip({ onBack, onBetPlaced }: CombinedBettingSlip
         odds: cat.odds
       }));
 
-      await createCombinedBet(city, stake, categories, selectedDay, hasInsurance);
+      await createCombinedBet(city, stake, categories, selectedDay, hasInsurance, mode);
 
       toast({
         title: "Success!",
@@ -289,7 +293,7 @@ export function CombinedBettingSlip({ onBack, onBetPlaced }: CombinedBettingSlip
         {/* User Balance */}
         <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
           <span className="text-sm text-muted-foreground">Available Balance</span>
-          <span className="text-lg font-bold">{formatRands(user.points)}</span>
+          <span className="text-lg font-bold">{formatCurrency(mode === 'real' ? user.balance_cents : user.points, mode)}</span>
         </div>
 
         {/* Live Odds Indicator */}
@@ -616,7 +620,7 @@ export function CombinedBettingSlip({ onBack, onBetPlaced }: CombinedBettingSlip
 
         {/* Stake Input */}
         <div className="space-y-2">
-          <Label htmlFor="stake">Stake (10-1000 points)</Label>
+          <Label htmlFor="stake">Stake Amount</Label>
           <Input
             id="stake"
             type="number"
@@ -625,6 +629,9 @@ export function CombinedBettingSlip({ onBack, onBetPlaced }: CombinedBettingSlip
             value={stake}
             onChange={(e) => setStake(Number(e.target.value))}
           />
+          <p className="text-xs text-muted-foreground">
+            Min: {formatCurrency(10, mode)} - Max: {formatCurrency(1000, mode)}
+          </p>
         </div>
 
         {/* Insurance */}
@@ -659,17 +666,17 @@ export function CombinedBettingSlip({ onBack, onBetPlaced }: CombinedBettingSlip
         <div className="space-y-2 p-4 bg-primary/5 rounded-lg border border-primary/20">
           <div className="flex justify-between text-sm">
             <span>Stake:</span>
-            <span className="font-mono">{stake} points</span>
+            <span className="font-mono">{formatCurrency(stake, mode)}</span>
           </div>
           {hasInsurance && (
             <div className="flex justify-between text-sm">
               <span>Insurance Cost:</span>
-              <span className="font-mono text-destructive">-{getInsuranceCost()} points</span>
+              <span className="font-mono text-destructive">-{formatCurrency(getInsuranceCost(), mode)}</span>
             </div>
           )}
           <div className="flex justify-between text-sm font-semibold border-t border-border pt-2">
             <span>Total Cost:</span>
-            <span className="font-mono">{getTotalCost()} points</span>
+            <span className="font-mono">{formatCurrency(getTotalCost(), mode)}</span>
           </div>
           <div className="flex justify-between text-sm">
             <span>Combined Odds:</span>
@@ -677,7 +684,7 @@ export function CombinedBettingSlip({ onBack, onBetPlaced }: CombinedBettingSlip
           </div>
           <div className="flex justify-between font-bold text-lg border-t border-border pt-2">
             <span>Potential Win:</span>
-            <span className="font-mono text-primary">{getPotentialWin()} points</span>
+            <span className="font-mono text-primary">{formatCurrency(getPotentialWin(), mode)}</span>
           </div>
         </div>
 
