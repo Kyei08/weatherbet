@@ -202,6 +202,79 @@ export const getLeaderboard = async () => {
   }
 };
 
+// Assign user to a leaderboard group (auto-assigns to available group)
+export const assignUserToLeaderboardGroup = async (maxSize: number = 100) => {
+  try {
+    const userId = await getCurrentUserId();
+    const { data, error } = await supabase.rpc('assign_user_to_leaderboard_group', {
+      _user_id: userId,
+      _max_size: maxSize
+    });
+    
+    if (error) throw error;
+    
+    return data;
+  } catch (error) {
+    console.error('Error assigning user to leaderboard group:', error);
+    throw error;
+  }
+};
+
+// Get leaderboard for the user's group
+export const getGroupLeaderboard = async () => {
+  try {
+    const userId = await getCurrentUserId();
+    const { data, error } = await supabase.rpc('get_group_leaderboard', {
+      _user_id: userId
+    });
+    
+    if (error) throw error;
+    
+    return data || [];
+  } catch (error) {
+    console.error('Error fetching group leaderboard:', error);
+    return [];
+  }
+};
+
+// Get user's leaderboard group info
+export const getUserLeaderboardGroup = async () => {
+  try {
+    const userId = await getCurrentUserId();
+    const { data: assignment, error: assignmentError } = await supabase
+      .from('user_leaderboard_assignments')
+      .select(`
+        group_id,
+        joined_at,
+        leaderboard_groups:group_id (
+          id,
+          name,
+          max_size
+        )
+      `)
+      .eq('user_id', userId)
+      .single();
+    
+    if (assignmentError) throw assignmentError;
+    
+    // Get user count in the group
+    const { count, error: countError } = await supabase
+      .from('user_leaderboard_assignments')
+      .select('*', { count: 'exact', head: true })
+      .eq('group_id', assignment.group_id);
+    
+    if (countError) throw countError;
+    
+    return {
+      ...assignment,
+      current_size: count || 0
+    };
+  } catch (error) {
+    console.error('Error fetching user leaderboard group:', error);
+    return null;
+  }
+};
+
 // Challenge management
 export const getChallenges = async () => {
   const { data, error } = await supabase

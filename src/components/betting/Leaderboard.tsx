@@ -2,14 +2,27 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Trophy, Medal, Award } from 'lucide-react';
-import { getLeaderboard } from '@/lib/supabase-auth-storage';
+import { ArrowLeft, Trophy, Medal, Award, Users } from 'lucide-react';
+import { getGroupLeaderboard, getUserLeaderboardGroup, assignUserToLeaderboardGroup } from '@/lib/supabase-auth-storage';
+import { useToast } from '@/hooks/use-toast';
 
 interface LeaderboardEntry {
   username: string;
   points: number;
   level: number;
   xp: number;
+  rank: number;
+}
+
+interface LeaderboardGroupInfo {
+  group_id: string;
+  joined_at: string;
+  current_size: number;
+  leaderboard_groups: {
+    id: string;
+    name: string;
+    max_size: number;
+  };
 }
 
 interface LeaderboardProps {
@@ -18,22 +31,41 @@ interface LeaderboardProps {
 
 const Leaderboard = ({ onBack }: LeaderboardProps) => {
   const [users, setUsers] = useState<LeaderboardEntry[]>([]);
+  const [groupInfo, setGroupInfo] = useState<LeaderboardGroupInfo | null>(null);
   const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
 
   useEffect(() => {
     const fetchLeaderboard = async () => {
       try {
-        const data = await getLeaderboard();
+        // Check if user has a group assignment
+        let groupData = await getUserLeaderboardGroup();
+        
+        // If no group, assign user to one
+        if (!groupData) {
+          await assignUserToLeaderboardGroup(100);
+          groupData = await getUserLeaderboardGroup();
+        }
+        
+        setGroupInfo(groupData);
+        
+        // Fetch leaderboard for user's group
+        const data = await getGroupLeaderboard();
         setUsers(data);
       } catch (error) {
         console.error('Error fetching leaderboard:', error);
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Failed to load leaderboard data"
+        });
       } finally {
         setLoading(false);
       }
     };
 
     fetchLeaderboard();
-  }, []);
+  }, [toast]);
 
   const getRankIcon = (rank: number) => {
     switch (rank) {
@@ -91,10 +123,34 @@ const Leaderboard = ({ onBack }: LeaderboardProps) => {
           <h1 className="text-2xl font-bold">🏆 Leaderboard</h1>
         </div>
 
+        {/* League Info Card */}
+        {groupInfo && (
+          <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-background">
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
+                    <Users className="h-6 w-6 text-primary" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold">{groupInfo.leaderboard_groups.name}</h3>
+                    <p className="text-sm text-muted-foreground">
+                      {groupInfo.current_size} / {groupInfo.leaderboard_groups.max_size} players
+                    </p>
+                  </div>
+                </div>
+                <Badge variant="secondary" className="text-sm">
+                  Your League
+                </Badge>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         <Card>
           <CardHeader>
             <CardTitle>Top Players</CardTitle>
-            <p className="text-muted-foreground">Players ranked by total points</p>
+            <p className="text-muted-foreground">Compete with players in your league</p>
           </CardHeader>
           <CardContent>
             {users.length === 0 ? (
@@ -104,20 +160,19 @@ const Leaderboard = ({ onBack }: LeaderboardProps) => {
               </div>
             ) : (
               <div className="space-y-3">
-                {users.map((user, index) => {
-                  const rank = index + 1;
+                {users.map((user) => {
                   return (
                     <div
-                      key={`${user.username}-${index}`}
+                      key={`${user.username}-${user.rank}`}
                       className={`flex items-center justify-between p-4 rounded-lg border ${
-                        rank <= 3 ? 'bg-muted/50' : ''
+                        user.rank <= 3 ? 'bg-muted/50' : ''
                       }`}
                     >
                       <div className="flex items-center gap-3">
                         <div className="flex items-center gap-2 min-w-[60px]">
-                          {getRankIcon(rank)}
-                          <Badge variant={getRankBadge(rank)}>
-                            #{rank}
+                          {getRankIcon(user.rank)}
+                          <Badge variant={getRankBadge(user.rank)}>
+                            #{user.rank}
                           </Badge>
                         </div>
                         <div>

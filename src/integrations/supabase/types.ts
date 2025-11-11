@@ -312,6 +312,27 @@ export type Database = {
         }
         Relationships: []
       }
+      leaderboard_groups: {
+        Row: {
+          created_at: string
+          id: string
+          max_size: number
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          max_size?: number
+          name: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          max_size?: number
+          name?: string
+        }
+        Relationships: []
+      }
       parlay_legs: {
         Row: {
           city: string
@@ -582,6 +603,38 @@ export type Database = {
           },
         ]
       }
+      user_leaderboard_assignments: {
+        Row: {
+          created_at: string
+          group_id: string
+          id: string
+          joined_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          group_id: string
+          id?: string
+          joined_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          group_id?: string
+          id?: string
+          joined_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_leaderboard_assignments_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "leaderboard_groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_perks: {
         Row: {
           created_at: string
@@ -706,6 +759,20 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      assign_user_to_leaderboard_group: {
+        Args: { _max_size?: number; _user_id: string }
+        Returns: string
+      }
+      get_group_leaderboard: {
+        Args: { _user_id: string }
+        Returns: {
+          level: number
+          points: number
+          rank: number
+          username: string
+          xp: number
+        }[]
+      }
       get_leaderboard: {
         Args: { limit_count?: number }
         Returns: {
