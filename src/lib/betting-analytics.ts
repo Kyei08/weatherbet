@@ -9,6 +9,7 @@ export interface BettingStats {
   totalStaked: number;
   totalWinnings: number;
   netProfit: number;
+  roi: number;
   averageStake: number;
   averageOdds: number;
   bestCity: string;
@@ -18,6 +19,8 @@ export interface BettingStats {
   rainWinRate: number;
   tempWinRate: number;
   totalCashOuts: number;
+  avgBetsPerDay: number;
+  mostActiveBettingHour: number;
 }
 
 export interface CityPerformance {
@@ -103,6 +106,22 @@ export const calculateBettingStats = (bets: Bet[]): BettingStats => {
     ? (tempBets.filter(b => b.result === 'win').length / tempBets.length) * 100 
     : 0;
 
+  // Calculate ROI
+  const roi = totalStaked > 0 ? (netProfit / totalStaked) * 100 : 0;
+
+  // Calculate betting frequency
+  const bettingDays = new Set(bets.map(b => new Date(b.created_at).toDateString())).size;
+  const avgBetsPerDay = bettingDays > 0 ? bets.length / bettingDays : 0;
+
+  // Calculate most active betting hour
+  const hourCounts = bets.reduce((acc, bet) => {
+    const hour = new Date(bet.created_at).getHours();
+    acc[hour] = (acc[hour] || 0) + 1;
+    return acc;
+  }, {} as Record<number, number>);
+  const mostActiveBettingHour = Object.entries(hourCounts)
+    .sort((a, b) => b[1] - a[1])[0]?.[0] ? parseInt(Object.entries(hourCounts).sort((a, b) => b[1] - a[1])[0][0]) : 0;
+
   return {
     totalBets: bets.length,
     totalWins: wins.length,
@@ -112,6 +131,7 @@ export const calculateBettingStats = (bets: Bet[]): BettingStats => {
     totalStaked,
     totalWinnings,
     netProfit,
+    roi,
     averageStake: bets.length > 0 ? totalStaked / bets.length : 0,
     averageOdds: bets.length > 0 ? bets.reduce((sum, b) => sum + Number(b.odds), 0) / bets.length : 0,
     bestCity,
@@ -121,6 +141,8 @@ export const calculateBettingStats = (bets: Bet[]): BettingStats => {
     rainWinRate,
     tempWinRate,
     totalCashOuts: cashOuts.length,
+    avgBetsPerDay,
+    mostActiveBettingHour,
   };
 };
 
@@ -203,4 +225,70 @@ export const getPredictionTypeStats = (bets: Bet[]): PredictionTypeStats[] => {
       winRate: tempBets.length > 0 ? (tempBets.filter(b => b.result === 'win').length / tempBets.length) * 100 : 0,
     },
   ];
+};
+
+export interface BettingPattern {
+  date: string;
+  betsPlaced: number;
+  avgStake: number;
+  totalStaked: number;
+}
+
+export const getBettingPatterns = (bets: Bet[]): BettingPattern[] => {
+  const dailyStats = bets.reduce((acc, bet) => {
+    const date = new Date(bet.created_at).toISOString().split('T')[0];
+    if (!acc[date]) {
+      acc[date] = { bets: [], totalStake: 0 };
+    }
+    acc[date].bets.push(bet);
+    acc[date].totalStake += bet.stake;
+    return acc;
+  }, {} as Record<string, { bets: Bet[]; totalStake: number }>);
+
+  return Object.entries(dailyStats)
+    .map(([date, stats]) => ({
+      date,
+      betsPlaced: stats.bets.length,
+      avgStake: stats.totalStake / stats.bets.length,
+      totalStaked: stats.totalStake,
+    }))
+    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+};
+
+export interface ROIPoint {
+  date: string;
+  roi: number;
+  invested: number;
+  returned: number;
+}
+
+export const getROIOverTime = (bets: Bet[]): ROIPoint[] => {
+  const settledBets = bets
+    .filter(b => b.result !== 'pending')
+    .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+
+  let totalInvested = 0;
+  let totalReturned = 0;
+  const points: ROIPoint[] = [];
+
+  settledBets.forEach(bet => {
+    totalInvested += bet.stake;
+    
+    if (bet.result === 'win') {
+      totalReturned += Math.floor(bet.stake * Number(bet.odds));
+    } else if (bet.result === 'cashed_out' && bet.cashout_amount) {
+      totalReturned += bet.cashout_amount;
+    }
+    
+    const roi = totalInvested > 0 ? ((totalReturned - totalInvested) / totalInvested) * 100 : 0;
+    
+    points.push({
+      date: new Date(bet.created_at).toISOString().split('T')[0],
+      roi,
+      invested: totalInvested,
+      returned: totalReturned,
+    });
+  });
+
+  return points;
 };

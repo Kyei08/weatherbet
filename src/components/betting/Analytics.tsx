@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, TrendingUp, TrendingDown, Trophy, Target, Zap, MapPin, Calendar as CalendarIcon, ArrowUpDown } from 'lucide-react';
+import { ArrowLeft, TrendingUp, TrendingDown, Trophy, Target, Zap, MapPin, Calendar as CalendarIcon, ArrowUpDown, Activity, Clock, BarChart3, Percent } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Calendar } from '@/components/ui/calendar';
@@ -15,8 +15,10 @@ import {
   getCityPerformance,
   getProfitLossOverTime,
   getPredictionTypeStats,
+  getBettingPatterns,
+  getROIOverTime,
 } from '@/lib/betting-analytics';
-import { Area, AreaChart, Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis, Cell } from 'recharts';
+import { Area, AreaChart, Bar, BarChart, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis, Cell, CartesianGrid, Legend } from 'recharts';
 import { ChartContainer, ChartTooltipContent } from '@/components/ui/chart';
 
 interface AnalyticsProps {
@@ -99,6 +101,8 @@ const Analytics = ({ onBack }: AnalyticsProps) => {
   const cityPerformance = getCityPerformance(filteredBets);
   const profitLoss = getProfitLossOverTime(filteredBets);
   const predictionStats = getPredictionTypeStats(filteredBets);
+  const bettingPatterns = getBettingPatterns(filteredBets);
+  const roiOverTime = getROIOverTime(filteredBets);
 
   const compareFilteredBets = comparisonMode ? getFilteredBets(compareTimeFilter, compareDateRange) : [];
   const compareStats = comparisonMode ? calculateBettingStats(compareFilteredBets) : null;
@@ -314,7 +318,7 @@ const Analytics = ({ onBack }: AnalyticsProps) => {
         </div>
 
         {/* Key Metrics */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
           <Card>
             <CardContent className="pt-6">
               <div className="text-center space-y-2">
@@ -374,6 +378,26 @@ const Analytics = ({ onBack }: AnalyticsProps) => {
           <Card>
             <CardContent className="pt-6">
               <div className="text-center space-y-2">
+                <div className={`text-3xl font-bold ${stats.roi >= 0 ? 'text-primary' : 'text-destructive'}`}>
+                  {stats.roi >= 0 ? '+' : ''}{stats.roi.toFixed(1)}%
+                </div>
+                {comparisonMode && compareStats && (
+                  <div className="flex items-center justify-center gap-1 text-xs">
+                    <span className={stats.roi >= compareStats.roi ? 'text-primary' : 'text-destructive'}>
+                      {stats.roi >= compareStats.roi ? '↑' : '↓'}
+                      {Math.abs(stats.roi - compareStats.roi).toFixed(1)}%
+                    </span>
+                    <span className="text-muted-foreground">vs {compareStats.roi >= 0 ? '+' : ''}{compareStats.roi.toFixed(1)}%</span>
+                  </div>
+                )}
+                <div className="text-sm text-muted-foreground">ROI</div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="pt-6">
+              <div className="text-center space-y-2">
                 <div className="text-3xl font-bold text-primary">{stats.currentStreak}</div>
                 {comparisonMode && compareStats && (
                   <div className="flex items-center justify-center gap-1 text-xs">
@@ -389,6 +413,120 @@ const Analytics = ({ onBack }: AnalyticsProps) => {
             </CardContent>
           </Card>
         </div>
+
+        {/* ROI Over Time */}
+        {roiOverTime.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Percent className="h-5 w-5 text-primary" />
+                ROI Over Time
+              </CardTitle>
+              <CardDescription>
+                Track your Return on Investment percentage over time
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ChartContainer config={{
+                roi: { label: 'ROI %', color: stats.roi >= 0 ? 'hsl(var(--primary))' : 'hsl(var(--destructive))' }
+              }} className="h-[300px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={roiOverTime}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
+                    <XAxis
+                      dataKey="date"
+                      tickFormatter={(value) => {
+                        const date = new Date(value);
+                        return `${date.getMonth() + 1}/${date.getDate()}`;
+                      }}
+                      stroke="hsl(var(--muted-foreground))"
+                      fontSize={12}
+                    />
+                    <YAxis 
+                      stroke="hsl(var(--muted-foreground))" 
+                      fontSize={12}
+                      tickFormatter={(value) => `${value}%`}
+                    />
+                    <Tooltip content={<ChartTooltipContent formatter={(value) => `${Number(value).toFixed(2)}%`} />} />
+                    <Line
+                      type="monotone"
+                      dataKey="roi"
+                      stroke={stats.roi >= 0 ? 'hsl(var(--primary))' : 'hsl(var(--destructive))'}
+                      strokeWidth={2}
+                      dot={false}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </ChartContainer>
+              <div className="mt-4 grid grid-cols-2 gap-4 p-4 bg-muted/30 rounded-lg">
+                <div>
+                  <div className="text-sm text-muted-foreground">Total Invested</div>
+                  <div className="text-xl font-bold">{stats.totalStaked.toLocaleString()} pts</div>
+                </div>
+                <div>
+                  <div className="text-sm text-muted-foreground">Total Returned</div>
+                  <div className="text-xl font-bold text-primary">{stats.totalWinnings.toLocaleString()} pts</div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Betting Patterns */}
+        {bettingPatterns.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Activity className="h-5 w-5 text-primary" />
+                Betting Activity Patterns
+              </CardTitle>
+              <CardDescription>
+                Your betting frequency and stake patterns over time
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ChartContainer config={{
+                betsPlaced: { label: 'Bets Placed', color: 'hsl(var(--primary))' },
+                avgStake: { label: 'Avg Stake', color: 'hsl(var(--secondary))' }
+              }} className="h-[300px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={bettingPatterns}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
+                    <XAxis
+                      dataKey="date"
+                      tickFormatter={(value) => {
+                        const date = new Date(value);
+                        return `${date.getMonth() + 1}/${date.getDate()}`;
+                      }}
+                      stroke="hsl(var(--muted-foreground))"
+                      fontSize={12}
+                    />
+                    <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                    <Tooltip content={<ChartTooltipContent />} />
+                    <Legend />
+                    <Bar dataKey="betsPlaced" fill="hsl(var(--primary))" radius={[8, 8, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </ChartContainer>
+              <div className="mt-4 grid grid-cols-2 gap-4 p-4 bg-muted/30 rounded-lg">
+                <div className="flex items-center gap-2">
+                  <Clock className="h-5 w-5 text-primary" />
+                  <div>
+                    <div className="text-sm text-muted-foreground">Most Active Hour</div>
+                    <div className="text-xl font-bold">{stats.mostActiveBettingHour}:00</div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <BarChart3 className="h-5 w-5 text-primary" />
+                  <div>
+                    <div className="text-sm text-muted-foreground">Avg Bets/Day</div>
+                    <div className="text-xl font-bold">{stats.avgBetsPerDay.toFixed(1)}</div>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Profit/Loss Over Time */}
         {profitLoss.length > 0 && (
