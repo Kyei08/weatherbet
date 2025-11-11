@@ -14,7 +14,7 @@ import WeatherDisplay from './WeatherDisplay';
 import { useChallengeTracker } from '@/hooks/useChallengeTracker';
 import { useAchievementTracker } from '@/hooks/useAchievementTracker';
 import { useLevelSystem } from '@/hooks/useLevelSystem';
-import { calculateDynamicOdds, formatLiveOdds } from '@/lib/dynamic-odds';
+import { calculateDynamicOdds, formatLiveOdds, getProbabilityPercentage } from '@/lib/dynamic-odds';
 import { supabase } from '@/integrations/supabase/client';
 import { getActivePurchases, getActiveMultipliers, getMaxStakeBoost, PurchaseWithItem, useItem } from '@/lib/supabase-shop';
 import { recordBonusEarning } from '@/lib/supabase-bonus-tracker';
@@ -123,6 +123,20 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
     if (predictionType === 'rain') return 2.0;
     const range = TEMPERATURE_RANGES.find(r => r.value === tempRange);
     return range?.odds || 2.0;
+  };
+
+  const getCurrentProbability = () => {
+    if (!predictionType || !betDuration || weatherForecast.length === 0) return null;
+    
+    const predictionValue = predictionType === 'rain' ? rainPrediction : tempRange;
+    if (!predictionValue) return null;
+
+    return getProbabilityPercentage(
+      predictionType,
+      predictionValue,
+      weatherForecast,
+      parseInt(betDuration) || 1
+    );
   };
 
   const getInsuranceCost = () => {
@@ -569,6 +583,12 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
                         )}
                       </span>
                     </div>
+                    {getCurrentProbability() !== null && (
+                      <div className="flex justify-between text-xs text-muted-foreground">
+                        <span>Win Probability:</span>
+                        <span className="font-medium">{getCurrentProbability()}%</span>
+                      </div>
+                    )}
                     {activeMultiplier > 1 && (
                       <>
                         <div className="flex justify-between text-muted-foreground">

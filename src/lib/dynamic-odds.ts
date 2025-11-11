@@ -14,10 +14,13 @@ interface DynamicOddsParams {
   daysAhead: number;
 }
 
+// House edge configuration (10% = 0.90 multiplier for fair payouts)
+const HOUSE_EDGE = 0.90;
+
 /**
- * Calculate dynamic odds based on weather forecast data
- * Lower probability events = higher odds
- * Higher probability events = lower odds
+ * Calculate dynamic odds based on actual weather probabilities with house edge
+ * Formula: odds = (100 / probability) * house_edge
+ * This ensures fair, transparent odds that reflect real weather data
  */
 export const calculateDynamicOdds = ({
   predictionType,
@@ -33,23 +36,19 @@ export const calculateDynamicOdds = ({
     const rainProb = targetForecast.rain_probability;
     
     if (predictionValue === 'yes') {
-      // Predicting rain
-      // High rain probability = lower odds (more likely to win)
-      // Low rain probability = higher odds (less likely to win)
-      if (rainProb >= 70) return 1.3;
-      if (rainProb >= 50) return 1.6;
-      if (rainProb >= 30) return 2.2;
-      if (rainProb >= 15) return 3.0;
-      return 4.5; // Very low chance of rain
+      // Predicting rain - use actual rain probability
+      // Ensure probability is at least 1% to avoid extreme odds
+      const probability = Math.max(rainProb, 1);
+      const odds = (100 / probability) * HOUSE_EDGE;
+      // Cap maximum odds at 50x for safety
+      return Math.min(Math.max(odds, 1.01), 50);
     } else {
-      // Predicting no rain
-      // Low rain probability = lower odds (more likely to win)
-      // High rain probability = higher odds (less likely to win)
-      if (rainProb <= 10) return 1.2;
-      if (rainProb <= 25) return 1.5;
-      if (rainProb <= 40) return 2.0;
-      if (rainProb <= 60) return 2.8;
-      return 4.0; // Very high chance of rain
+      // Predicting no rain - use inverse probability
+      const noRainProb = 100 - rainProb;
+      const probability = Math.max(noRainProb, 1);
+      const odds = (100 / probability) * HOUSE_EDGE;
+      // Cap maximum odds at 50x for safety
+      return Math.min(Math.max(odds, 1.01), 50);
     }
   }
 
@@ -101,6 +100,38 @@ export const calculateDynamicOdds = ({
  */
 export const formatLiveOdds = (odds: number): string => {
   return `${odds.toFixed(2)}x`;
+};
+
+/**
+ * Get the actual probability percentage for display
+ */
+export const getProbabilityPercentage = (
+  predictionType: 'rain' | 'temperature',
+  predictionValue: string,
+  forecast: WeatherForecast[],
+  daysAhead: number
+): number => {
+  const targetForecast = forecast[Math.min(daysAhead - 1, forecast.length - 1)];
+  if (!targetForecast) return 50;
+
+  if (predictionType === 'rain') {
+    return predictionValue === 'yes' 
+      ? targetForecast.rain_probability 
+      : 100 - targetForecast.rain_probability;
+  }
+
+  // For temperature, estimate based on forecast temperature
+  const [min, max] = predictionValue.split('-').map(Number);
+  const forecastTemp = targetForecast.temp_day;
+  
+  if (forecastTemp >= min && forecastTemp <= max) {
+    return 70; // High probability if forecast is in range
+  }
+  
+  const distance = forecastTemp < min ? min - forecastTemp : forecastTemp - max;
+  if (distance <= 3) return 50;
+  if (distance <= 7) return 30;
+  return 15;
 };
 
 /**

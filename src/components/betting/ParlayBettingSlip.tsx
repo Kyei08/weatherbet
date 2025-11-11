@@ -13,7 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useChallengeTracker } from '@/hooks/useChallengeTracker';
 import { useAchievementTracker } from '@/hooks/useAchievementTracker';
 import { useLevelSystem } from '@/hooks/useLevelSystem';
-import { calculateDynamicOdds, formatLiveOdds } from '@/lib/dynamic-odds';
+import { calculateDynamicOdds, formatLiveOdds, getProbabilityPercentage } from '@/lib/dynamic-odds';
 import { supabase } from '@/integrations/supabase/client';
 
 interface ParlayBettingSlipProps {
