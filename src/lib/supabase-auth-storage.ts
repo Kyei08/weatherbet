@@ -138,22 +138,29 @@ export const getRecentBets = async (): Promise<Bet[]> => {
 };
 
 export const addBet = async (bet: Omit<BetInsert, 'id' | 'user_id' | 'created_at' | 'updated_at'>): Promise<Bet> => {
-  const userId = await getCurrentUserId();
-  if (!userId) throw new Error('User not authenticated');
-  
-  const newBet: BetInsert = {
-    ...bet,
-    user_id: userId,
-  };
-
-  const { data, error } = await supabase
-    .from('bets')
-    .insert(newBet)
-    .select()
-    .single();
+  const { data: betId, error } = await supabase.rpc('create_bet_atomic', {
+    _city: bet.city,
+    _stake: bet.stake,
+    _odds: bet.odds,
+    _prediction_type: bet.prediction_type,
+    _prediction_value: bet.prediction_value,
+    _target_date: bet.target_date,
+    _expires_at: bet.expires_at,
+    _has_insurance: bet.has_insurance || false,
+    _insurance_cost: bet.insurance_cost || 0
+  });
 
   if (error) throw error;
-  return data;
+
+  // Fetch the created bet
+  const { data: createdBet, error: fetchError } = await supabase
+    .from('bets')
+    .select('*')
+    .eq('id', betId)
+    .single();
+
+  if (fetchError) throw fetchError;
+  return createdBet;
 };
 
 export const updateBetResult = async (betId: string, result: 'win' | 'loss' | 'cashed_out'): Promise<void> => {
@@ -182,11 +189,14 @@ export const cashOutBet = async (betId: string, cashoutAmount: number): Promise<
 
   if (betError) throw betError;
 
-  // Update user points
-  const user = await getUser();
-  if (user) {
-    await updateUserPoints(user.points + cashoutAmount);
-  }
+  // Add points using safe function
+  await supabase.rpc('update_user_points_safe', {
+    user_uuid: userId,
+    points_change: cashoutAmount,
+    transaction_type: 'cashout',
+    reference_id: betId,
+    reference_type: 'bet'
+  });
 };
 
 export const getLeaderboard = async () => {

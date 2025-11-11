@@ -16,6 +16,7 @@ import { z } from 'zod';
 import { createCombinedBet } from '@/lib/supabase-combined-bets';
 import { calculateDynamicOdds, calculateCategoryOdds } from '@/lib/dynamic-odds';
 import WeatherDisplay from './WeatherDisplay';
+import { formatRands } from '@/lib/currency';
 
 const getUserTimezone = () => Intl.DateTimeFormat().resolvedOptions().timeZone;
 
@@ -288,7 +289,7 @@ export function CombinedBettingSlip({ onBack, onBetPlaced }: CombinedBettingSlip
         {/* User Balance */}
         <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
           <span className="text-sm text-muted-foreground">Available Balance</span>
-          <span className="text-lg font-bold">{user.points} points</span>
+          <span className="text-lg font-bold">{formatRands(user.points)}</span>
         </div>
 
         {/* Live Odds Indicator */}

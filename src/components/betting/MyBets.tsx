@@ -14,6 +14,7 @@ import { useLevelSystem } from '@/hooks/useLevelSystem';
 import { calculateDynamicCashOut, calculateDynamicParlayCashOut } from '@/lib/dynamic-cashout';
 import CashOutHistoryChart from './CashOutHistoryChart';
 import OddsHistoryChart from './OddsHistoryChart';
+import { formatRands } from '@/lib/currency';
 
 interface MyBetsProps {
   onBack: () => void;

@@ -19,6 +19,8 @@ import { Perks } from './Perks';
 import { Shop } from './Shop';
 import { BonusTracker } from './BonusTracker';
 import Analytics from './Analytics';
+import { TransactionHistory } from './TransactionHistory';
+import { formatRands } from '@/lib/currency';
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -125,8 +127,8 @@ const Dashboard = () => {
               <Coins className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{user.points.toLocaleString()}</div>
-              <p className="text-xs text-muted-foreground">Demo Points</p>
+              <div className="text-2xl font-bold">{formatRands(user.points)}</div>
+              <p className="text-xs text-muted-foreground">South African Rands</p>
             </CardContent>
           </Card>
 
@@ -158,6 +160,9 @@ const Dashboard = () => {
 
         {/* Bonus Tracker */}
         <BonusTracker />
+
+        {/* Transaction History */}
+        <TransactionHistory />
 
         {/* Achievements */}
         <Achievements />

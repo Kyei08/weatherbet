@@ -312,6 +312,45 @@ export type Database = {
         }
         Relationships: []
       }
+      financial_transactions: {
+        Row: {
+          amount_cents: number
+          balance_after_cents: number
+          balance_before_cents: number
+          created_at: string
+          id: string
+          metadata: Json | null
+          reference_id: string | null
+          reference_type: string | null
+          transaction_type: string
+          user_id: string
+        }
+        Insert: {
+          amount_cents: number
+          balance_after_cents: number
+          balance_before_cents: number
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          reference_id?: string | null
+          reference_type?: string | null
+          transaction_type: string
+          user_id: string
+        }
+        Update: {
+          amount_cents?: number
+          balance_after_cents?: number
+          balance_before_cents?: number
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          reference_id?: string | null
+          reference_type?: string | null
+          transaction_type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       leaderboard_groups: {
         Row: {
           created_at: string
@@ -763,6 +802,41 @@ export type Database = {
         Args: { _max_size?: number; _user_id: string }
         Returns: string
       }
+      create_bet_atomic: {
+        Args: {
+          _city: string
+          _expires_at: string
+          _has_insurance?: boolean
+          _insurance_cost?: number
+          _odds: number
+          _prediction_type: string
+          _prediction_value: string
+          _stake: number
+          _target_date: string
+        }
+        Returns: string
+      }
+      create_combined_bet_atomic: {
+        Args: {
+          _city: string
+          _combined_odds: number
+          _has_insurance?: boolean
+          _insurance_cost?: number
+          _stake: number
+          _target_date: string
+        }
+        Returns: string
+      }
+      create_parlay_atomic: {
+        Args: {
+          _combined_odds: number
+          _expires_at: string
+          _has_insurance?: boolean
+          _insurance_cost?: number
+          _stake: number
+        }
+        Returns: string
+      }
       get_group_leaderboard: {
         Args: { _user_id: string }
         Returns: {
@@ -799,9 +873,15 @@ export type Database = {
         }
         Returns: string
       }
-      update_user_points: {
-        Args: { points_change: number; user_uuid: string }
-        Returns: undefined
+      update_user_points_safe: {
+        Args: {
+          points_change: number
+          reference_id?: string
+          reference_type?: string
+          transaction_type?: string
+          user_uuid: string
+        }
+        Returns: Json
       }
     }
     Enums: {

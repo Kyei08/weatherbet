@@ -21,40 +21,34 @@ export const createParlay = async (
   stake: number,
   predictions: ParlayPrediction[],
   betDurationDays: number,
-  targetDay: Date
+  targetDay: Date,
+  hasInsurance: boolean = false
 ): Promise<string> => {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error('Not authenticated');
-
-  // Calculate combined odds (multiply all odds together)
+  // Calculate combined odds
   const combinedOdds = predictions.reduce((total, pred) => total * pred.odds, 1);
 
   // Deadline is day before the target day at 23:59:59
   const deadline = new Date(targetDay);
   deadline.setDate(deadline.getDate() - 1);
   deadline.setHours(23, 59, 59, 999);
-  
-  // Target date is end of the selected day
-  const targetDateEnd = new Date(targetDay);
-  targetDateEnd.setHours(23, 59, 59, 999);
 
-  // Create the parlay
-  const { data: parlay, error: parlayError } = await supabase
-    .from('parlays')
-    .insert({
-      user_id: user.id,
-      total_stake: stake,
-      combined_odds: combinedOdds,
-      expires_at: deadline.toISOString(),
-    })
-    .select()
-    .single();
+  // Calculate insurance cost
+  const insuranceCost = hasInsurance ? Math.floor(stake * 0.2) : 0;
+
+  // Create parlay atomically (deducts balance and creates parlay)
+  const { data: parlayId, error: parlayError } = await supabase.rpc('create_parlay_atomic', {
+    _stake: stake,
+    _combined_odds: combinedOdds,
+    _expires_at: deadline.toISOString(),
+    _has_insurance: hasInsurance,
+    _insurance_cost: insuranceCost
+  });
 
   if (parlayError) throw parlayError;
 
   // Create all legs
   const legs = predictions.map(pred => ({
-    parlay_id: parlay.id,
+    parlay_id: parlayId,
     city: pred.city,
     prediction_type: pred.predictionType,
     prediction_value: pred.predictionValue,
@@ -67,7 +61,7 @@ export const createParlay = async (
 
   if (legsError) throw legsError;
 
-  return parlay.id;
+  return parlayId;
 };
 
 export const getParlays = async (limit?: number): Promise<ParlayWithLegs[]> => {
@@ -122,19 +116,14 @@ export const cashOutParlay = async (parlayId: string, cashoutAmount: number): Pr
 
   if (parlayError) throw parlayError;
 
-  // Update user points - import from supabase-auth-storage
-  const { data: userData } = await supabase
-    .from('users')
-    .select('points')
-    .eq('id', user.id)
-    .single();
-
-  if (userData) {
-    await supabase
-      .from('users')
-      .update({ points: userData.points + cashoutAmount })
-      .eq('id', user.id);
-  }
+  // Add points using safe function
+  await supabase.rpc('update_user_points_safe', {
+    user_uuid: user.id,
+    points_change: cashoutAmount,
+    transaction_type: 'cashout',
+    reference_id: parlayId,
+    reference_type: 'parlay'
+  });
 };
 
 export const updateParlayLegResult = async (

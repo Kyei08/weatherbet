@@ -20,6 +20,7 @@ import { format, addDays, startOfDay, endOfDay, setHours, setMinutes, setSeconds
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Clock, Calendar } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { formatRands } from '@/lib/currency';
 
 // Get user's timezone
 const getUserTimezone = () => {
@@ -818,7 +819,7 @@ const ParlayBettingSlip = ({ onBack, onBetPlaced }: ParlayBettingSlipProps) => {
               max={user.points}
             />
             <p className="text-sm text-muted-foreground mt-1">
-              Available: {user.points} points
+              Available: {formatRands(user.points)}
             </p>
           </div>
         </div>

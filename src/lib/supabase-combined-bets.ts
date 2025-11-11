@@ -21,45 +21,27 @@ export const createCombinedBet = async (
   targetDate: Date,
   hasInsurance: boolean = false
 ): Promise<string> => {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error('Not authenticated');
-
   // Calculate combined odds
   const combinedOdds = categories.reduce((total, cat) => total * cat.odds, 1);
 
-  // Calculate insurance cost if applicable
+  // Calculate insurance cost
   const insuranceCost = hasInsurance ? Math.floor(stake * 0.2) : 0;
-  const totalCost = stake + insuranceCost;
 
-  // Deduct points from user
-  const { error: pointsError } = await supabase.rpc('update_user_points', {
-    user_uuid: user.id,
-    points_change: -totalCost
+  // Create combined bet atomically
+  const { data: combinedBetId, error: betError } = await supabase.rpc('create_combined_bet_atomic', {
+    _city: city,
+    _stake: stake,
+    _combined_odds: combinedOdds,
+    _target_date: targetDate.toISOString(),
+    _has_insurance: hasInsurance,
+    _insurance_cost: insuranceCost
   });
-
-  if (pointsError) throw pointsError;
-
-  // Create combined bet
-  const { data: combinedBet, error: betError } = await supabase
-    .from('combined_bets')
-    .insert({
-      user_id: user.id,
-      city,
-      target_date: targetDate.toISOString(),
-      total_stake: stake,
-      combined_odds: combinedOdds,
-      has_insurance: hasInsurance,
-      insurance_cost: insuranceCost,
-      insurance_payout_percentage: 0.8
-    })
-    .select()
-    .single();
 
   if (betError) throw betError;
 
   // Create category predictions
   const categoryInserts = categories.map(cat => ({
-    combined_bet_id: combinedBet.id,
+    combined_bet_id: combinedBetId,
     prediction_type: cat.predictionType,
     prediction_value: cat.predictionValue,
     odds: cat.odds
@@ -71,7 +53,7 @@ export const createCombinedBet = async (
 
   if (categoriesError) throw categoriesError;
 
-  return combinedBet.id;
+  return combinedBetId;
 };
 
 export const getCombinedBets = async (limit?: number): Promise<CombinedBetWithCategories[]> => {
@@ -128,13 +110,14 @@ export const cashOutCombinedBet = async (
 
   if (betError) throw betError;
 
-  // Add points to user
-  const { error: pointsError } = await supabase.rpc('update_user_points', {
+  // Add points using safe function
+  await supabase.rpc('update_user_points_safe', {
     user_uuid: user.id,
-    points_change: cashoutAmount
+    points_change: cashoutAmount,
+    transaction_type: 'cashout',
+    reference_id: combinedBetId,
+    reference_type: 'combined_bet'
   });
-
-  if (pointsError) throw pointsError;
 };
 
 export const updateCategoryResult = async (
