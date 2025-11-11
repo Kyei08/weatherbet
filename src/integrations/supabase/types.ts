@@ -220,6 +220,90 @@ export type Database = {
         }
         Relationships: []
       }
+      combined_bet_categories: {
+        Row: {
+          combined_bet_id: string
+          created_at: string
+          id: string
+          odds: number
+          prediction_type: string
+          prediction_value: string
+          result: string
+        }
+        Insert: {
+          combined_bet_id: string
+          created_at?: string
+          id?: string
+          odds: number
+          prediction_type: string
+          prediction_value: string
+          result?: string
+        }
+        Update: {
+          combined_bet_id?: string
+          created_at?: string
+          id?: string
+          odds?: number
+          prediction_type?: string
+          prediction_value?: string
+          result?: string
+        }
+        Relationships: []
+      }
+      combined_bets: {
+        Row: {
+          cashed_out_at: string | null
+          cashout_amount: number | null
+          city: string
+          combined_odds: number
+          created_at: string
+          expires_at: string | null
+          has_insurance: boolean
+          id: string
+          insurance_cost: number | null
+          insurance_payout_percentage: number | null
+          result: string
+          target_date: string
+          total_stake: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          cashed_out_at?: string | null
+          cashout_amount?: number | null
+          city: string
+          combined_odds: number
+          created_at?: string
+          expires_at?: string | null
+          has_insurance?: boolean
+          id?: string
+          insurance_cost?: number | null
+          insurance_payout_percentage?: number | null
+          result?: string
+          target_date: string
+          total_stake: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          cashed_out_at?: string | null
+          cashout_amount?: number | null
+          city?: string
+          combined_odds?: number
+          created_at?: string
+          expires_at?: string | null
+          has_insurance?: boolean
+          id?: string
+          insurance_cost?: number | null
+          insurance_payout_percentage?: number | null
+          result?: string
+          target_date?: string
+          total_stake?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       parlay_legs: {
         Row: {
           city: string
