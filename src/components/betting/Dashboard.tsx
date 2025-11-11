@@ -3,8 +3,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { getUser, getRecentBets } from '@/lib/supabase-auth-storage';
 import { User, Bet } from '@/types/supabase-betting';
-import { Coins, TrendingUp, Activity, Trophy, ShoppingCart, Layers, History, MapPin } from 'lucide-react';
+import { Coins, TrendingUp, Activity, Trophy, ShoppingCart, Layers, History, MapPin, Shield } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useAdminCheck } from '@/hooks/useAdminCheck';
 import BettingSlip from './BettingSlip';
 import ParlayBettingSlip from './ParlayBettingSlip';
 import MyBets from './MyBets';
@@ -20,6 +21,7 @@ import Analytics from './Analytics';
 
 const Dashboard = () => {
   const navigate = useNavigate();
+  const { isAdminUser } = useAdminCheck();
   const [user, setUser] = useState<User | null>(null);
   const [bets, setBets] = useState<Bet[]>([]);
   const [activeView, setActiveView] = useState<'dashboard' | 'betting' | 'parlay' | 'mybets' | 'leaderboard' | 'shop' | 'analytics'>('dashboard');
@@ -186,7 +188,7 @@ const Dashboard = () => {
         </div>
 
         {/* Action Buttons */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <div className={`grid grid-cols-2 gap-4 ${isAdminUser ? 'md:grid-cols-6' : 'md:grid-cols-5'}`}>
           <Button 
             variant="outline" 
             size="lg" 
@@ -232,6 +234,17 @@ const Dashboard = () => {
             <Trophy className="mr-2 h-5 w-5" />
             🏆 Leaderboard
           </Button>
+          {isAdminUser && (
+            <Button 
+              variant="default" 
+              size="lg" 
+              className="h-16 text-lg bg-gradient-to-r from-purple-600 to-blue-600"
+              onClick={() => navigate('/admin')}
+            >
+              <Shield className="mr-2 h-5 w-5" />
+              ⚡ Admin
+            </Button>
+          )}
         </div>
 
         {/* Recent Activity */}
