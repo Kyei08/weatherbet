@@ -5,11 +5,15 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { ArrowLeft, Shield, Users, Activity, Settings, AlertTriangle, CheckCircle } from 'lucide-react';
+import { ArrowLeft, Shield, Users, Activity, Settings, AlertTriangle, CheckCircle, Package, Target, Award, Plus, Pencil, Trash2 } from 'lucide-react';
 import { useAdminCheck } from '@/hooks/useAdminCheck';
 import { getAllUsersWithRoles, getAuditLogs, grantRole, revokeRole, logAdminAction } from '@/lib/admin';
+import { getAllShopItems, getAllChallenges, getAllAchievements, deleteShopItem, deleteChallenge, deleteAchievement } from '@/lib/admin-content';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { ShopItemForm } from '@/components/admin/ShopItemForm';
+import { ChallengeForm } from '@/components/admin/ChallengeForm';
+import { AchievementForm } from '@/components/admin/AchievementForm';
 import {
   Select,
   SelectContent,
@@ -25,6 +29,16 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 const Admin = () => {
   const navigate = useNavigate();
@@ -32,6 +46,9 @@ const Admin = () => {
   const { toast } = useToast();
   const [users, setUsers] = useState<any[]>([]);
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
+  const [shopItems, setShopItems] = useState<any[]>([]);
+  const [challenges, setChallenges] = useState<any[]>([]);
+  const [achievements, setAchievements] = useState<any[]>([]);
   const [stats, setStats] = useState({
     totalUsers: 0,
     totalBets: 0,
@@ -39,6 +56,18 @@ const Admin = () => {
     totalPoints: 0,
   });
   const [loadingData, setLoadingData] = useState(true);
+  
+  // Form states
+  const [shopItemFormOpen, setShopItemFormOpen] = useState(false);
+  const [challengeFormOpen, setChallengeFormOpen] = useState(false);
+  const [achievementFormOpen, setAchievementFormOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState<any>(null);
+  const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; type: string; id: string; title: string }>({
+    open: false,
+    type: '',
+    id: '',
+    title: '',
+  });
 
   useEffect(() => {
     if (!loading && !isAdminUser) {
@@ -67,6 +96,16 @@ const Admin = () => {
       // Load audit logs
       const logs = await getAuditLogs(100);
       setAuditLogs(logs);
+
+      // Load content
+      const [shopData, challengeData, achievementData] = await Promise.all([
+        getAllShopItems(),
+        getAllChallenges(),
+        getAllAchievements(),
+      ]);
+      setShopItems(shopData);
+      setChallenges(challengeData);
+      setAchievements(achievementData);
 
       // Load stats
       const { data: betsData } = await supabase
@@ -126,6 +165,50 @@ const Admin = () => {
         variant: 'destructive',
       });
     }
+  };
+
+  const handleDelete = async () => {
+    try {
+      switch (deleteDialog.type) {
+        case 'shop':
+          await deleteShopItem(deleteDialog.id);
+          break;
+        case 'challenge':
+          await deleteChallenge(deleteDialog.id);
+          break;
+        case 'achievement':
+          await deleteAchievement(deleteDialog.id);
+          break;
+      }
+
+      toast({
+        title: 'Success',
+        description: `${deleteDialog.type} deleted successfully`,
+      });
+      await loadData();
+      setDeleteDialog({ open: false, type: '', id: '', title: '' });
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to delete item',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const openShopItemForm = (item?: any) => {
+    setEditingItem(item || null);
+    setShopItemFormOpen(true);
+  };
+
+  const openChallengeForm = (challenge?: any) => {
+    setEditingItem(challenge || null);
+    setChallengeFormOpen(true);
+  };
+
+  const openAchievementForm = (achievement?: any) => {
+    setEditingItem(achievement || null);
+    setAchievementFormOpen(true);
   };
 
   if (loading || !isAdminUser) {
@@ -200,10 +283,22 @@ const Admin = () => {
 
         {/* Main Content */}
         <Tabs defaultValue="users" className="space-y-4">
-          <TabsList>
+          <TabsList className="flex flex-wrap h-auto">
             <TabsTrigger value="users" className="gap-2">
               <Users className="h-4 w-4" />
-              User Management
+              Users
+            </TabsTrigger>
+            <TabsTrigger value="shop" className="gap-2">
+              <Package className="h-4 w-4" />
+              Shop Items
+            </TabsTrigger>
+            <TabsTrigger value="challenges" className="gap-2">
+              <Target className="h-4 w-4" />
+              Challenges
+            </TabsTrigger>
+            <TabsTrigger value="achievements" className="gap-2">
+              <Award className="h-4 w-4" />
+              Achievements
             </TabsTrigger>
             <TabsTrigger value="audit" className="gap-2">
               <Activity className="h-4 w-4" />
@@ -299,6 +394,251 @@ const Admin = () => {
             </Card>
           </TabsContent>
 
+          {/* Shop Items Tab */}
+          <TabsContent value="shop">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>Shop Items Management</CardTitle>
+                    <CardDescription>Create and manage shop items</CardDescription>
+                  </div>
+                  <Button onClick={() => openShopItemForm()}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Item
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {loadingData ? (
+                  <div className="text-center py-8">
+                    <p className="text-muted-foreground">Loading shop items...</p>
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Icon</TableHead>
+                        <TableHead>Title</TableHead>
+                        <TableHead>Type</TableHead>
+                        <TableHead>Value</TableHead>
+                        <TableHead>Price</TableHead>
+                        <TableHead>Duration</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {shopItems.map((item) => (
+                        <TableRow key={item.id}>
+                          <TableCell className="text-2xl">{item.item_icon}</TableCell>
+                          <TableCell className="font-medium">{item.title}</TableCell>
+                          <TableCell>
+                            <Badge variant="secondary">{item.item_type}</Badge>
+                          </TableCell>
+                          <TableCell>{item.item_value}x</TableCell>
+                          <TableCell>{item.price} pts</TableCell>
+                          <TableCell>{item.duration_hours}h</TableCell>
+                          <TableCell>
+                            <Badge variant={item.is_active ? 'default' : 'secondary'}>
+                              {item.is_active ? 'Active' : 'Inactive'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => openShopItemForm(item)}
+                              >
+                                <Pencil className="h-3 w-3" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                onClick={() =>
+                                  setDeleteDialog({
+                                    open: true,
+                                    type: 'shop',
+                                    id: item.id,
+                                    title: item.title,
+                                  })
+                                }
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Challenges Tab */}
+          <TabsContent value="challenges">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>Challenges Management</CardTitle>
+                    <CardDescription>Create and manage daily challenges</CardDescription>
+                  </div>
+                  <Button onClick={() => openChallengeForm()}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Challenge
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {loadingData ? (
+                  <div className="text-center py-8">
+                    <p className="text-muted-foreground">Loading challenges...</p>
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Title</TableHead>
+                        <TableHead>Type</TableHead>
+                        <TableHead>Target</TableHead>
+                        <TableHead>Reward</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {challenges.map((challenge) => (
+                        <TableRow key={challenge.id}>
+                          <TableCell className="font-medium">{challenge.title}</TableCell>
+                          <TableCell>
+                            <Badge variant="secondary">{challenge.challenge_type}</Badge>
+                          </TableCell>
+                          <TableCell>{challenge.target_value}</TableCell>
+                          <TableCell>{challenge.reward_points} pts</TableCell>
+                          <TableCell>
+                            <Badge variant={challenge.is_active ? 'default' : 'secondary'}>
+                              {challenge.is_active ? 'Active' : 'Inactive'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => openChallengeForm(challenge)}
+                              >
+                                <Pencil className="h-3 w-3" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                onClick={() =>
+                                  setDeleteDialog({
+                                    open: true,
+                                    type: 'challenge',
+                                    id: challenge.id,
+                                    title: challenge.title,
+                                  })
+                                }
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Achievements Tab */}
+          <TabsContent value="achievements">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>Achievements Management</CardTitle>
+                    <CardDescription>Create and manage player achievements</CardDescription>
+                  </div>
+                  <Button onClick={() => openAchievementForm()}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Achievement
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {loadingData ? (
+                  <div className="text-center py-8">
+                    <p className="text-muted-foreground">Loading achievements...</p>
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Badge</TableHead>
+                        <TableHead>Title</TableHead>
+                        <TableHead>Requirement</TableHead>
+                        <TableHead>Reward</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {achievements.map((achievement) => (
+                        <TableRow key={achievement.id}>
+                          <TableCell className="text-2xl">{achievement.badge_icon}</TableCell>
+                          <TableCell className="font-medium">{achievement.title}</TableCell>
+                          <TableCell>
+                            <Badge variant="secondary">{achievement.requirement_type}</Badge>
+                            <span className="ml-2 text-muted-foreground">{achievement.requirement_value}</span>
+                          </TableCell>
+                          <TableCell>{achievement.points_reward} pts</TableCell>
+                          <TableCell>
+                            <Badge variant={achievement.is_active ? 'default' : 'secondary'}>
+                              {achievement.is_active ? 'Active' : 'Inactive'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => openAchievementForm(achievement)}
+                              >
+                                <Pencil className="h-3 w-3" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                onClick={() =>
+                                  setDeleteDialog({
+                                    open: true,
+                                    type: 'achievement',
+                                    id: achievement.id,
+                                    title: achievement.title,
+                                  })
+                                }
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
           {/* Audit Logs Tab */}
           <TabsContent value="audit">
             <Card>
@@ -377,6 +717,46 @@ const Admin = () => {
             </Card>
           </TabsContent>
         </Tabs>
+
+        {/* Forms */}
+        <ShopItemForm
+          open={shopItemFormOpen}
+          onOpenChange={setShopItemFormOpen}
+          item={editingItem}
+          onSuccess={loadData}
+        />
+
+        <ChallengeForm
+          open={challengeFormOpen}
+          onOpenChange={setChallengeFormOpen}
+          challenge={editingItem}
+          onSuccess={loadData}
+        />
+
+        <AchievementForm
+          open={achievementFormOpen}
+          onOpenChange={setAchievementFormOpen}
+          achievement={editingItem}
+          onSuccess={loadData}
+        />
+
+        {/* Delete Confirmation Dialog */}
+        <AlertDialog open={deleteDialog.open} onOpenChange={(open) => setDeleteDialog({ ...deleteDialog, open })}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will permanently delete "{deleteDialog.title}". This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground">
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </div>
   );
