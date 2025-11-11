@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatCurrency } from '@/lib/currency';
 import { useCurrencyMode } from '@/contexts/CurrencyModeContext';
+import { useModeTheme } from '@/hooks/useModeTheme';
 import { ArrowUpRight, ArrowDownLeft } from 'lucide-react';
 
 interface Transaction {
@@ -19,6 +20,7 @@ export const TransactionHistory = () => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const { mode } = useCurrencyMode();
+  const theme = useModeTheme();
 
   useEffect(() => {
     loadTransactions();
@@ -64,9 +66,9 @@ export const TransactionHistory = () => {
 
   if (loading) {
     return (
-      <Card>
+      <Card className={`${theme.card} border-2 ${theme.glowShadow}`}>
         <CardHeader>
-          <CardTitle>Transaction History</CardTitle>
+          <CardTitle className={theme.primaryText}>Transaction History</CardTitle>
         </CardHeader>
         <CardContent>
           <p className="text-muted-foreground">Loading transactions...</p>
@@ -76,25 +78,25 @@ export const TransactionHistory = () => {
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Transaction History</CardTitle>
+    <Card className={`${theme.card} border-2 ${theme.glowShadow} animate-fade-in`}>
+      <CardHeader className={`border-b ${theme.borderColor}`}>
+        <CardTitle className={theme.primaryText}>Transaction History</CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className="pt-4">
         {transactions.length === 0 ? (
-          <p className="text-muted-foreground">No transactions yet</p>
+          <p className="text-muted-foreground text-center py-8">No transactions yet</p>
         ) : (
           <div className="space-y-2">
             {transactions.map((tx) => (
               <div
                 key={tx.id}
-                className="flex items-center justify-between p-3 rounded-lg border bg-card"
+                className={`flex items-center justify-between p-4 rounded-lg border-2 ${theme.borderColor} ${theme.cardBg} hover:scale-[1.02] transition-all ${theme.hoverBg}`}
               >
                 <div className="flex items-center gap-3">
                   {getTransactionIcon(tx.transaction_type, tx.amount_cents)}
                   <div>
                     <p className="font-medium">{getTransactionLabel(tx.transaction_type)}</p>
-                    <p className="text-sm text-muted-foreground">
+                    <p className={`text-sm ${theme.secondaryText}`}>
                       {new Date(tx.created_at).toLocaleDateString()} at{' '}
                       {new Date(tx.created_at).toLocaleTimeString()}
                     </p>
@@ -102,14 +104,14 @@ export const TransactionHistory = () => {
                 </div>
                 <div className="text-right">
                   <p
-                    className={`font-bold ${
+                    className={`font-bold text-lg ${
                       tx.amount_cents > 0 ? 'text-green-500' : 'text-red-500'
                     }`}
                   >
                     {tx.amount_cents > 0 ? '+' : ''}
                     {formatCurrency(tx.amount_cents, mode)}
                   </p>
-                  <p className="text-sm text-muted-foreground">
+                  <p className={`text-sm ${theme.secondaryText}`}>
                     Balance: {formatCurrency(tx.balance_after_cents, mode)}
                   </p>
                 </div>

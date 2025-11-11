@@ -23,11 +23,13 @@ import { TransactionHistory } from './TransactionHistory';
 import { CurrencyModeSwitcher } from './CurrencyModeSwitcher';
 import { formatCurrency } from '@/lib/currency';
 import { useCurrencyMode } from '@/contexts/CurrencyModeContext';
+import { useModeTheme } from '@/hooks/useModeTheme';
 
 const Dashboard = () => {
   const navigate = useNavigate();
   const { isAdminUser } = useAdminCheck();
   const { mode } = useCurrencyMode();
+  const theme = useModeTheme();
   const [user, setUser] = useState<User | null>(null);
   const [bets, setBets] = useState<Bet[]>([]);
   const [activeView, setActiveView] = useState<'dashboard' | 'betting' | 'parlay' | 'combined' | 'mybets' | 'leaderboard' | 'shop' | 'analytics'>('dashboard');
@@ -108,12 +110,16 @@ const Dashboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background p-4">
+    <div className={`min-h-screen p-4 transition-colors duration-300 ${theme.gradient}`}>
       <div className="max-w-4xl mx-auto space-y-6">
         {/* Header */}
-        <div className="text-center">
-          <h1 className="text-4xl font-bold text-foreground mb-2">🌦️ Weather Betting</h1>
-          <p className="text-muted-foreground">Predict the weather, win rewards!</p>
+        <div className={`text-center p-6 rounded-xl border-2 ${theme.borderColor} ${theme.cardBg} backdrop-blur-sm ${theme.glowShadow}`}>
+          <h1 className={`text-4xl font-bold mb-2 ${theme.primaryText}`}>
+            🌦️ Weather Betting
+          </h1>
+          <p className="text-muted-foreground">
+            {theme.isVirtual ? 'Practice mode - Predict the weather, win virtual points!' : 'Real money mode - Predict the weather, win real prizes!'}
+          </p>
         </div>
 
         {/* Currency Mode Switcher */}
@@ -127,41 +133,41 @@ const Dashboard = () => {
 
         {/* User Stats */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card>
+          <Card className={`${theme.card} border-2 ${theme.glowShadow}`}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
-                {mode === 'virtual' ? 'Virtual Balance' : 'Real Balance'}
+                {mode === 'virtual' ? '🎮 Virtual Balance' : '💰 Real Balance'}
               </CardTitle>
-              <Coins className="h-4 w-4 text-muted-foreground" />
+              <Coins className={`h-4 w-4 ${theme.primaryText}`} />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">
+              <div className={`text-2xl font-bold ${theme.primaryText}`}>
                 {formatCurrency(mode === 'virtual' ? user.points : (user.balance_cents || 0), mode)}
               </div>
-              <p className="text-xs text-muted-foreground">
+              <p className={`text-xs ${theme.secondaryText}`}>
                 {mode === 'virtual' ? 'Practice points - free to play' : 'South African Rands'}
               </p>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className={`${theme.card} border-2 ${theme.glowShadow}`}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Win Rate</CardTitle>
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
+              <TrendingUp className={`h-4 w-4 ${theme.accentText}`} />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{winRate}%</div>
+              <div className={`text-2xl font-bold ${theme.secondaryText}`}>{winRate}%</div>
               <p className="text-xs text-muted-foreground">Success Rate</p>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className={`${theme.card} border-2 ${theme.glowShadow}`}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Active Bets</CardTitle>
-              <Activity className="h-4 w-4 text-muted-foreground" />
+              <Activity className={`h-4 w-4 ${theme.accentText}`} />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{pendingBets.length}</div>
+              <div className={`text-2xl font-bold ${theme.secondaryText}`}>{pendingBets.length}</div>
               <p className="text-xs text-muted-foreground">Pending Results</p>
             </CardContent>
           </Card>
@@ -186,14 +192,14 @@ const Dashboard = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <Button 
             size="lg" 
-            className="h-20 text-lg"
+            className={`h-20 text-lg ${theme.buttonPrimary} border-2 ${theme.borderColor} ${theme.glowShadow} hover:scale-105 transition-all`}
             onClick={() => setActiveView('betting')}
           >
             🎯 Single Bet
           </Button>
           <Button 
             size="lg" 
-            className="h-20 text-lg bg-gradient-primary"
+            className={`h-20 text-lg ${theme.buttonSecondary} border-2 ${theme.borderColor} ${theme.glowShadow} hover:scale-105 transition-all`}
             onClick={() => setActiveView('combined')}
           >
             <Activity className="mr-2 h-5 w-5" />
@@ -201,7 +207,7 @@ const Dashboard = () => {
           </Button>
           <Button 
             size="lg" 
-            className="h-20 text-lg"
+            className={`h-20 text-lg ${theme.accent} ${theme.primaryForeground} border-2 ${theme.borderColor} ${theme.glowShadow} hover:scale-105 transition-all`}
             onClick={() => setActiveView('parlay')}
           >
             <Layers className="mr-2 h-5 w-5" />
@@ -210,7 +216,7 @@ const Dashboard = () => {
           <Button 
             variant="outline" 
             size="lg" 
-            className="h-20 text-lg"
+            className={`h-20 text-lg border-2 ${theme.borderColorHeavy} ${theme.hoverBg} hover:scale-105 transition-all`}
             onClick={() => setActiveView('mybets')}
           >
             📊 My Bets ({bets.length})
