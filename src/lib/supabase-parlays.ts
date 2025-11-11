@@ -22,7 +22,8 @@ export const createParlay = async (
   predictions: ParlayPrediction[],
   betDurationDays: number,
   targetDay: Date,
-  hasInsurance: boolean = false
+  hasInsurance: boolean = false,
+  currencyType: 'virtual' | 'real' = 'virtual'
 ): Promise<string> => {
   // Calculate combined odds
   const combinedOdds = predictions.reduce((total, pred) => total * pred.odds, 1);
@@ -41,7 +42,8 @@ export const createParlay = async (
     _combined_odds: combinedOdds,
     _expires_at: deadline.toISOString(),
     _has_insurance: hasInsurance,
-    _insurance_cost: insuranceCost
+    _insurance_cost: insuranceCost,
+    _currency_type: currencyType
   });
 
   if (parlayError) throw parlayError;
@@ -99,7 +101,7 @@ export const updateParlayResult = async (
   if (error) throw error;
 };
 
-export const cashOutParlay = async (parlayId: string, cashoutAmount: number): Promise<void> => {
+export const cashOutParlay = async (parlayId: string, cashoutAmount: number, currencyType: 'virtual' | 'real' = 'virtual'): Promise<void> => {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Not authenticated');
 
@@ -122,7 +124,8 @@ export const cashOutParlay = async (parlayId: string, cashoutAmount: number): Pr
     points_change: cashoutAmount,
     transaction_type: 'cashout',
     reference_id: parlayId,
-    reference_type: 'parlay'
+    reference_type: 'parlay',
+    currency_type: currencyType
   });
 };
 

@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
+import { CurrencyModeProvider } from "./contexts/CurrencyModeContext";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import PurchaseHistory from "./pages/PurchaseHistory";
@@ -20,15 +21,17 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AuthProvider>
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/auth" element={<Auth />} />
-            <Route path="/purchase-history" element={<PurchaseHistory />} />
-            <Route path="/city-analytics" element={<CityAnalytics />} />
-            <Route path="/admin" element={<Admin />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+          <CurrencyModeProvider>
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/auth" element={<Auth />} />
+              <Route path="/purchase-history" element={<PurchaseHistory />} />
+              <Route path="/city-analytics" element={<CityAnalytics />} />
+              <Route path="/admin" element={<Admin />} />
+              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </CurrencyModeProvider>
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>

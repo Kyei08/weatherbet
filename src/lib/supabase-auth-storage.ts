@@ -137,7 +137,7 @@ export const getRecentBets = async (): Promise<Bet[]> => {
   return getBets(5); // Only fetch 5 most recent
 };
 
-export const addBet = async (bet: Omit<BetInsert, 'id' | 'user_id' | 'created_at' | 'updated_at'>): Promise<Bet> => {
+export const addBet = async (bet: Omit<BetInsert, 'id' | 'user_id' | 'created_at' | 'updated_at'>, currencyType: 'virtual' | 'real' = 'virtual'): Promise<Bet> => {
   const { data: betId, error } = await supabase.rpc('create_bet_atomic', {
     _city: bet.city,
     _stake: bet.stake,
@@ -147,7 +147,8 @@ export const addBet = async (bet: Omit<BetInsert, 'id' | 'user_id' | 'created_at
     _target_date: bet.target_date,
     _expires_at: bet.expires_at,
     _has_insurance: bet.has_insurance || false,
-    _insurance_cost: bet.insurance_cost || 0
+    _insurance_cost: bet.insurance_cost || 0,
+    _currency_type: currencyType
   });
 
   if (error) throw error;
@@ -172,7 +173,7 @@ export const updateBetResult = async (betId: string, result: 'win' | 'loss' | 'c
   if (error) throw error;
 };
 
-export const cashOutBet = async (betId: string, cashoutAmount: number): Promise<void> => {
+export const cashOutBet = async (betId: string, cashoutAmount: number, currencyType: 'virtual' | 'real' = 'virtual'): Promise<void> => {
   const userId = await getCurrentUserId();
   if (!userId) throw new Error('User not authenticated');
 
@@ -195,7 +196,8 @@ export const cashOutBet = async (betId: string, cashoutAmount: number): Promise<
     points_change: cashoutAmount,
     transaction_type: 'cashout',
     reference_id: betId,
-    reference_type: 'bet'
+    reference_type: 'bet',
+    currency_type: currencyType
   });
 };
 

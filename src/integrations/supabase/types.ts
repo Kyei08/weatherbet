@@ -87,6 +87,7 @@ export type Database = {
           cashout_amount: number | null
           city: string
           created_at: string
+          currency_type: string
           expires_at: string | null
           has_insurance: boolean
           id: string
@@ -107,6 +108,7 @@ export type Database = {
           cashout_amount?: number | null
           city: string
           created_at?: string
+          currency_type?: string
           expires_at?: string | null
           has_insurance?: boolean
           id?: string
@@ -127,6 +129,7 @@ export type Database = {
           cashout_amount?: number | null
           city?: string
           created_at?: string
+          currency_type?: string
           expires_at?: string | null
           has_insurance?: boolean
           id?: string
@@ -265,6 +268,7 @@ export type Database = {
           city: string
           combined_odds: number
           created_at: string
+          currency_type: string
           expires_at: string | null
           has_insurance: boolean
           id: string
@@ -282,6 +286,7 @@ export type Database = {
           city: string
           combined_odds: number
           created_at?: string
+          currency_type?: string
           expires_at?: string | null
           has_insurance?: boolean
           id?: string
@@ -299,6 +304,7 @@ export type Database = {
           city?: string
           combined_odds?: number
           created_at?: string
+          currency_type?: string
           expires_at?: string | null
           has_insurance?: boolean
           id?: string
@@ -318,6 +324,7 @@ export type Database = {
           balance_after_cents: number
           balance_before_cents: number
           created_at: string
+          currency_type: string
           id: string
           metadata: Json | null
           reference_id: string | null
@@ -330,6 +337,7 @@ export type Database = {
           balance_after_cents: number
           balance_before_cents: number
           created_at?: string
+          currency_type?: string
           id?: string
           metadata?: Json | null
           reference_id?: string | null
@@ -342,6 +350,7 @@ export type Database = {
           balance_after_cents?: number
           balance_before_cents?: number
           created_at?: string
+          currency_type?: string
           id?: string
           metadata?: Json | null
           reference_id?: string | null
@@ -419,6 +428,7 @@ export type Database = {
           cashout_amount: number | null
           combined_odds: number
           created_at: string
+          currency_type: string
           expires_at: string | null
           has_insurance: boolean
           id: string
@@ -434,6 +444,7 @@ export type Database = {
           cashout_amount?: number | null
           combined_odds: number
           created_at?: string
+          currency_type?: string
           expires_at?: string | null
           has_insurance?: boolean
           id?: string
@@ -449,6 +460,7 @@ export type Database = {
           cashout_amount?: number | null
           combined_odds?: number
           created_at?: string
+          currency_type?: string
           expires_at?: string | null
           has_insurance?: boolean
           id?: string
@@ -765,6 +777,7 @@ export type Database = {
       }
       users: {
         Row: {
+          balance_cents: number
           created_at: string
           id: string
           level: number
@@ -774,6 +787,7 @@ export type Database = {
           xp: number
         }
         Insert: {
+          balance_cents?: number
           created_at?: string
           id?: string
           level?: number
@@ -783,6 +797,7 @@ export type Database = {
           xp?: number
         }
         Update: {
+          balance_cents?: number
           created_at?: string
           id?: string
           level?: number
@@ -805,6 +820,7 @@ export type Database = {
       create_bet_atomic: {
         Args: {
           _city: string
+          _currency_type?: string
           _expires_at: string
           _has_insurance?: boolean
           _insurance_cost?: number
@@ -820,6 +836,7 @@ export type Database = {
         Args: {
           _city: string
           _combined_odds: number
+          _currency_type?: string
           _has_insurance?: boolean
           _insurance_cost?: number
           _stake: number
@@ -830,6 +847,7 @@ export type Database = {
       create_parlay_atomic: {
         Args: {
           _combined_odds: number
+          _currency_type?: string
           _expires_at: string
           _has_insurance?: boolean
           _insurance_cost?: number
@@ -875,6 +893,7 @@ export type Database = {
       }
       update_user_points_safe: {
         Args: {
+          currency_type?: string
           points_change: number
           reference_id?: string
           reference_type?: string

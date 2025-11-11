@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { formatRands } from '@/lib/currency';
-import { ArrowUpRight, ArrowDownLeft, TrendingUp, TrendingDown } from 'lucide-react';
+import { formatCurrency } from '@/lib/currency';
+import { useCurrencyMode } from '@/contexts/CurrencyModeContext';
+import { ArrowUpRight, ArrowDownLeft } from 'lucide-react';
 
 interface Transaction {
   id: string;
@@ -11,26 +12,29 @@ interface Transaction {
   balance_after_cents: number;
   created_at: string;
   reference_type: string | null;
+  currency_type: 'virtual' | 'real';
 }
 
 export const TransactionHistory = () => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
+  const { mode } = useCurrencyMode();
 
   useEffect(() => {
     loadTransactions();
-  }, []);
+  }, [mode]);
 
   const loadTransactions = async () => {
     try {
       const { data, error } = await supabase
         .from('financial_transactions')
         .select('*')
+        .eq('currency_type', mode)
         .order('created_at', { ascending: false })
         .limit(10);
 
       if (error) throw error;
-      setTransactions(data || []);
+      setTransactions((data || []) as Transaction[]);
     } catch (error) {
       console.error('Error loading transactions:', error);
     } finally {
@@ -103,10 +107,10 @@ export const TransactionHistory = () => {
                     }`}
                   >
                     {tx.amount_cents > 0 ? '+' : ''}
-                    {formatRands(tx.amount_cents)}
+                    {formatCurrency(tx.amount_cents, mode)}
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    Balance: {formatRands(tx.balance_after_cents)}
+                    Balance: {formatCurrency(tx.balance_after_cents, mode)}
                   </p>
                 </div>
               </div>

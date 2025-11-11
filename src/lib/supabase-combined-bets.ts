@@ -19,7 +19,8 @@ export const createCombinedBet = async (
   stake: number,
   categories: CategoryPrediction[],
   targetDate: Date,
-  hasInsurance: boolean = false
+  hasInsurance: boolean = false,
+  currencyType: 'virtual' | 'real' = 'virtual'
 ): Promise<string> => {
   // Calculate combined odds
   const combinedOdds = categories.reduce((total, cat) => total * cat.odds, 1);
@@ -34,7 +35,8 @@ export const createCombinedBet = async (
     _combined_odds: combinedOdds,
     _target_date: targetDate.toISOString(),
     _has_insurance: hasInsurance,
-    _insurance_cost: insuranceCost
+    _insurance_cost: insuranceCost,
+    _currency_type: currencyType
   });
 
   if (betError) throw betError;
@@ -93,7 +95,8 @@ export const updateCombinedBetResult = async (
 
 export const cashOutCombinedBet = async (
   combinedBetId: string,
-  cashoutAmount: number
+  cashoutAmount: number,
+  currencyType: 'virtual' | 'real' = 'virtual'
 ): Promise<void> => {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Not authenticated');
@@ -116,7 +119,8 @@ export const cashOutCombinedBet = async (
     points_change: cashoutAmount,
     transaction_type: 'cashout',
     reference_id: combinedBetId,
-    reference_type: 'combined_bet'
+    reference_type: 'combined_bet',
+    currency_type: currencyType
   });
 };
 
