@@ -22,6 +22,11 @@ import { recordBonusEarning } from '@/lib/supabase-bonus-tracker';
 import { z } from 'zod';
 import { format, addDays, startOfDay, endOfDay } from 'date-fns';
 
+// Get user's timezone
+const getUserTimezone = () => {
+  return Intl.DateTimeFormat().resolvedOptions().timeZone;
+};
+
 const betSchema = z.object({
   city: z.string().trim().min(1, 'City is required'),
   stake: z.number().int('Stake must be a whole number').min(10, 'Minimum stake is 10 points').max(100000, 'Maximum stake is 100,000 points'),
@@ -61,6 +66,7 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
   const [user, setUser] = useState<any>(null);
   const [availableDays] = useState(() => getNextSevenDays());
   const [loading, setLoading] = useState(false);
+  const [userTimezone] = useState(() => getUserTimezone());
   const [weatherForecast, setWeatherForecast] = useState<any[]>([]);
   const [loadingWeather, setLoadingWeather] = useState(false);
   const [hasInsurance, setHasInsurance] = useState(false);
@@ -535,7 +541,22 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
 
             {/* Bet Duration/Deadline */}
             <div className="space-y-2">
-              <Label>Bet Deadline</Label>
+              <div className="flex items-center justify-between">
+                <Label>Bet Deadline</Label>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground cursor-help">
+                        <Clock className="h-3 w-3" />
+                        <span>{userTimezone}</span>
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>All times shown in your local timezone</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
               <Select value={targetDate} onValueChange={setTargetDate}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select deadline day" />
@@ -549,9 +570,14 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
                 </SelectContent>
               </Select>
               {targetDate && (
-                <p className="text-xs text-muted-foreground">
-                  Bet covers full day (00:00-23:59)
-                </p>
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground">
+                    Bet covers full day (00:00-23:59) in your local time
+                  </p>
+                  <p className="text-xs font-medium text-foreground">
+                    Deadline: {format(endOfDay(new Date(targetDate)), 'PPP')} at 11:59 PM {userTimezone}
+                  </p>
+                </div>
               )}
             </div>
 

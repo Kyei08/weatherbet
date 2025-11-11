@@ -17,6 +17,13 @@ import { calculateDynamicOdds, formatLiveOdds, getProbabilityPercentage } from '
 import { supabase } from '@/integrations/supabase/client';
 import { z } from 'zod';
 import { format, addDays, startOfDay, endOfDay } from 'date-fns';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Clock } from 'lucide-react';
+
+// Get user's timezone
+const getUserTimezone = () => {
+  return Intl.DateTimeFormat().resolvedOptions().timeZone;
+};
 
 const parlaySchema = z.object({
   stake: z.number().int('Stake must be a whole number').min(10, 'Minimum stake is 10 points').max(100000, 'Maximum stake is 100,000 points'),
@@ -74,6 +81,7 @@ const ParlayBettingSlip = ({ onBack, onBetPlaced }: ParlayBettingSlipProps) => {
   const [weatherForecasts, setWeatherForecasts] = useState<Record<string, any[]>>({});
   const [hasInsurance, setHasInsurance] = useState(false);
   const [availableDays] = useState(() => getNextSevenDays());
+  const [userTimezone] = useState(() => getUserTimezone());
   const { toast } = useToast();
   const { checkAndUpdateChallenges } = useChallengeTracker();
   const { checkAchievements } = useAchievementTracker();
@@ -501,7 +509,22 @@ const ParlayBettingSlip = ({ onBack, onBetPlaced }: ParlayBettingSlipProps) => {
         {/* Stake and Duration */}
         <div className="space-y-4">
           <div>
-            <Label>Bet Deadline</Label>
+            <div className="flex items-center justify-between mb-2">
+              <Label>Bet Deadline</Label>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="flex items-center gap-1 text-xs text-muted-foreground cursor-help">
+                      <Clock className="h-3 w-3" />
+                      <span>{userTimezone}</span>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>All times shown in your local timezone</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
             <Select value={targetDate} onValueChange={setTargetDate}>
               <SelectTrigger>
                 <SelectValue placeholder="Select deadline day" />
@@ -515,9 +538,14 @@ const ParlayBettingSlip = ({ onBack, onBetPlaced }: ParlayBettingSlipProps) => {
               </SelectContent>
             </Select>
             {targetDate && (
-              <p className="text-xs text-muted-foreground">
-                Bet covers full day (00:00-23:59)
-              </p>
+              <div className="space-y-1 mt-2">
+                <p className="text-xs text-muted-foreground">
+                  Bet covers full day (00:00-23:59) in your local time
+                </p>
+                <p className="text-xs font-medium text-foreground">
+                  Deadline: {format(endOfDay(new Date(targetDate)), 'PPP')} at 11:59 PM {userTimezone}
+                </p>
+              </div>
             )}
           </div>
 
