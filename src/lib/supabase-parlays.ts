@@ -28,9 +28,14 @@ export const createParlay = async (
   // Calculate combined odds (multiply all odds together)
   const combinedOdds = predictions.reduce((total, pred) => total * pred.odds, 1);
 
-  // Calculate expiration
-  const expiresAt = new Date();
-  expiresAt.setDate(expiresAt.getDate() + betDurationDays);
+  // Bets are always for tomorrow and expire at end of today (23:59:59)
+  const today = new Date();
+  today.setHours(23, 59, 59, 999);
+  
+  // Target date is end of tomorrow
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  tomorrow.setHours(23, 59, 59, 999);
 
   // Create the parlay
   const { data: parlay, error: parlayError } = await supabase
@@ -39,7 +44,7 @@ export const createParlay = async (
       user_id: user.id,
       total_stake: stake,
       combined_odds: combinedOdds,
-      expires_at: expiresAt.toISOString(),
+      expires_at: today.toISOString(), // Bets lock at end of today
     })
     .select()
     .single();

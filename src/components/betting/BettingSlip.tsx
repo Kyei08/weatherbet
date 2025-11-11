@@ -20,36 +20,29 @@ import { supabase } from '@/integrations/supabase/client';
 import { getActivePurchases, getActiveMultipliers, getMaxStakeBoost, PurchaseWithItem, useItem } from '@/lib/supabase-shop';
 import { recordBonusEarning } from '@/lib/supabase-bonus-tracker';
 import { z } from 'zod';
-import { format, addDays, startOfDay, endOfDay } from 'date-fns';
+import { format, addDays, startOfDay, endOfDay, setHours, setMinutes, setSeconds } from 'date-fns';
 
 // Get user's timezone
 const getUserTimezone = () => {
   return Intl.DateTimeFormat().resolvedOptions().timeZone;
 };
 
+// Get tomorrow's date
+const getTomorrowDate = () => {
+  return addDays(startOfDay(new Date()), 1);
+};
+
+// Get today's deadline (11:59 PM)
+const getTodayDeadline = () => {
+  const today = new Date();
+  return setSeconds(setMinutes(setHours(today, 23), 59), 59);
+};
+
 const betSchema = z.object({
   city: z.string().trim().min(1, 'City is required'),
   stake: z.number().int('Stake must be a whole number').min(10, 'Minimum stake is 10 points').max(100000, 'Maximum stake is 100,000 points'),
-  targetDate: z.string().trim().min(1, 'Please select a bet deadline'),
   predictionType: z.enum(['rain', 'temperature'] as const, { errorMap: () => ({ message: 'Invalid prediction type' }) }),
 });
-
-// Generate next 7 days for deadline selection
-const getNextSevenDays = () => {
-  const days = [];
-  const today = startOfDay(new Date());
-  
-  for (let i = 1; i <= 7; i++) {
-    const date = addDays(today, i);
-    days.push({
-      value: format(date, 'yyyy-MM-dd'),
-      label: format(date, 'EEEE (MMM d)'), // e.g., "Tuesday (Nov 12)"
-      date: date,
-    });
-  }
-  
-  return days;
-};
 
 interface BettingSlipProps {
   onBack: () => void;
@@ -62,11 +55,11 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
   const [rainPrediction, setRainPrediction] = useState<'yes' | 'no' | ''>('');
   const [tempRange, setTempRange] = useState<string>('');
   const [stake, setStake] = useState<string>('');
-  const [targetDate, setTargetDate] = useState<string>('');
   const [user, setUser] = useState<any>(null);
-  const [availableDays] = useState(() => getNextSevenDays());
   const [loading, setLoading] = useState(false);
   const [userTimezone] = useState(() => getUserTimezone());
+  const [tomorrow] = useState(() => getTomorrowDate());
+  const [deadline] = useState(() => getTodayDeadline());
   const [weatherForecast, setWeatherForecast] = useState<any[]>([]);
   const [loadingWeather, setLoadingWeather] = useState(false);
   const [hasInsurance, setHasInsurance] = useState(false);
@@ -138,16 +131,12 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
   }, [city]);
 
   const getDaysAhead = () => {
-    if (!targetDate) return 1;
-    const today = startOfDay(new Date());
-    const target = startOfDay(new Date(targetDate));
-    const diffTime = target.getTime() - today.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return Math.max(1, diffDays);
+    // Always 1 day ahead (tomorrow)
+    return 1;
   };
 
   const getCurrentOdds = () => {
-    if (!predictionType || !targetDate) return 0;
+    if (!predictionType) return 0;
     
     const predictionValue = predictionType === 'rain' ? rainPrediction : tempRange;
     if (!predictionValue) return 0;
@@ -169,7 +158,7 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
   };
 
   const getCurrentProbability = () => {
-    if (!predictionType || !targetDate || weatherForecast.length === 0) return null;
+    if (!predictionType || weatherForecast.length === 0) return null;
     
     const predictionValue = predictionType === 'rain' ? rainPrediction : tempRange;
     if (!predictionValue) return null;
@@ -228,8 +217,6 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
   };
 
   const getBetDeadline = () => {
-    if (!targetDate) return new Date().toISOString();
-    const deadline = endOfDay(new Date(targetDate));
     return deadline.toISOString();
   };
 
@@ -240,7 +227,6 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
       city &&
       predictionType &&
       (predictionType === 'rain' ? rainPrediction : tempRange) &&
-      targetDate &&
       stakeNum >= 10 &&
       stakeNum <= getMaxStake() &&
       totalCost <= user.points
@@ -256,7 +242,6 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
     const validation = betSchema.safeParse({
       city,
       stake: parseInt(stake),
-      targetDate,
       predictionType,
     });
 
@@ -291,8 +276,9 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
       // Deduct total cost (stake + insurance) from user points
       await updateUserPoints(user.points - totalCost);
 
-      // Add bet
-      const deadline = getBetDeadline();
+      // Add bet (target date is tomorrow, expires at end of today)
+      const betDeadline = getBetDeadline();
+      const tomorrowEnd = endOfDay(tomorrow);
       const betData = await addBet({
         city: city as City,
         prediction_type: predictionType as 'rain' | 'temperature',
@@ -300,9 +286,9 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
         stake: stakeNum,
         odds: getCurrentOdds(),
         result: 'pending',
-        target_date: deadline,
-        expires_at: deadline,
-        bet_duration_days: getDaysAhead(),
+        target_date: tomorrowEnd.toISOString(),
+        expires_at: betDeadline,
+        bet_duration_days: 1,
         has_insurance: hasInsurance,
         insurance_cost: hasInsurance ? getInsuranceCost() : 0,
         insurance_payout_percentage: 0.8,
@@ -457,6 +443,63 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
               </Card>
             )}
 
+            {/* Betting Window Info */}
+            <Card className="border-2 border-primary/30 bg-primary/5">
+              <CardContent className="pt-4">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Clock className="h-4 w-4 text-primary" />
+                      <span className="font-semibold">Betting Window</span>
+                    </div>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Badge variant="outline" className="text-xs cursor-help">
+                            <Clock className="h-3 w-3 mr-1" />
+                            {userTimezone}
+                          </Badge>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>All times shown in your local timezone</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </div>
+                  
+                  <div className="space-y-2 text-sm">
+                    <div className="flex items-start gap-2">
+                      <Clock className="h-4 w-4 mt-0.5 text-primary" />
+                      <div>
+                        <p className="font-medium">Place bets for TOMORROW's weather</p>
+                        <p className="text-muted-foreground text-xs">
+                          Betting on: <strong>{format(tomorrow, 'EEEE, MMMM dd')}</strong>
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-start gap-2">
+                      <Clock className="h-4 w-4 mt-0.5 text-destructive" />
+                      <div>
+                        <p className="font-medium">Deadline: Today at 11:59 PM</p>
+                        <p className="text-muted-foreground text-xs">
+                          Bets lock at: <strong>{format(deadline, 'PPp')}</strong>
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="pt-2 border-t">
+                    <p className="text-xs text-muted-foreground">
+                      ✅ No cheating - you can't bet on weather you're experiencing<br />
+                      ✅ True prediction - requires actual forecasting skill<br />
+                      ✅ Daily engagement - come back each day for new bets
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
             {/* Weather Display */}
             {city && <WeatherDisplay city={city} />}
             
@@ -539,48 +582,6 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
               </div>
             )}
 
-            {/* Bet Duration/Deadline */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label>Bet Deadline</Label>
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <div className="flex items-center gap-1 text-xs text-muted-foreground cursor-help">
-                        <Clock className="h-3 w-3" />
-                        <span>{userTimezone}</span>
-                      </div>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>All times shown in your local timezone</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              </div>
-              <Select value={targetDate} onValueChange={setTargetDate}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select deadline day" />
-                </SelectTrigger>
-                <SelectContent>
-                  {availableDays.map((day) => (
-                    <SelectItem key={day.value} value={day.value}>
-                      {day.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {targetDate && (
-                <div className="space-y-1">
-                  <p className="text-xs text-muted-foreground">
-                    Bet covers full day (00:00-23:59) in your local time
-                  </p>
-                  <p className="text-xs font-medium text-foreground">
-                    Deadline: {format(endOfDay(new Date(targetDate)), 'PPP')} at 11:59 PM {userTimezone}
-                  </p>
-                </div>
-              )}
-            </div>
-
             {/* Stake */}
             <div className="space-y-2">
               <Label>
@@ -633,7 +634,7 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
             )}
 
             {/* Bet Summary */}
-            {city && predictionType && (predictionType === 'rain' ? rainPrediction : tempRange) && stake && targetDate && (
+            {city && predictionType && (predictionType === 'rain' ? rainPrediction : tempRange) && stake && (
               <Card className="bg-muted">
                 <CardContent className="pt-4">
                   <div className="space-y-2 text-sm">
@@ -651,9 +652,15 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
                       </span>
                     </div>
                     <div className="flex justify-between">
+                      <span>Betting On:</span>
+                      <span className="font-medium">
+                        {format(tomorrow, 'EEEE (MMM d)')}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
                       <span>Deadline:</span>
                       <span className="font-medium">
-                        {availableDays.find(d => d.value === targetDate)?.label}
+                        Today at 11:59 PM
                       </span>
                     </div>
                     <div className="flex justify-between">

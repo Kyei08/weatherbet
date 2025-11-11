@@ -16,40 +16,34 @@ import { useLevelSystem } from '@/hooks/useLevelSystem';
 import { calculateDynamicOdds, formatLiveOdds, getProbabilityPercentage } from '@/lib/dynamic-odds';
 import { supabase } from '@/integrations/supabase/client';
 import { z } from 'zod';
-import { format, addDays, startOfDay, endOfDay } from 'date-fns';
+import { format, addDays, startOfDay, endOfDay, setHours, setMinutes, setSeconds } from 'date-fns';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Clock } from 'lucide-react';
+import { Clock, Calendar } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 
 // Get user's timezone
 const getUserTimezone = () => {
   return Intl.DateTimeFormat().resolvedOptions().timeZone;
 };
 
+// Get tomorrow's date
+const getTomorrowDate = () => {
+  return addDays(startOfDay(new Date()), 1);
+};
+
+// Get today's deadline (11:59 PM)
+const getTodayDeadline = () => {
+  const today = new Date();
+  return setSeconds(setMinutes(setHours(today, 23), 59), 59);
+};
+
 const parlaySchema = z.object({
   stake: z.number().int('Stake must be a whole number').min(10, 'Minimum stake is 10 points').max(100000, 'Maximum stake is 100,000 points'),
-  targetDate: z.string().trim().min(1, 'Please select a bet deadline'),
   predictions: z.array(z.object({
     city: z.string().trim().min(1, 'City is required'),
     predictionType: z.enum(['rain', 'temperature'] as const),
   })).min(2, 'Parlay must have at least 2 predictions').max(5, 'Maximum 5 predictions per parlay'),
 });
-
-// Generate next 7 days for deadline selection
-const getNextSevenDays = () => {
-  const days = [];
-  const today = startOfDay(new Date());
-  
-  for (let i = 1; i <= 7; i++) {
-    const date = addDays(today, i);
-    days.push({
-      value: format(date, 'yyyy-MM-dd'),
-      label: format(date, 'EEEE (MMM d)'), // e.g., "Tuesday (Nov 12)"
-      date: date,
-    });
-  }
-  
-  return days;
-};
 
 interface ParlayBettingSlipProps {
   onBack: () => void;
@@ -75,13 +69,13 @@ const ParlayBettingSlip = ({ onBack, onBetPlaced }: ParlayBettingSlipProps) => {
     },
   ]);
   const [stake, setStake] = useState('');
-  const [targetDate, setTargetDate] = useState('');
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [weatherForecasts, setWeatherForecasts] = useState<Record<string, any[]>>({});
   const [hasInsurance, setHasInsurance] = useState(false);
-  const [availableDays] = useState(() => getNextSevenDays());
   const [userTimezone] = useState(() => getUserTimezone());
+  const [tomorrow] = useState(() => getTomorrowDate());
+  const [deadline] = useState(() => getTodayDeadline());
   const { toast } = useToast();
   const { checkAndUpdateChallenges } = useChallengeTracker();
   const { checkAchievements } = useAchievementTracker();
@@ -137,12 +131,8 @@ const ParlayBettingSlip = ({ onBack, onBetPlaced }: ParlayBettingSlipProps) => {
   };
 
   const getDaysAhead = () => {
-    if (!targetDate) return 1;
-    const today = startOfDay(new Date());
-    const target = startOfDay(new Date(targetDate));
-    const diffTime = target.getTime() - today.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return Math.max(1, diffDays);
+    // Always 1 day ahead (tomorrow)
+    return 1;
   };
 
   const addPrediction = () => {
@@ -260,7 +250,6 @@ const ParlayBettingSlip = ({ onBack, onBetPlaced }: ParlayBettingSlipProps) => {
     // Validate inputs
     const validation = parlaySchema.safeParse({
       stake: parseInt(stake),
-      targetDate,
       predictions: predictions.map(p => ({ city: p.city, predictionType: p.predictionType })),
     });
 
@@ -508,49 +497,61 @@ const ParlayBettingSlip = ({ onBack, onBetPlaced }: ParlayBettingSlipProps) => {
 
         {/* Stake and Duration */}
         <div className="space-y-4">
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <Label>Bet Deadline</Label>
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <div className="flex items-center gap-1 text-xs text-muted-foreground cursor-help">
-                      <Clock className="h-3 w-3" />
-                      <span>{userTimezone}</span>
-                    </div>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>All times shown in your local timezone</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+        {/* Betting Window Info */}
+        <div className="space-y-3 p-4 bg-muted/50 rounded-lg border">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Calendar className="h-4 w-4 text-primary" />
+              <span className="font-semibold">Betting Window</span>
             </div>
-            <Select value={targetDate} onValueChange={setTargetDate}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select deadline day" />
-              </SelectTrigger>
-              <SelectContent>
-                {availableDays.map((day) => (
-                  <SelectItem key={day.value} value={day.value}>
-                    {day.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {targetDate && (
-              <div className="space-y-1 mt-2">
-                <p className="text-xs text-muted-foreground">
-                  Bet covers full day (00:00-23:59) in your local time
-                </p>
-                <p className="text-xs font-medium text-foreground">
-                  Deadline: {format(endOfDay(new Date(targetDate)), 'PPP')} at 11:59 PM {userTimezone}
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Badge variant="outline" className="text-xs cursor-help">
+                    <Clock className="h-3 w-3 mr-1" />
+                    {userTimezone}
+                  </Badge>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>All times shown in your local timezone</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
+          
+          <div className="space-y-2 text-sm">
+            <div className="flex items-start gap-2">
+              <Clock className="h-4 w-4 mt-0.5 text-primary" />
+              <div>
+                <p className="font-medium">Place bets for TOMORROW's weather</p>
+                <p className="text-muted-foreground text-xs">
+                  Betting on: <strong>{format(tomorrow, 'EEEE, MMMM dd')}</strong>
                 </p>
               </div>
-            )}
+            </div>
+            
+            <div className="flex items-start gap-2">
+              <Clock className="h-4 w-4 mt-0.5 text-destructive" />
+              <div>
+                <p className="font-medium">Deadline: Today at 11:59 PM</p>
+                <p className="text-muted-foreground text-xs">
+                  Bets lock at: <strong>{format(deadline, 'PPp')}</strong>
+                </p>
+              </div>
+            </div>
           </div>
 
-          <div>
-            <Label>Stake (Points)</Label>
+          <div className="pt-2 border-t">
+            <p className="text-xs text-muted-foreground">
+              ⚡ All predictions must hit for the parlay to win!<br />
+              ✅ True prediction skill required for each leg<br />
+              ✅ Higher combined odds for bigger potential payouts
+            </p>
+          </div>
+        </div>
+
+        <div>
+          <Label>Stake (Points)</Label>
             <Input
               type="number"
               placeholder="Minimum 10 points"
