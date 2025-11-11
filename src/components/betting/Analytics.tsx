@@ -20,6 +20,7 @@ import {
 } from '@/lib/betting-analytics';
 import { Area, AreaChart, Bar, BarChart, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis, Cell, CartesianGrid, Legend } from 'recharts';
 import { ChartContainer, ChartTooltipContent } from '@/components/ui/chart';
+import { useNavigate } from 'react-router-dom';
 
 interface AnalyticsProps {
   onBack: () => void;
@@ -33,6 +34,7 @@ interface DateRange {
 }
 
 const Analytics = ({ onBack }: AnalyticsProps) => {
+  const navigate = useNavigate();
   const [bets, setBets] = useState<Bet[]>([]);
   const [loading, setLoading] = useState(true);
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('all');
@@ -121,14 +123,24 @@ const Analytics = ({ onBack }: AnalyticsProps) => {
       <div className="max-w-6xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex flex-col gap-4">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="sm" onClick={onBack}>
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-            <div>
-              <h1 className="text-3xl font-bold">📊 Analytics Dashboard</h1>
-              <p className="text-muted-foreground">Your complete betting performance overview</p>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <Button variant="ghost" size="sm" onClick={onBack}>
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
+              <div>
+                <h1 className="text-3xl font-bold">📊 Analytics Dashboard</h1>
+                <p className="text-muted-foreground">Your complete betting performance overview</p>
+              </div>
             </div>
+            <Button 
+              variant="outline"
+              onClick={() => navigate('/city-analytics')}
+              className="gap-2"
+            >
+              <MapPin className="h-4 w-4" />
+              City Deep Dive
+            </Button>
           </div>
 
           {/* Time Filters */}
