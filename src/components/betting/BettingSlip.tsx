@@ -16,7 +16,7 @@ import { useAchievementTracker } from '@/hooks/useAchievementTracker';
 import { useLevelSystem } from '@/hooks/useLevelSystem';
 import { calculateDynamicOdds, formatLiveOdds } from '@/lib/dynamic-odds';
 import { supabase } from '@/integrations/supabase/client';
-import { getActivePurchases, getActiveMultipliers, getMaxStakeBoost, PurchaseWithItem } from '@/lib/supabase-shop';
+import { getActivePurchases, getActiveMultipliers, getMaxStakeBoost, PurchaseWithItem, useItem } from '@/lib/supabase-shop';
 import { recordBonusEarning } from '@/lib/supabase-bonus-tracker';
 
 interface BettingSlipProps {
@@ -246,6 +246,20 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
           undefined,
           betData?.id
         );
+        
+        // Mark stake boost item as used (one-time use)
+        const stakeBoostPurchase = activePurchases.find(p => p.item.item_type === 'stake_boost' && !p.used);
+        if (stakeBoostPurchase) {
+          await useItem(stakeBoostPurchase.id);
+        }
+      }
+
+      // Mark insurance item as used if it was purchased
+      if (hasInsurance) {
+        const insurancePurchase = activePurchases.find(p => p.item.item_type === 'insurance' && !p.used);
+        if (insurancePurchase) {
+          await useItem(insurancePurchase.id);
+        }
       }
 
       // Track challenge progress
