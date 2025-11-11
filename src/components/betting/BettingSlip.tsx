@@ -6,7 +6,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Activity, Sparkles, Clock, Zap } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { ArrowLeft, Activity, Sparkles, Clock, Zap, Info } from 'lucide-react';
 import { getUser, addBet, updateUserPoints } from '@/lib/supabase-auth-storage';
 import { CITIES, TEMPERATURE_RANGES, City } from '@/types/supabase-betting';
 import { useToast } from '@/hooks/use-toast';
@@ -575,7 +576,28 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
                       </>
                     )}
                     <div className="flex justify-between">
-                      <span>Odds:</span>
+                      <span className="flex items-center gap-1">
+                        Odds:
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                            </TooltipTrigger>
+                            <TooltipContent className="max-w-xs">
+                              <div className="space-y-2">
+                                <p className="font-semibold">10% House Edge</p>
+                                <p className="text-xs">Our odds include a 10% house edge, which is <strong>better than most betting sites</strong>:</p>
+                                <ul className="text-xs space-y-1 list-disc list-inside">
+                                  <li>Traditional sportsbooks: 5-15% edge</li>
+                                  <li>Casino games: 2-25% edge</li>
+                                  <li>Weather betting: 10% edge (transparent)</li>
+                                </ul>
+                                <p className="text-xs">This means for every 100 points wagered across all bets, the house keeps 10 points on average to maintain the platform.</p>
+                              </div>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </span>
                       <span className="font-medium flex items-center gap-2">
                         {formatLiveOdds(getCurrentOdds())}
                         {weatherForecast.length > 0 && (
