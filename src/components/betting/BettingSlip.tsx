@@ -20,13 +20,31 @@ import { supabase } from '@/integrations/supabase/client';
 import { getActivePurchases, getActiveMultipliers, getMaxStakeBoost, PurchaseWithItem, useItem } from '@/lib/supabase-shop';
 import { recordBonusEarning } from '@/lib/supabase-bonus-tracker';
 import { z } from 'zod';
+import { format, addDays, startOfDay, endOfDay } from 'date-fns';
 
 const betSchema = z.object({
   city: z.string().trim().min(1, 'City is required'),
   stake: z.number().int('Stake must be a whole number').min(10, 'Minimum stake is 10 points').max(100000, 'Maximum stake is 100,000 points'),
-  betDuration: z.number().int().min(1, 'Duration must be at least 1 day').max(7, 'Maximum duration is 7 days'),
+  targetDate: z.string().trim().min(1, 'Please select a bet deadline'),
   predictionType: z.enum(['rain', 'temperature'] as const, { errorMap: () => ({ message: 'Invalid prediction type' }) }),
 });
+
+// Generate next 7 days for deadline selection
+const getNextSevenDays = () => {
+  const days = [];
+  const today = startOfDay(new Date());
+  
+  for (let i = 1; i <= 7; i++) {
+    const date = addDays(today, i);
+    days.push({
+      value: format(date, 'yyyy-MM-dd'),
+      label: format(date, 'EEEE (MMM d)'), // e.g., "Tuesday (Nov 12)"
+      date: date,
+    });
+  }
+  
+  return days;
+};
 
 interface BettingSlipProps {
   onBack: () => void;
@@ -39,8 +57,9 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
   const [rainPrediction, setRainPrediction] = useState<'yes' | 'no' | ''>('');
   const [tempRange, setTempRange] = useState<string>('');
   const [stake, setStake] = useState<string>('');
-  const [betDuration, setBetDuration] = useState<string>('');
+  const [targetDate, setTargetDate] = useState<string>('');
   const [user, setUser] = useState<any>(null);
+  const [availableDays] = useState(() => getNextSevenDays());
   const [loading, setLoading] = useState(false);
   const [weatherForecast, setWeatherForecast] = useState<any[]>([]);
   const [loadingWeather, setLoadingWeather] = useState(false);
@@ -112,8 +131,17 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
     fetchWeather();
   }, [city]);
 
+  const getDaysAhead = () => {
+    if (!targetDate) return 1;
+    const today = startOfDay(new Date());
+    const target = startOfDay(new Date(targetDate));
+    const diffTime = target.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return Math.max(1, diffDays);
+  };
+
   const getCurrentOdds = () => {
-    if (!predictionType || !betDuration) return 0;
+    if (!predictionType || !targetDate) return 0;
     
     const predictionValue = predictionType === 'rain' ? rainPrediction : tempRange;
     if (!predictionValue) return 0;
@@ -124,7 +152,7 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
         predictionType,
         predictionValue,
         forecast: weatherForecast,
-        daysAhead: parseInt(betDuration) || 1,
+        daysAhead: getDaysAhead(),
       });
     }
 
@@ -135,7 +163,7 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
   };
 
   const getCurrentProbability = () => {
-    if (!predictionType || !betDuration || weatherForecast.length === 0) return null;
+    if (!predictionType || !targetDate || weatherForecast.length === 0) return null;
     
     const predictionValue = predictionType === 'rain' ? rainPrediction : tempRange;
     if (!predictionValue) return null;
@@ -144,7 +172,7 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
       predictionType,
       predictionValue,
       weatherForecast,
-      parseInt(betDuration) || 1
+      getDaysAhead()
     );
   };
 
@@ -194,10 +222,8 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
   };
 
   const getBetDeadline = () => {
-    const now = new Date();
-    const daysToAdd = parseInt(betDuration);
-    const deadline = new Date(now);
-    deadline.setDate(deadline.getDate() + daysToAdd);
+    if (!targetDate) return new Date().toISOString();
+    const deadline = endOfDay(new Date(targetDate));
     return deadline.toISOString();
   };
 
@@ -208,7 +234,7 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
       city &&
       predictionType &&
       (predictionType === 'rain' ? rainPrediction : tempRange) &&
-      betDuration &&
+      targetDate &&
       stakeNum >= 10 &&
       stakeNum <= getMaxStake() &&
       totalCost <= user.points
@@ -224,7 +250,7 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
     const validation = betSchema.safeParse({
       city,
       stake: parseInt(stake),
-      betDuration: parseInt(betDuration),
+      targetDate,
       predictionType,
     });
 
@@ -260,7 +286,7 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
       await updateUserPoints(user.points - totalCost);
 
       // Add bet
-      const targetDate = getBetDeadline();
+      const deadline = getBetDeadline();
       const betData = await addBet({
         city: city as City,
         prediction_type: predictionType as 'rain' | 'temperature',
@@ -268,9 +294,9 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
         stake: stakeNum,
         odds: getCurrentOdds(),
         result: 'pending',
-        target_date: targetDate,
-        expires_at: targetDate,
-        bet_duration_days: parseInt(betDuration),
+        target_date: deadline,
+        expires_at: deadline,
+        bet_duration_days: getDaysAhead(),
         has_insurance: hasInsurance,
         insurance_cost: hasInsurance ? getInsuranceCost() : 0,
         insurance_payout_percentage: 0.8,
@@ -510,18 +536,23 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
             {/* Bet Duration/Deadline */}
             <div className="space-y-2">
               <Label>Bet Deadline</Label>
-              <Select value={betDuration} onValueChange={setBetDuration}>
+              <Select value={targetDate} onValueChange={setTargetDate}>
                 <SelectTrigger>
-                  <SelectValue placeholder="When should this bet be resolved?" />
+                  <SelectValue placeholder="Select deadline day" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="1">Tomorrow (24 hours)</SelectItem>
-                  <SelectItem value="2">2 Days</SelectItem>
-                  <SelectItem value="3">3 Days</SelectItem>
-                  <SelectItem value="7">1 Week</SelectItem>
-                  <SelectItem value="14">2 Weeks</SelectItem>
+                  {availableDays.map((day) => (
+                    <SelectItem key={day.value} value={day.value}>
+                      {day.label}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
+              {targetDate && (
+                <p className="text-xs text-muted-foreground">
+                  Bet covers full day (00:00-23:59)
+                </p>
+              )}
             </div>
 
             {/* Stake */}
@@ -576,7 +607,7 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
             )}
 
             {/* Bet Summary */}
-            {city && predictionType && (predictionType === 'rain' ? rainPrediction : tempRange) && stake && betDuration && (
+            {city && predictionType && (predictionType === 'rain' ? rainPrediction : tempRange) && stake && targetDate && (
               <Card className="bg-muted">
                 <CardContent className="pt-4">
                   <div className="space-y-2 text-sm">
@@ -596,7 +627,7 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
                     <div className="flex justify-between">
                       <span>Deadline:</span>
                       <span className="font-medium">
-                        {betDuration === '1' ? 'Tomorrow' : `${betDuration} days`}
+                        {availableDays.find(d => d.value === targetDate)?.label}
                       </span>
                     </div>
                     <div className="flex justify-between">

@@ -16,15 +16,33 @@ import { useLevelSystem } from '@/hooks/useLevelSystem';
 import { calculateDynamicOdds, formatLiveOdds, getProbabilityPercentage } from '@/lib/dynamic-odds';
 import { supabase } from '@/integrations/supabase/client';
 import { z } from 'zod';
+import { format, addDays, startOfDay, endOfDay } from 'date-fns';
 
 const parlaySchema = z.object({
   stake: z.number().int('Stake must be a whole number').min(10, 'Minimum stake is 10 points').max(100000, 'Maximum stake is 100,000 points'),
-  betDuration: z.number().int().min(1, 'Duration must be at least 1 day').max(7, 'Maximum duration is 7 days'),
+  targetDate: z.string().trim().min(1, 'Please select a bet deadline'),
   predictions: z.array(z.object({
     city: z.string().trim().min(1, 'City is required'),
     predictionType: z.enum(['rain', 'temperature'] as const),
   })).min(2, 'Parlay must have at least 2 predictions').max(5, 'Maximum 5 predictions per parlay'),
 });
+
+// Generate next 7 days for deadline selection
+const getNextSevenDays = () => {
+  const days = [];
+  const today = startOfDay(new Date());
+  
+  for (let i = 1; i <= 7; i++) {
+    const date = addDays(today, i);
+    days.push({
+      value: format(date, 'yyyy-MM-dd'),
+      label: format(date, 'EEEE (MMM d)'), // e.g., "Tuesday (Nov 12)"
+      date: date,
+    });
+  }
+  
+  return days;
+};
 
 interface ParlayBettingSlipProps {
   onBack: () => void;
@@ -50,11 +68,12 @@ const ParlayBettingSlip = ({ onBack, onBetPlaced }: ParlayBettingSlipProps) => {
     },
   ]);
   const [stake, setStake] = useState('');
-  const [betDuration, setBetDuration] = useState('1');
+  const [targetDate, setTargetDate] = useState('');
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [weatherForecasts, setWeatherForecasts] = useState<Record<string, any[]>>({});
   const [hasInsurance, setHasInsurance] = useState(false);
+  const [availableDays] = useState(() => getNextSevenDays());
   const { toast } = useToast();
   const { checkAndUpdateChallenges } = useChallengeTracker();
   const { checkAchievements } = useAchievementTracker();
@@ -109,6 +128,15 @@ const ParlayBettingSlip = ({ onBack, onBetPlaced }: ParlayBettingSlipProps) => {
     }
   };
 
+  const getDaysAhead = () => {
+    if (!targetDate) return 1;
+    const today = startOfDay(new Date());
+    const target = startOfDay(new Date(targetDate));
+    const diffTime = target.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return Math.max(1, diffDays);
+  };
+
   const addPrediction = () => {
     if (predictions.length >= 10) {
       toast({
@@ -157,11 +185,12 @@ const ParlayBettingSlip = ({ onBack, onBetPlaced }: ParlayBettingSlipProps) => {
     // Use dynamic odds if we have forecast data for this city
     const forecast = weatherForecasts[pred.city];
     if (forecast && forecast.length > 0) {
+      const daysAhead = getDaysAhead();
       return calculateDynamicOdds({
         predictionType: pred.predictionType,
         predictionValue,
         forecast,
-        daysAhead: parseInt(betDuration) || 1,
+        daysAhead,
       });
     }
 
@@ -223,7 +252,7 @@ const ParlayBettingSlip = ({ onBack, onBetPlaced }: ParlayBettingSlipProps) => {
     // Validate inputs
     const validation = parlaySchema.safeParse({
       stake: parseInt(stake),
-      betDuration: parseInt(betDuration),
+      targetDate,
       predictions: predictions.map(p => ({ city: p.city, predictionType: p.predictionType })),
     });
 
@@ -269,7 +298,7 @@ const ParlayBettingSlip = ({ onBack, onBetPlaced }: ParlayBettingSlipProps) => {
       await updateUserPoints(user.points - totalCost);
 
       // Create parlay with insurance
-      const parlayId = await createParlay(stakeNum, parlayPredictions, parseInt(betDuration));
+      const parlayId = await createParlay(stakeNum, parlayPredictions, getDaysAhead());
       
       // Update parlay with insurance details if purchased
       if (hasInsurance) {
@@ -472,17 +501,24 @@ const ParlayBettingSlip = ({ onBack, onBetPlaced }: ParlayBettingSlipProps) => {
         {/* Stake and Duration */}
         <div className="space-y-4">
           <div>
-            <Label>Bet Duration</Label>
-            <Select value={betDuration} onValueChange={setBetDuration}>
+            <Label>Bet Deadline</Label>
+            <Select value={targetDate} onValueChange={setTargetDate}>
               <SelectTrigger>
-                <SelectValue />
+                <SelectValue placeholder="Select deadline day" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="1">1 Day</SelectItem>
-                <SelectItem value="3">3 Days</SelectItem>
-                <SelectItem value="7">7 Days</SelectItem>
+                {availableDays.map((day) => (
+                  <SelectItem key={day.value} value={day.value}>
+                    {day.label}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
+            {targetDate && (
+              <p className="text-xs text-muted-foreground">
+                Bet covers full day (00:00-23:59)
+              </p>
+            )}
           </div>
 
           <div>
