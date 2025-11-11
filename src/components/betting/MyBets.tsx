@@ -12,6 +12,7 @@ import { useAchievementTracker } from '@/hooks/useAchievementTracker';
 import { useLevelSystem } from '@/hooks/useLevelSystem';
 import { calculateDynamicCashOut, calculateDynamicParlayCashOut } from '@/lib/dynamic-cashout';
 import CashOutHistoryChart from './CashOutHistoryChart';
+import OddsHistoryChart from './OddsHistoryChart';
 
 interface MyBetsProps {
   onBack: () => void;
@@ -425,6 +426,16 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
                           createdAt={bet.created_at}
                           expiresAt={bet.expires_at}
                         />
+                        
+                        {/* Odds History Chart */}
+                        <OddsHistoryChart
+                          city={bet.city}
+                          predictionType={bet.prediction_type}
+                          predictionValue={bet.prediction_value}
+                          createdAt={bet.created_at}
+                          expiresAt={bet.expires_at}
+                          currentOdds={Number(bet.odds)}
+                        />
                       </div>
                     ) : (
                       <div className="pt-2 border-t bg-accent/10 -mx-4 -mb-3 px-4 py-3 rounded-b-lg">
@@ -565,6 +576,16 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
                           parlayLegs={parlay.parlay_legs}
                           combinedOdds={Number(parlay.combined_odds)}
                           totalStake={parlay.total_stake}
+                        />
+                        
+                        {/* Odds History Chart */}
+                        <OddsHistoryChart
+                          createdAt={parlay.created_at}
+                          expiresAt={parlay.expires_at}
+                          currentOdds={Number(parlay.combined_odds)}
+                          isParlay={true}
+                          parlayLegs={parlay.parlay_legs}
+                          combinedOdds={Number(parlay.combined_odds)}
                         />
                       </div>
                     ) : (
