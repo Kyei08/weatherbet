@@ -8,7 +8,7 @@ interface WeatherForecast {
 }
 
 interface DynamicOddsParams {
-  predictionType: 'rain' | 'temperature';
+  predictionType: 'rain' | 'temperature' | 'rainfall' | 'snow' | 'wind' | 'dew_point' | 'pressure' | 'cloud_coverage';
   predictionValue: string;
   forecast: WeatherForecast[];
   daysAhead: number;
@@ -31,6 +31,11 @@ export const calculateDynamicOdds = ({
   // Get the forecast for the target date
   const targetForecast = forecast[Math.min(daysAhead - 1, forecast.length - 1)];
   if (!targetForecast) return 2.0; // Default if no forecast available
+
+  // Handle new categories with static odds for now
+  if (['rainfall', 'snow', 'wind', 'dew_point', 'pressure', 'cloud_coverage'].includes(predictionType)) {
+    return calculateCategoryOdds(predictionType as any, predictionValue);
+  }
 
   if (predictionType === 'rain') {
     const rainProb = targetForecast.rain_probability;
@@ -106,7 +111,7 @@ export const formatLiveOdds = (odds: number): string => {
  * Get the actual probability percentage for display
  */
 export const getProbabilityPercentage = (
-  predictionType: 'rain' | 'temperature',
+  predictionType: 'rain' | 'temperature' | 'rainfall' | 'snow' | 'wind' | 'dew_point' | 'pressure' | 'cloud_coverage',
   predictionValue: string,
   forecast: WeatherForecast[],
   daysAhead: number
@@ -132,6 +137,74 @@ export const getProbabilityPercentage = (
   if (distance <= 3) return 50;
   if (distance <= 7) return 30;
   return 15;
+};
+
+/**
+ * Calculate odds for new weather categories
+ */
+export const calculateCategoryOdds = (
+  predictionType: 'rainfall' | 'snow' | 'wind' | 'dew_point' | 'pressure' | 'cloud_coverage',
+  predictionValue: string
+): number => {
+  // For now, use static odds based on the category
+  // These can be made dynamic when we integrate more detailed weather data
+  
+  if (predictionType === 'snow') {
+    // Snow yes/no
+    return predictionValue === 'yes' ? 3.5 : 1.5;
+  }
+  
+  // For range-based predictions, use the odds from the ranges
+  if (predictionType === 'rainfall') {
+    const rainfallOdds: { [key: string]: number } = {
+      '0-5': 2.0,
+      '5-10': 2.5,
+      '10-20': 3.0,
+      '20-999': 4.0,
+    };
+    return rainfallOdds[predictionValue] || 2.0;
+  }
+  
+  if (predictionType === 'wind') {
+    const windOdds: { [key: string]: number } = {
+      '0-10': 2.0,
+      '10-20': 2.2,
+      '20-30': 2.5,
+      '30-999': 3.5,
+    };
+    return windOdds[predictionValue] || 2.0;
+  }
+  
+  if (predictionType === 'dew_point') {
+    const dewPointOdds: { [key: string]: number } = {
+      '0-10': 2.0,
+      '10-15': 2.2,
+      '15-20': 2.5,
+      '20-999': 3.0,
+    };
+    return dewPointOdds[predictionValue] || 2.0;
+  }
+  
+  if (predictionType === 'pressure') {
+    const pressureOdds: { [key: string]: number } = {
+      '980-1000': 2.5,
+      '1000-1020': 2.0,
+      '1020-1040': 2.5,
+    };
+    return pressureOdds[predictionValue] || 2.0;
+  }
+  
+  if (predictionType === 'cloud_coverage') {
+    const cloudOdds: { [key: string]: number } = {
+      '0-25': 2.5,
+      '25-50': 2.2,
+      '50-75': 2.2,
+      '75-100': 2.5,
+    };
+    return cloudOdds[predictionValue] || 2.0;
+  }
+  
+  return 2.0;
 };
 
 /**

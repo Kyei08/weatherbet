@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { ArrowLeft, Activity, Sparkles, Clock, Zap, Info } from 'lucide-react';
 import { getUser, addBet, updateUserPoints } from '@/lib/supabase-auth-storage';
-import { CITIES, TEMPERATURE_RANGES, City } from '@/types/supabase-betting';
+import { CITIES, TEMPERATURE_RANGES, City, RAINFALL_RANGES, WIND_RANGES, DEW_POINT_RANGES, PRESSURE_RANGES, CLOUD_COVERAGE_RANGES } from '@/types/supabase-betting';
 import { useToast } from '@/hooks/use-toast';
 import WeatherDisplay from './WeatherDisplay';
 import { useChallengeTracker } from '@/hooks/useChallengeTracker';
@@ -46,7 +46,7 @@ const getDeadlineForDay = (betDay: Date) => {
 const betSchema = z.object({
   city: z.string().trim().min(1, 'City is required'),
   stake: z.number().int('Stake must be a whole number').min(10, 'Minimum stake is 10 points').max(100000, 'Maximum stake is 100,000 points'),
-  predictionType: z.enum(['rain', 'temperature'] as const, { errorMap: () => ({ message: 'Invalid prediction type' }) }),
+  predictionType: z.enum(['rain', 'temperature', 'rainfall', 'snow', 'wind', 'dew_point', 'pressure', 'cloud_coverage'] as const, { errorMap: () => ({ message: 'Invalid prediction type' }) }),
 });
 
 interface BettingSlipProps {
@@ -56,9 +56,15 @@ interface BettingSlipProps {
 
 const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
   const [city, setCity] = useState<City | ''>('');
-  const [predictionType, setPredictionType] = useState<'rain' | 'temperature' | ''>('');
+  const [predictionType, setPredictionType] = useState<'rain' | 'temperature' | 'rainfall' | 'snow' | 'wind' | 'dew_point' | 'pressure' | 'cloud_coverage' | ''>('');
   const [rainPrediction, setRainPrediction] = useState<'yes' | 'no' | ''>('');
+  const [snowPrediction, setSnowPrediction] = useState<'yes' | 'no' | ''>('');
   const [tempRange, setTempRange] = useState<string>('');
+  const [rainfallRange, setRainfallRange] = useState<string>('');
+  const [windRange, setWindRange] = useState<string>('');
+  const [dewPointRange, setDewPointRange] = useState<string>('');
+  const [pressureRange, setPressureRange] = useState<string>('');
+  const [cloudCoverageRange, setCloudCoverageRange] = useState<string>('');
   const [stake, setStake] = useState<string>('');
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(false);
@@ -144,7 +150,16 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
   const getCurrentOdds = () => {
     if (!predictionType) return 0;
     
-    const predictionValue = predictionType === 'rain' ? rainPrediction : tempRange;
+    let predictionValue = '';
+    if (predictionType === 'rain') predictionValue = rainPrediction;
+    else if (predictionType === 'temperature') predictionValue = tempRange;
+    else if (predictionType === 'rainfall') predictionValue = rainfallRange;
+    else if (predictionType === 'snow') predictionValue = snowPrediction;
+    else if (predictionType === 'wind') predictionValue = windRange;
+    else if (predictionType === 'dew_point') predictionValue = dewPointRange;
+    else if (predictionType === 'pressure') predictionValue = pressureRange;
+    else if (predictionType === 'cloud_coverage') predictionValue = cloudCoverageRange;
+    
     if (!predictionValue) return 0;
 
     // Use dynamic odds if we have forecast data
@@ -239,10 +254,22 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
     
     const stakeNum = parseInt(stake) || 0;
     const totalCost = getTotalCost();
+    
+    // Get the prediction value based on type
+    let predictionValue = '';
+    if (predictionType === 'rain') predictionValue = rainPrediction;
+    else if (predictionType === 'temperature') predictionValue = tempRange;
+    else if (predictionType === 'rainfall') predictionValue = rainfallRange;
+    else if (predictionType === 'snow') predictionValue = snowPrediction;
+    else if (predictionType === 'wind') predictionValue = windRange;
+    else if (predictionType === 'dew_point') predictionValue = dewPointRange;
+    else if (predictionType === 'pressure') predictionValue = pressureRange;
+    else if (predictionType === 'cloud_coverage') predictionValue = cloudCoverageRange;
+    
     return (
       city &&
       predictionType &&
-      (predictionType === 'rain' ? rainPrediction : tempRange) &&
+      predictionValue &&
       stakeNum >= 10 &&
       stakeNum <= getMaxStake() &&
       totalCost <= user.points
@@ -298,7 +325,18 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
 
     try {
       const stakeNum = parseInt(stake);
-      const predictionValue = predictionType === 'rain' ? rainPrediction : tempRange;
+      
+      // Get the prediction value based on type
+      let predictionValue = '';
+      if (predictionType === 'rain') predictionValue = rainPrediction;
+      else if (predictionType === 'temperature') predictionValue = tempRange;
+      else if (predictionType === 'rainfall') predictionValue = rainfallRange;
+      else if (predictionType === 'snow') predictionValue = snowPrediction;
+      else if (predictionType === 'wind') predictionValue = windRange;
+      else if (predictionType === 'dew_point') predictionValue = dewPointRange;
+      else if (predictionType === 'pressure') predictionValue = pressureRange;
+      else if (predictionType === 'cloud_coverage') predictionValue = cloudCoverageRange;
+      
       const totalCost = getTotalCost();
 
       // Deduct total cost (stake + insurance) from user points
@@ -309,7 +347,7 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
       const targetDateEnd = endOfDay(selectedDay);
       const betData = await addBet({
         city: city as City,
-        prediction_type: predictionType as 'rain' | 'temperature',
+        prediction_type: predictionType as any,
         prediction_value: predictionValue as string,
         stake: stakeNum,
         odds: getCurrentOdds(),
@@ -599,14 +637,38 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
             {/* Prediction Type */}
             <div className="space-y-3">
               <Label>Prediction Type</Label>
-              <RadioGroup value={predictionType} onValueChange={(value) => setPredictionType(value as 'rain' | 'temperature')}>
+              <RadioGroup value={predictionType} onValueChange={(value) => setPredictionType(value as any)}>
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="rain" id="rain" />
-                  <Label htmlFor="rain">Rain Prediction</Label>
+                  <Label htmlFor="rain">Rain (Yes/No)</Label>
                 </div>
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="temperature" id="temperature" />
                   <Label htmlFor="temperature">Temperature Range</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="rainfall" id="rainfall" />
+                  <Label htmlFor="rainfall">Rainfall Amount</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="snow" id="snow" />
+                  <Label htmlFor="snow">Snow (Yes/No)</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="wind" id="wind" />
+                  <Label htmlFor="wind">Wind Speed</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="dew_point" id="dew_point" />
+                  <Label htmlFor="dew_point">Dew Point</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="pressure" id="pressure" />
+                  <Label htmlFor="pressure">Atmospheric Pressure</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="cloud_coverage" id="cloud_coverage" />
+                  <Label htmlFor="cloud_coverage">Cloud Coverage</Label>
                 </div>
               </RadioGroup>
             </div>
@@ -638,6 +700,118 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
                   </SelectTrigger>
                   <SelectContent>
                     {TEMPERATURE_RANGES.map((range) => (
+                      <SelectItem key={range.value} value={range.value}>
+                        {range.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {/* Rainfall Options */}
+            {predictionType === 'rainfall' && (
+              <div className="space-y-2">
+                <Label>Rainfall Amount</Label>
+                <Select value={rainfallRange} onValueChange={setRainfallRange}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Choose rainfall range" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {RAINFALL_RANGES.map((range) => (
+                      <SelectItem key={range.value} value={range.value}>
+                        {range.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {/* Snow Options */}
+            {predictionType === 'snow' && (
+              <div className="space-y-3">
+                <Label>Will it snow?</Label>
+                <RadioGroup value={snowPrediction} onValueChange={(value) => setSnowPrediction(value as 'yes' | 'no')}>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="yes" id="snow-yes" />
+                    <Label htmlFor="snow-yes">Yes</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="no" id="snow-no" />
+                    <Label htmlFor="snow-no">No</Label>
+                  </div>
+                </RadioGroup>
+              </div>
+            )}
+
+            {/* Wind Options */}
+            {predictionType === 'wind' && (
+              <div className="space-y-2">
+                <Label>Wind Speed Range</Label>
+                <Select value={windRange} onValueChange={setWindRange}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Choose wind speed range" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {WIND_RANGES.map((range) => (
+                      <SelectItem key={range.value} value={range.value}>
+                        {range.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {/* Dew Point Options */}
+            {predictionType === 'dew_point' && (
+              <div className="space-y-2">
+                <Label>Dew Point Range</Label>
+                <Select value={dewPointRange} onValueChange={setDewPointRange}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Choose dew point range" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {DEW_POINT_RANGES.map((range) => (
+                      <SelectItem key={range.value} value={range.value}>
+                        {range.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {/* Pressure Options */}
+            {predictionType === 'pressure' && (
+              <div className="space-y-2">
+                <Label>Atmospheric Pressure Range</Label>
+                <Select value={pressureRange} onValueChange={setPressureRange}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Choose pressure range" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PRESSURE_RANGES.map((range) => (
+                      <SelectItem key={range.value} value={range.value}>
+                        {range.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {/* Cloud Coverage Options */}
+            {predictionType === 'cloud_coverage' && (
+              <div className="space-y-2">
+                <Label>Cloud Coverage Range</Label>
+                <Select value={cloudCoverageRange} onValueChange={setCloudCoverageRange}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Choose cloud coverage range" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {CLOUD_COVERAGE_RANGES.map((range) => (
                       <SelectItem key={range.value} value={range.value}>
                         {range.label}
                       </SelectItem>

@@ -8,7 +8,7 @@ type ParlayLeg = Database['public']['Tables']['parlay_legs']['Row'];
 
 export interface ParlayPrediction {
   city: string;
-  predictionType: 'rain' | 'temperature';
+  predictionType: 'rain' | 'temperature' | 'rainfall' | 'snow' | 'wind' | 'dew_point' | 'pressure' | 'cloud_coverage';
   predictionValue: string;
   odds: number;
 }
