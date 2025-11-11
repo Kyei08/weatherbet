@@ -94,7 +94,7 @@ export const getCombinedBets = async (limit?: number): Promise<CombinedBetWithCa
   const { data, error } = await query;
 
   if (error) throw error;
-  return data as CombinedBetWithCategories[];
+  return (data || []) as unknown as CombinedBetWithCategories[];
 };
 
 export const updateCombinedBetResult = async (

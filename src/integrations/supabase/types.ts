@@ -248,7 +248,15 @@ export type Database = {
           prediction_value?: string
           result?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "fk_combined_bet_categories_combined_bet"
+            columns: ["combined_bet_id"]
+            isOneToOne: false
+            referencedRelation: "combined_bets"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       combined_bets: {
         Row: {

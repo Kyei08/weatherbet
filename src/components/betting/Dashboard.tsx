@@ -8,6 +8,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAdminCheck } from '@/hooks/useAdminCheck';
 import BettingSlip from './BettingSlip';
 import ParlayBettingSlip from './ParlayBettingSlip';
+import { CombinedBettingSlip } from './CombinedBettingSlip';
 import MyBets from './MyBets';
 import Leaderboard from './Leaderboard';
 import ActiveBetsWeather from './ActiveBetsWeather';
@@ -24,7 +25,7 @@ const Dashboard = () => {
   const { isAdminUser } = useAdminCheck();
   const [user, setUser] = useState<User | null>(null);
   const [bets, setBets] = useState<Bet[]>([]);
-  const [activeView, setActiveView] = useState<'dashboard' | 'betting' | 'parlay' | 'mybets' | 'leaderboard' | 'shop' | 'analytics'>('dashboard');
+  const [activeView, setActiveView] = useState<'dashboard' | 'betting' | 'parlay' | 'combined' | 'mybets' | 'leaderboard' | 'shop' | 'analytics'>('dashboard');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -79,6 +80,10 @@ const Dashboard = () => {
 
   if (activeView === 'parlay') {
     return <ParlayBettingSlip onBack={() => setActiveView('dashboard')} onBetPlaced={refreshData} />;
+  }
+
+  if (activeView === 'combined') {
+    return <CombinedBettingSlip onBack={() => setActiveView('dashboard')} onBetPlaced={refreshData} />;
   }
 
   if (activeView === 'mybets') {
@@ -161,7 +166,7 @@ const Dashboard = () => {
         <Perks />
 
         {/* Quick Actions */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <Button 
             size="lg" 
             className="h-20 text-lg"
@@ -172,6 +177,14 @@ const Dashboard = () => {
           <Button 
             size="lg" 
             className="h-20 text-lg bg-gradient-primary"
+            onClick={() => setActiveView('combined')}
+          >
+            <Activity className="mr-2 h-5 w-5" />
+            ⚡ Combined Bet
+          </Button>
+          <Button 
+            size="lg" 
+            className="h-20 text-lg"
             onClick={() => setActiveView('parlay')}
           >
             <Layers className="mr-2 h-5 w-5" />

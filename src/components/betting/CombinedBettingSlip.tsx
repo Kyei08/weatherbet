@@ -15,7 +15,7 @@ import { User } from '@/types/supabase-betting';
 import { z } from 'zod';
 import { createCombinedBet } from '@/lib/supabase-combined-bets';
 import { calculateDynamicOdds, calculateCategoryOdds } from '@/lib/dynamic-odds';
-import { WeatherDisplay } from './WeatherDisplay';
+import WeatherDisplay from './WeatherDisplay';
 
 const getUserTimezone = () => Intl.DateTimeFormat().resolvedOptions().timeZone;
 
@@ -155,7 +155,7 @@ export function CombinedBettingSlip({ onBack, onBetPlaced }: CombinedBettingSlip
     if (type === 'rain' || type === 'snow') {
       if (weatherForecast) {
         return calculateDynamicOdds({
-          predictionType: type,
+          predictionType: type as 'rain' | 'snow',
           predictionValue: value,
           forecast: weatherForecast,
           daysAhead
@@ -167,7 +167,7 @@ export function CombinedBettingSlip({ onBack, onBetPlaced }: CombinedBettingSlip
     if (type === 'temperature') {
       if (weatherForecast) {
         return calculateDynamicOdds({
-          predictionType: type,
+          predictionType: type as 'temperature',
           predictionValue: value,
           forecast: weatherForecast,
           daysAhead
@@ -177,7 +177,7 @@ export function CombinedBettingSlip({ onBack, onBetPlaced }: CombinedBettingSlip
       return tempRange?.odds || 2.0;
     }
 
-    return calculateCategoryOdds(type, value);
+    return calculateCategoryOdds(type as 'rainfall' | 'wind' | 'dew_point' | 'pressure' | 'cloud_coverage' | 'snow', value);
   };
 
   const updateCategoryValue = (type: string, value: string) => {
