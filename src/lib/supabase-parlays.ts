@@ -20,7 +20,8 @@ export interface ParlayWithLegs extends Parlay {
 export const createParlay = async (
   stake: number,
   predictions: ParlayPrediction[],
-  betDurationDays: number
+  betDurationDays: number,
+  targetDay: Date
 ): Promise<string> => {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Not authenticated');
@@ -28,14 +29,14 @@ export const createParlay = async (
   // Calculate combined odds (multiply all odds together)
   const combinedOdds = predictions.reduce((total, pred) => total * pred.odds, 1);
 
-  // Bets are always for tomorrow and expire at end of today (23:59:59)
-  const today = new Date();
-  today.setHours(23, 59, 59, 999);
+  // Deadline is day before the target day at 23:59:59
+  const deadline = new Date(targetDay);
+  deadline.setDate(deadline.getDate() - 1);
+  deadline.setHours(23, 59, 59, 999);
   
-  // Target date is end of tomorrow
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  tomorrow.setHours(23, 59, 59, 999);
+  // Target date is end of the selected day
+  const targetDateEnd = new Date(targetDay);
+  targetDateEnd.setHours(23, 59, 59, 999);
 
   // Create the parlay
   const { data: parlay, error: parlayError } = await supabase
@@ -44,7 +45,7 @@ export const createParlay = async (
       user_id: user.id,
       total_stake: stake,
       combined_odds: combinedOdds,
-      expires_at: today.toISOString(), // Bets lock at end of today
+      expires_at: deadline.toISOString(),
     })
     .select()
     .single();

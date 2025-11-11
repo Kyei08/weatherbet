@@ -27,15 +27,20 @@ const getUserTimezone = () => {
   return Intl.DateTimeFormat().resolvedOptions().timeZone;
 };
 
-// Get tomorrow's date
-const getTomorrowDate = () => {
-  return addDays(startOfDay(new Date()), 1);
+// Get next 7 days (excluding today)
+const getNext7Days = () => {
+  const days = [];
+  const today = startOfDay(new Date());
+  for (let i = 1; i <= 7; i++) {
+    days.push(addDays(today, i));
+  }
+  return days;
 };
 
-// Get today's deadline (11:59 PM)
-const getTodayDeadline = () => {
-  const today = new Date();
-  return setSeconds(setMinutes(setHours(today, 23), 59), 59);
+// Get deadline for a specific bet day (day before at 11:59 PM)
+const getDeadlineForDay = (betDay: Date) => {
+  const dayBefore = addDays(betDay, -1);
+  return setSeconds(setMinutes(setHours(dayBefore, 23), 59), 59);
 };
 
 const betSchema = z.object({
@@ -58,8 +63,8 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [userTimezone] = useState(() => getUserTimezone());
-  const [tomorrow] = useState(() => getTomorrowDate());
-  const [deadline] = useState(() => getTodayDeadline());
+  const [availableDays] = useState(() => getNext7Days());
+  const [selectedDay, setSelectedDay] = useState<Date>(getNext7Days()[0]); // Default to tomorrow
   const [weatherForecast, setWeatherForecast] = useState<any[]>([]);
   const [loadingWeather, setLoadingWeather] = useState(false);
   const [hasInsurance, setHasInsurance] = useState(false);
@@ -131,8 +136,9 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
   }, [city]);
 
   const getDaysAhead = () => {
-    // Always 1 day ahead (tomorrow)
-    return 1;
+    const today = startOfDay(new Date());
+    const daysDiff = Math.ceil((selectedDay.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    return daysDiff;
   };
 
   const getCurrentOdds = () => {
@@ -217,7 +223,12 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
   };
 
   const getBetDeadline = () => {
-    return deadline.toISOString();
+    return getDeadlineForDay(selectedDay).toISOString();
+  };
+
+  const isDeadlinePassed = (betDay: Date) => {
+    const deadline = getDeadlineForDay(betDay);
+    return new Date() > deadline;
   };
 
   const canPlaceBet = () => {
@@ -276,9 +287,9 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
       // Deduct total cost (stake + insurance) from user points
       await updateUserPoints(user.points - totalCost);
 
-      // Add bet (target date is tomorrow, expires at end of today)
+      // Add bet (target date is selected day, expires at deadline)
       const betDeadline = getBetDeadline();
-      const tomorrowEnd = endOfDay(tomorrow);
+      const targetDateEnd = endOfDay(selectedDay);
       const betData = await addBet({
         city: city as City,
         prediction_type: predictionType as 'rain' | 'temperature',
@@ -286,9 +297,9 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
         stake: stakeNum,
         odds: getCurrentOdds(),
         result: 'pending',
-        target_date: tomorrowEnd.toISOString(),
+        target_date: targetDateEnd.toISOString(),
         expires_at: betDeadline,
-        bet_duration_days: 1,
+        bet_duration_days: getDaysAhead(),
         has_insurance: hasInsurance,
         insurance_cost: hasInsurance ? getInsuranceCost() : 0,
         insurance_payout_percentage: 0.8,
@@ -443,6 +454,41 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
               </Card>
             )}
 
+            {/* Day Selection */}
+            <div className="space-y-2">
+              <Label htmlFor="day-select" className="text-base font-semibold">Select Bet Day</Label>
+              <Select 
+                value={selectedDay.toISOString()} 
+                onValueChange={(value) => setSelectedDay(new Date(value))}
+              >
+                <SelectTrigger id="day-select">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableDays.map((day) => {
+                    const deadline = getDeadlineForDay(day);
+                    const isPassed = isDeadlinePassed(day);
+                    return (
+                      <SelectItem 
+                        key={day.toISOString()} 
+                        value={day.toISOString()}
+                        disabled={isPassed}
+                      >
+                        <div className="flex items-center justify-between w-full gap-4">
+                          <span className={isPassed ? 'text-muted-foreground line-through' : ''}>
+                            {format(day, 'EEEE, MMM dd')}
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            {isPassed ? '(Expired)' : `Bet by: ${format(deadline, 'EEE')} 11:59 PM`}
+                          </span>
+                        </div>
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
+            </div>
+
             {/* Betting Window Info */}
             <Card className="border-2 border-primary/30 bg-primary/5">
               <CardContent className="pt-4">
@@ -471,9 +517,9 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
                     <div className="flex items-start gap-2">
                       <Clock className="h-4 w-4 mt-0.5 text-primary" />
                       <div>
-                        <p className="font-medium">Place bets for TOMORROW's weather</p>
+                        <p className="font-medium">Betting on: {format(selectedDay, 'EEEE, MMMM dd')}</p>
                         <p className="text-muted-foreground text-xs">
-                          Betting on: <strong>{format(tomorrow, 'EEEE, MMMM dd')}</strong>
+                          Predict weather for this day
                         </p>
                       </div>
                     </div>
@@ -481,9 +527,11 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
                     <div className="flex items-start gap-2">
                       <Clock className="h-4 w-4 mt-0.5 text-destructive" />
                       <div>
-                        <p className="font-medium">Deadline: Today at 11:59 PM</p>
+                        <p className="font-medium">
+                          Deadline: {format(getDeadlineForDay(selectedDay), 'EEEE')} at 11:59 PM
+                        </p>
                         <p className="text-muted-foreground text-xs">
-                          Bets lock at: <strong>{format(deadline, 'PPp')}</strong>
+                          Bets lock at: <strong>{format(getDeadlineForDay(selectedDay), 'PPp')}</strong>
                         </p>
                       </div>
                     </div>
@@ -654,13 +702,13 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
                     <div className="flex justify-between">
                       <span>Betting On:</span>
                       <span className="font-medium">
-                        {format(tomorrow, 'EEEE (MMM d)')}
+                        {format(selectedDay, 'EEEE (MMM d)')}
                       </span>
                     </div>
                     <div className="flex justify-between">
                       <span>Deadline:</span>
                       <span className="font-medium">
-                        Today at 11:59 PM
+                        {format(getDeadlineForDay(selectedDay), 'EEE')} 11:59 PM
                       </span>
                     </div>
                     <div className="flex justify-between">
