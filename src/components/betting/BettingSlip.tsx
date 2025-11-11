@@ -21,6 +21,8 @@ import { getActivePurchases, getActiveMultipliers, getMaxStakeBoost, PurchaseWit
 import { recordBonusEarning } from '@/lib/supabase-bonus-tracker';
 import { z } from 'zod';
 import { format, addDays, startOfDay, endOfDay, setHours, setMinutes, setSeconds } from 'date-fns';
+import { useCurrencyMode } from '@/contexts/CurrencyModeContext';
+import { formatCurrency } from '@/lib/currency';
 
 // Get user's timezone
 const getUserTimezone = () => {
@@ -55,6 +57,7 @@ interface BettingSlipProps {
 }
 
 const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
+  const { mode } = useCurrencyMode();
   const [city, setCity] = useState<City | ''>('');
   const [predictionType, setPredictionType] = useState<'rain' | 'temperature' | 'rainfall' | 'snow' | 'wind' | 'dew_point' | 'pressure' | 'cloud_coverage' | ''>('');
   const [rainPrediction, setRainPrediction] = useState<'yes' | 'no' | ''>('');
@@ -254,6 +257,7 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
     
     const stakeNum = parseInt(stake) || 0;
     const totalCost = getTotalCost();
+    const userBalance = mode === 'real' ? (user.balance_cents || 0) : user.points;
     
     // Get the prediction value based on type
     let predictionValue = '';
@@ -272,7 +276,7 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
       predictionValue &&
       stakeNum >= 10 &&
       stakeNum <= getMaxStake() &&
-      totalCost <= user.points
+      totalCost <= userBalance
     );
   };
 
@@ -358,6 +362,7 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
         has_insurance: hasInsurance,
         insurance_cost: hasInsurance ? getInsuranceCost() : 0,
         insurance_payout_percentage: 0.8,
+        currency_type: mode,
       } as any);
 
       // Record bonus earnings if multiplier was applied

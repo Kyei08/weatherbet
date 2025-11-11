@@ -1,5 +1,5 @@
 import { useAuth } from '@/contexts/AuthContext';
-import Dashboard from '@/components/betting/Dashboard';
+import { ModeRouter } from '@/components/betting/ModeRouter';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, LogOut } from 'lucide-react';
@@ -21,7 +21,7 @@ const Index = () => {
         <Card className="w-full max-w-md text-center">
           <CardHeader>
             <CardTitle className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
-              Weather Betting
+              WeatherBet SA
             </CardTitle>
             <CardDescription>
               Please sign in to access your betting dashboard
@@ -39,10 +39,10 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-gradient-subtle">
-      <header className="border-b bg-background/80 backdrop-blur-sm">
+      <header className="border-b bg-background/80 backdrop-blur-sm sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
           <h1 className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
-            Weather Betting
+            ⛈️ WeatherBet SA
           </h1>
           <Button variant="ghost" size="sm" onClick={signOut}>
             <LogOut className="h-4 w-4 mr-2" />
@@ -50,8 +50,8 @@ const Index = () => {
           </Button>
         </div>
       </header>
-      <main className="container mx-auto px-4 py-8">
-        <Dashboard />
+      <main>
+        <ModeRouter />
       </main>
     </div>
   );
