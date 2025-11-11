@@ -233,6 +233,14 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
           undefined,
           betData?.id
         );
+        
+        // Mark one-time multiplier items as used (those without expiration)
+        const oneTimeMultipliers = activePurchases.filter(
+          p => p.item.item_type === 'temp_multiplier' && !p.used && !p.expires_at
+        );
+        for (const purchase of oneTimeMultipliers) {
+          await useItem(purchase.id);
+        }
       }
 
       // Record bonus if stake boost was used
