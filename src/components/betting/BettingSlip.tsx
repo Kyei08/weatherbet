@@ -232,6 +232,11 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
   };
 
   const canPlaceBet = () => {
+    // Check if deadline has passed
+    if (isDeadlinePassed(selectedDay)) {
+      return false;
+    }
+    
     const stakeNum = parseInt(stake) || 0;
     const totalCost = getTotalCost();
     return (
@@ -245,7 +250,19 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
   };
 
   const handlePlaceBet = async () => {
-    if (!canPlaceBet() || loading) return;
+    if (loading) return;
+    
+    // Check if deadline has passed
+    if (isDeadlinePassed(selectedDay)) {
+      toast({
+        title: 'Deadline Passed',
+        description: `The betting deadline for ${format(selectedDay, 'EEEE, MMMM dd')} has already passed. Please select a different day.`,
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (!canPlaceBet()) return;
 
     setLoading(true);
 
@@ -798,9 +815,14 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
               className="w-full" 
               size="lg"
               onClick={handlePlaceBet}
-              disabled={!canPlaceBet() || loading}
+              disabled={!canPlaceBet() || loading || isDeadlinePassed(selectedDay)}
             >
-              {loading ? 'Placing Bet...' : 'Place Bet'}
+              {isDeadlinePassed(selectedDay) 
+                ? 'Deadline Passed' 
+                : loading 
+                  ? 'Placing Bet...' 
+                  : 'Place Bet'
+              }
             </Button>
           </CardContent>
         </Card>

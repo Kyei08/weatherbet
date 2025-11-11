@@ -238,6 +238,11 @@ const ParlayBettingSlip = ({ onBack, onBetPlaced }: ParlayBettingSlipProps) => {
   };
 
   const canPlaceParlay = (): boolean => {
+    // Check if deadline has passed
+    if (isDeadlinePassed(selectedDay)) {
+      return false;
+    }
+    
     if (predictions.length < 2) return false;
     if (!predictions.every(p => p.city)) return false;
     
@@ -254,6 +259,16 @@ const ParlayBettingSlip = ({ onBack, onBetPlaced }: ParlayBettingSlipProps) => {
   };
 
   const handlePlaceParlay = async () => {
+    // Check if deadline has passed
+    if (isDeadlinePassed(selectedDay)) {
+      toast({
+        title: 'Deadline Passed',
+        description: `The betting deadline for ${format(selectedDay, 'EEEE, MMMM dd')} has already passed. Please select a different day.`,
+        variant: 'destructive',
+      });
+      return;
+    }
+
     if (!canPlaceParlay()) return;
 
     setLoading(true);
@@ -702,9 +717,14 @@ const ParlayBettingSlip = ({ onBack, onBetPlaced }: ParlayBettingSlipProps) => {
         <Button
           className="w-full"
           onClick={handlePlaceParlay}
-          disabled={!canPlaceParlay() || loading}
+          disabled={!canPlaceParlay() || loading || isDeadlinePassed(selectedDay)}
         >
-          {loading ? 'Placing Parlay...' : 'Place Parlay Bet'}
+          {isDeadlinePassed(selectedDay)
+            ? 'Deadline Passed'
+            : loading 
+              ? 'Placing Parlay...' 
+              : 'Place Parlay Bet'
+          }
         </Button>
       </CardContent>
     </Card>
