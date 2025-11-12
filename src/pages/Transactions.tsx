@@ -75,6 +75,26 @@ const Transactions = () => {
 
   useEffect(() => {
     loadData();
+    
+    // Check for deposit success/cancel in URL params
+    const params = new URLSearchParams(window.location.search);
+    const depositStatus = params.get('deposit');
+    
+    if (depositStatus === 'success') {
+      toast({
+        title: 'Deposit Successful! 🎉',
+        description: 'Your account will be credited shortly. Please refresh to see updated balance.',
+      });
+      // Clean up URL
+      window.history.replaceState({}, '', '/transactions');
+    } else if (depositStatus === 'cancelled') {
+      toast({
+        title: 'Deposit Cancelled',
+        description: 'Your deposit was cancelled. No charges were made.',
+        variant: 'destructive',
+      });
+      window.history.replaceState({}, '', '/transactions');
+    }
   }, []);
 
   const loadData = async () => {
@@ -292,8 +312,18 @@ const Transactions = () => {
                   {formatCurrency(user?.balance_cents || 0, 'real')}
                 </p>
               </div>
-              <div className="p-4 rounded-full bg-real-primary/10">
-                <DollarSign className="h-8 w-8 text-real-primary" />
+              <div className="flex items-center gap-3">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={loadData}
+                  className="border-real-border hover:bg-real-primary/10"
+                >
+                  Refresh Balance
+                </Button>
+                <div className="p-4 rounded-full bg-real-primary/10">
+                  <DollarSign className="h-8 w-8 text-real-primary" />
+                </div>
               </div>
             </div>
           </CardContent>
@@ -331,6 +361,24 @@ const Transactions = () => {
                   <Shield className="h-4 w-4" />
                   <AlertDescription>
                     All transactions are secured with bank-level encryption. Deposits are instant.
+                  </AlertDescription>
+                </Alert>
+
+                <Alert className="bg-blue-500/5 border-blue-500/20">
+                  <AlertCircle className="h-4 w-4 text-blue-500" />
+                  <AlertDescription className="text-sm">
+                    <strong>Setup Required:</strong> Configure your Stripe webhook endpoint in the{' '}
+                    <a 
+                      href="https://dashboard.stripe.com/webhooks" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="underline font-medium"
+                    >
+                      Stripe Dashboard
+                    </a>
+                    {' '}to enable automatic balance updates. Webhook URL: <code className="text-xs bg-muted px-1 py-0.5 rounded">
+                      https://imyzcwgskjngwvcadrjn.supabase.co/functions/v1/stripe-webhook
+                    </code>
                   </AlertDescription>
                 </Alert>
 
@@ -393,12 +441,8 @@ const Transactions = () => {
                   className="w-full bg-real-primary hover:bg-real-primary/90 text-real-primary-foreground"
                   size="lg"
                 >
-                  Deposit Funds
+                  Deposit Funds via Stripe
                 </Button>
-
-                <p className="text-xs text-center text-muted-foreground">
-                  Note: This demo interface requires payment gateway integration (Stripe, PayFast) for actual transactions.
-                </p>
               </CardContent>
             </Card>
           </TabsContent>
@@ -480,12 +524,15 @@ const Transactions = () => {
                   className="w-full bg-real-primary hover:bg-real-primary/90 text-real-primary-foreground"
                   size="lg"
                 >
-                  Withdraw Funds
+                  Request Withdrawal
                 </Button>
 
-                <p className="text-xs text-center text-muted-foreground">
-                  Note: This demo interface requires payment gateway integration for actual withdrawals.
-                </p>
+                <Alert className="bg-yellow-500/5 border-yellow-500/20">
+                  <AlertCircle className="h-4 w-4 text-yellow-500" />
+                  <AlertDescription className="text-xs">
+                    <strong>Note:</strong> Full withdrawal processing requires Stripe Connect setup for payouts. Contact support for assistance with payout configuration.
+                  </AlertDescription>
+                </Alert>
               </CardContent>
             </Card>
           </TabsContent>
