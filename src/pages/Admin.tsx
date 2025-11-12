@@ -5,12 +5,23 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { ArrowLeft, Shield, Users, Activity, Settings, AlertTriangle, CheckCircle, Package, Target, Award, Plus, Pencil, Trash2 } from 'lucide-react';
+import { ArrowLeft, Shield, Users, Activity, Settings, AlertTriangle, CheckCircle, Package, Target, Award, Plus, Pencil, Trash2, DollarSign, TrendingUp, TrendingDown, ArrowUpRight, ArrowDownLeft, Wallet } from 'lucide-react';
 import { useAdminCheck } from '@/hooks/useAdminCheck';
 import { getAllUsersWithRoles, getAuditLogs, grantRole, revokeRole, logAdminAction } from '@/lib/admin';
 import { getAllShopItems, getAllChallenges, getAllAchievements, deleteShopItem, deleteChallenge, deleteAchievement } from '@/lib/admin-content';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { formatCurrency } from '@/lib/currency';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { ShopItemForm } from '@/components/admin/ShopItemForm';
 import { ChallengeForm } from '@/components/admin/ChallengeForm';
 import { AchievementForm } from '@/components/admin/AchievementForm';
@@ -49,6 +60,9 @@ const Admin = () => {
   const [shopItems, setShopItems] = useState<any[]>([]);
   const [challenges, setChallenges] = useState<any[]>([]);
   const [achievements, setAchievements] = useState<any[]>([]);
+  const [transactions, setTransactions] = useState<any[]>([]);
+  const [deposits, setDeposits] = useState<any[]>([]);
+  const [withdrawals, setWithdrawals] = useState<any[]>([]);
   const [stats, setStats] = useState({
     totalUsers: 0,
     totalBets: 0,
@@ -67,6 +81,21 @@ const Admin = () => {
     type: '',
     id: '',
     title: '',
+  });
+  
+  // Balance adjustment dialog
+  const [balanceDialog, setBalanceDialog] = useState<{
+    open: boolean;
+    user: any;
+    amount: string;
+    currencyType: 'virtual' | 'real';
+    reason: string;
+  }>({
+    open: false,
+    user: null,
+    amount: '',
+    currencyType: 'virtual',
+    reason: '',
   });
 
   useEffect(() => {
@@ -106,6 +135,23 @@ const Admin = () => {
       setShopItems(shopData);
       setChallenges(challengeData);
       setAchievements(achievementData);
+
+      // Load financial transactions
+      const { data: transactionsData } = await supabase
+        .from('financial_transactions')
+        .select(`
+          *,
+          user:users!financial_transactions_user_id_fkey(username)
+        `)
+        .order('created_at', { ascending: false })
+        .limit(100);
+      
+      setTransactions(transactionsData || []);
+      setDeposits(transactionsData?.filter(t => t.transaction_type === 'deposit') || []);
+      setWithdrawals(transactionsData?.filter(t => 
+        t.transaction_type === 'withdrawal_pending' || 
+        t.transaction_type === 'withdrawal_completed'
+      ) || []);
 
       // Load stats
       const { data: betsData } = await supabase
@@ -211,6 +257,72 @@ const Admin = () => {
     setAchievementFormOpen(true);
   };
 
+  const openBalanceDialog = (user: any, currencyType: 'virtual' | 'real' = 'virtual') => {
+    setBalanceDialog({
+      open: true,
+      user,
+      amount: '',
+      currencyType,
+      reason: '',
+    });
+  };
+
+  const handleBalanceAdjustment = async () => {
+    try {
+      const amount = parseInt(balanceDialog.amount);
+      if (isNaN(amount) || amount === 0) {
+        toast({
+          title: 'Invalid Amount',
+          description: 'Please enter a valid amount',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      const { error } = await supabase.rpc('update_user_points_safe', {
+        user_uuid: balanceDialog.user.id,
+        points_change: amount,
+        transaction_type: 'admin_adjustment',
+        reference_type: 'manual_adjustment',
+        currency_type: balanceDialog.currencyType,
+      });
+
+      if (error) throw error;
+
+      await logAdminAction(
+        'adjust_balance',
+        'users',
+        balanceDialog.user.id,
+        {
+          amount,
+          currencyType: balanceDialog.currencyType,
+          reason: balanceDialog.reason,
+        }
+      );
+
+      toast({
+        title: 'Balance Updated',
+        description: `Successfully adjusted ${balanceDialog.user.username}'s balance`,
+      });
+
+      setBalanceDialog({
+        open: false,
+        user: null,
+        amount: '',
+        currencyType: 'virtual',
+        reason: '',
+      });
+
+      await loadData();
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to adjust balance',
+        variant: 'destructive',
+      });
+    }
+  };
+
   if (loading || !isAdminUser) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -300,6 +412,18 @@ const Admin = () => {
               <Award className="h-4 w-4" />
               Achievements
             </TabsTrigger>
+            <TabsTrigger value="transactions" className="gap-2">
+              <Wallet className="h-4 w-4" />
+              Transactions
+            </TabsTrigger>
+            <TabsTrigger value="deposits" className="gap-2">
+              <TrendingUp className="h-4 w-4" />
+              Deposits
+            </TabsTrigger>
+            <TabsTrigger value="withdrawals" className="gap-2">
+              <TrendingDown className="h-4 w-4" />
+              Withdrawals
+            </TabsTrigger>
             <TabsTrigger value="audit" className="gap-2">
               <Activity className="h-4 w-4" />
               Audit Logs
@@ -329,7 +453,8 @@ const Admin = () => {
                     <TableHeader>
                       <TableRow>
                         <TableHead>Username</TableHead>
-                        <TableHead>Points</TableHead>
+                        <TableHead>Virtual Points</TableHead>
+                        <TableHead>Real Balance</TableHead>
                         <TableHead>Level</TableHead>
                         <TableHead>Roles</TableHead>
                         <TableHead>Actions</TableHead>
@@ -339,7 +464,30 @@ const Admin = () => {
                       {users.map((user) => (
                         <TableRow key={user.id}>
                           <TableCell className="font-medium">{user.username}</TableCell>
-                          <TableCell>{user.points.toLocaleString()}</TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              {user.points.toLocaleString()}
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => openBalanceDialog(user, 'virtual')}
+                              >
+                                <Pencil className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              {formatCurrency(user.balance_cents || 0, 'real')}
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => openBalanceDialog(user, 'real')}
+                              >
+                                <Pencil className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          </TableCell>
                           <TableCell>Level {user.level}</TableCell>
                           <TableCell>
                             <div className="flex gap-1 flex-wrap">
@@ -639,6 +787,224 @@ const Admin = () => {
             </Card>
           </TabsContent>
 
+          {/* Transactions Tab */}
+          <TabsContent value="transactions">
+            <Card>
+              <CardHeader>
+                <CardTitle>All Transactions</CardTitle>
+                <CardDescription>
+                  View all financial transactions across the platform
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {loadingData ? (
+                  <div className="text-center py-8">
+                    <p className="text-muted-foreground">Loading transactions...</p>
+                  </div>
+                ) : transactions.length === 0 ? (
+                  <div className="text-center py-8">
+                    <p className="text-muted-foreground">No transactions yet</p>
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Date</TableHead>
+                        <TableHead>User</TableHead>
+                        <TableHead>Type</TableHead>
+                        <TableHead>Amount</TableHead>
+                        <TableHead>Balance After</TableHead>
+                        <TableHead>Currency</TableHead>
+                        <TableHead>Reference</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {transactions.map((txn: any) => (
+                        <TableRow key={txn.id}>
+                          <TableCell className="text-xs">
+                            {new Date(txn.created_at).toLocaleString()}
+                          </TableCell>
+                          <TableCell className="font-medium">
+                            {txn.user?.username || 'Unknown'}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="secondary" className="text-xs">
+                              {txn.transaction_type.replace(/_/g, ' ')}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className={txn.amount_cents >= 0 ? 'text-green-500' : 'text-red-500'}>
+                            <div className="flex items-center gap-1">
+                              {txn.amount_cents >= 0 ? (
+                                <ArrowUpRight className="h-3 w-3" />
+                              ) : (
+                                <ArrowDownLeft className="h-3 w-3" />
+                              )}
+                              {formatCurrency(Math.abs(txn.amount_cents), txn.currency_type)}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            {formatCurrency(txn.balance_after_cents, txn.currency_type)}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={txn.currency_type === 'real' ? 'default' : 'outline'}>
+                              {txn.currency_type}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-xs text-muted-foreground">
+                            {txn.reference_type || '-'}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Deposits Tab */}
+          <TabsContent value="deposits">
+            <Card>
+              <CardHeader>
+                <CardTitle>Deposit Transactions</CardTitle>
+                <CardDescription>
+                  View all deposit transactions from users
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {loadingData ? (
+                  <div className="text-center py-8">
+                    <p className="text-muted-foreground">Loading deposits...</p>
+                  </div>
+                ) : deposits.length === 0 ? (
+                  <div className="text-center py-8">
+                    <p className="text-muted-foreground">No deposits yet</p>
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Date</TableHead>
+                        <TableHead>User</TableHead>
+                        <TableHead>Amount</TableHead>
+                        <TableHead>Balance After</TableHead>
+                        <TableHead>Currency</TableHead>
+                        <TableHead>Status</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {deposits.map((txn: any) => (
+                        <TableRow key={txn.id}>
+                          <TableCell className="text-xs">
+                            {new Date(txn.created_at).toLocaleString()}
+                          </TableCell>
+                          <TableCell className="font-medium">
+                            {txn.user?.username || 'Unknown'}
+                          </TableCell>
+                          <TableCell className="text-green-500 font-medium">
+                            <div className="flex items-center gap-1">
+                              <TrendingUp className="h-4 w-4" />
+                              {formatCurrency(txn.amount_cents, txn.currency_type)}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            {formatCurrency(txn.balance_after_cents, txn.currency_type)}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={txn.currency_type === 'real' ? 'default' : 'outline'}>
+                              {txn.currency_type}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="default" className="bg-green-500">
+                              <CheckCircle className="h-3 w-3 mr-1" />
+                              Completed
+                            </Badge>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Withdrawals Tab */}
+          <TabsContent value="withdrawals">
+            <Card>
+              <CardHeader>
+                <CardTitle>Withdrawal Transactions</CardTitle>
+                <CardDescription>
+                  View and manage withdrawal requests from users
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {loadingData ? (
+                  <div className="text-center py-8">
+                    <p className="text-muted-foreground">Loading withdrawals...</p>
+                  </div>
+                ) : withdrawals.length === 0 ? (
+                  <div className="text-center py-8">
+                    <p className="text-muted-foreground">No withdrawals yet</p>
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Date</TableHead>
+                        <TableHead>User</TableHead>
+                        <TableHead>Amount</TableHead>
+                        <TableHead>Balance After</TableHead>
+                        <TableHead>Currency</TableHead>
+                        <TableHead>Status</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {withdrawals.map((txn: any) => (
+                        <TableRow key={txn.id}>
+                          <TableCell className="text-xs">
+                            {new Date(txn.created_at).toLocaleString()}
+                          </TableCell>
+                          <TableCell className="font-medium">
+                            {txn.user?.username || 'Unknown'}
+                          </TableCell>
+                          <TableCell className="text-red-500 font-medium">
+                            <div className="flex items-center gap-1">
+                              <TrendingDown className="h-4 w-4" />
+                              {formatCurrency(Math.abs(txn.amount_cents), txn.currency_type)}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            {formatCurrency(txn.balance_after_cents, txn.currency_type)}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={txn.currency_type === 'real' ? 'default' : 'outline'}>
+                              {txn.currency_type}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            {txn.transaction_type === 'withdrawal_pending' ? (
+                              <Badge variant="secondary" className="bg-yellow-500/10 text-yellow-500">
+                                <AlertTriangle className="h-3 w-3 mr-1" />
+                                Pending
+                              </Badge>
+                            ) : (
+                              <Badge variant="default" className="bg-green-500">
+                                <CheckCircle className="h-3 w-3 mr-1" />
+                                Completed
+                              </Badge>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
           {/* Audit Logs Tab */}
           <TabsContent value="audit">
             <Card>
@@ -739,6 +1105,63 @@ const Admin = () => {
           achievement={editingItem}
           onSuccess={loadData}
         />
+
+        {/* Balance Adjustment Dialog */}
+        <Dialog open={balanceDialog.open} onOpenChange={(open) => setBalanceDialog({ ...balanceDialog, open })}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Adjust User Balance</DialogTitle>
+              <DialogDescription>
+                Manually adjust balance for {balanceDialog.user?.username}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label>Current Balance</Label>
+                <p className="text-2xl font-bold">
+                  {balanceDialog.user && formatCurrency(
+                    balanceDialog.currencyType === 'real' 
+                      ? balanceDialog.user.balance_cents 
+                      : balanceDialog.user.points,
+                    balanceDialog.currencyType
+                  )}
+                </p>
+              </div>
+              <div>
+                <Label htmlFor="amount">
+                  Amount {balanceDialog.currencyType === 'real' ? '(in cents)' : '(in points)'}
+                </Label>
+                <Input
+                  id="amount"
+                  type="number"
+                  placeholder="Enter amount (positive to add, negative to subtract)"
+                  value={balanceDialog.amount}
+                  onChange={(e) => setBalanceDialog({ ...balanceDialog, amount: e.target.value })}
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Use positive numbers to add, negative to subtract
+                </p>
+              </div>
+              <div>
+                <Label htmlFor="reason">Reason</Label>
+                <Input
+                  id="reason"
+                  placeholder="Why are you adjusting this balance?"
+                  value={balanceDialog.reason}
+                  onChange={(e) => setBalanceDialog({ ...balanceDialog, reason: e.target.value })}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setBalanceDialog({ ...balanceDialog, open: false })}>
+                Cancel
+              </Button>
+              <Button onClick={handleBalanceAdjustment}>
+                Adjust Balance
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {/* Delete Confirmation Dialog */}
         <AlertDialog open={deleteDialog.open} onOpenChange={(open) => setDeleteDialog({ ...deleteDialog, open })}>
