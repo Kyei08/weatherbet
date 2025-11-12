@@ -121,18 +121,30 @@ const Transactions = () => {
         return;
       }
 
-      // TODO: Integrate with actual payment processor (Stripe, PayFast, etc.)
-      toast({
-        title: 'Deposit Initiated',
-        description: `Deposit of ${formatCurrency(Math.round(amount * 100), 'real')} is being processed. This feature requires payment gateway integration.`,
+      const amountCents = Math.round(amount * 100);
+
+      // Call Stripe edge function to create checkout session
+      const { data, error } = await supabase.functions.invoke('create-deposit-payment', {
+        body: { amountCents },
       });
+
+      if (error) throw error;
+
+      if (data?.url) {
+        // Open Stripe checkout in new tab
+        window.open(data.url, '_blank');
+        toast({
+          title: 'Redirecting to Payment',
+          description: 'Opening Stripe checkout in a new tab...',
+        });
+      }
 
       setDepositAmount('');
     } catch (error) {
       console.error('Deposit error:', error);
       toast({
         title: 'Error',
-        description: 'Failed to process deposit',
+        description: error.message || 'Failed to process deposit',
         variant: 'destructive',
       });
     }
@@ -165,18 +177,27 @@ const Transactions = () => {
         return;
       }
 
-      // TODO: Integrate with actual payment processor for withdrawals
+      // Call withdrawal edge function
+      const { data, error } = await supabase.functions.invoke('create-withdrawal', {
+        body: { amountCents },
+      });
+
+      if (error) throw error;
+
       toast({
         title: 'Withdrawal Initiated',
-        description: `Withdrawal of ${formatCurrency(amountCents, 'real')} is being processed. Funds typically arrive in 2-5 business days.`,
+        description: data?.message || `Withdrawal of ${formatCurrency(amountCents, 'real')} is being processed. Funds typically arrive in 2-5 business days.`,
       });
 
       setWithdrawalAmount('');
+      
+      // Refresh data to show updated balance
+      await loadData();
     } catch (error) {
       console.error('Withdrawal error:', error);
       toast({
         title: 'Error',
-        description: 'Failed to process withdrawal',
+        description: error.message || 'Failed to process withdrawal',
         variant: 'destructive',
       });
     }
