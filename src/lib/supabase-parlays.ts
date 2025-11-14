@@ -66,7 +66,7 @@ export const createParlay = async (
   return parlayId;
 };
 
-export const getParlays = async (limit?: number): Promise<ParlayWithLegs[]> => {
+export const getParlays = async (limit?: number, currencyType?: 'virtual' | 'real'): Promise<ParlayWithLegs[]> => {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Not authenticated');
 
@@ -78,6 +78,11 @@ export const getParlays = async (limit?: number): Promise<ParlayWithLegs[]> => {
     `)
     .eq('user_id', user.id)
     .order('created_at', { ascending: false });
+
+  // Filter by currency type if specified
+  if (currencyType) {
+    query = query.eq('currency_type', currencyType);
+  }
 
   if (limit) {
     query = query.limit(limit);

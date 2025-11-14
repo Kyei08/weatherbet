@@ -15,6 +15,7 @@ import { calculateDynamicCashOut, calculateDynamicParlayCashOut } from '@/lib/dy
 import CashOutHistoryChart from './CashOutHistoryChart';
 import OddsHistoryChart from './OddsHistoryChart';
 import { formatRands } from '@/lib/currency';
+import { useCurrencyMode } from '@/contexts/CurrencyModeContext';
 
 interface MyBetsProps {
   onBack: () => void;
@@ -22,6 +23,7 @@ interface MyBetsProps {
 }
 
 const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
+  const { mode } = useCurrencyMode();
   const [bets, setBets] = useState<Bet[]>([]);
   const [parlays, setParlays] = useState<ParlayWithLegs[]>([]);
   const [combinedBets, setCombinedBets] = useState<any[]>([]);
@@ -37,9 +39,9 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
     const fetchData = async () => {
       try {
         const [betsData, parlaysData, combinedBetsData] = await Promise.all([
-          getBets(),
-          getParlays(),
-          getCombinedBets()
+          getBets(undefined, mode),
+          getParlays(undefined, mode),
+          getCombinedBets(undefined, mode)
         ]);
         setBets(betsData);
         setParlays(parlaysData);
@@ -54,7 +56,7 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
       }
     };
     fetchData();
-  }, []);
+  }, [mode]);
 
   const calculateAllCashOuts = async (betsData: Bet[], parlaysData: ParlayWithLegs[], combinedBetsData: any[]) => {
     setCalculatingCashOuts(true);
