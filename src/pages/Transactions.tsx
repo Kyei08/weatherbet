@@ -143,19 +143,19 @@ const Transactions = () => {
 
       const amountCents = Math.round(amount * 100);
 
-      // Call Stripe edge function to create checkout session
-      const { data, error } = await supabase.functions.invoke('create-deposit-payment', {
+      // Call Yoco edge function to create checkout session
+      const { data, error } = await supabase.functions.invoke('create-yoco-deposit', {
         body: { amountCents },
       });
 
       if (error) throw error;
 
       if (data?.url) {
-        // Open Stripe checkout in new tab
+        // Open Yoco checkout in new tab
         window.open(data.url, '_blank');
         toast({
           title: 'Redirecting to Payment',
-          description: 'Opening Stripe checkout in a new tab...',
+          description: 'Opening Yoco checkout in a new tab...',
         });
       }
 
