@@ -29,7 +29,7 @@ const MoneyModeDashboard = () => {
       try {
         const [userData, betsData] = await Promise.all([
           getUser(),
-          getRecentBets()
+          getRecentBets('real')
         ]);
         setUser(userData);
         // Filter only real money bets
@@ -48,7 +48,7 @@ const MoneyModeDashboard = () => {
     try {
       const [userData, betsData] = await Promise.all([
         getUser(),
-        getRecentBets()
+        getRecentBets('real')
       ]);
       setUser(userData);
       setBets(betsData.filter(bet => bet.currency_type === 'real'));

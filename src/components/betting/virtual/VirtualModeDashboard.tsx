@@ -37,7 +37,7 @@ const VirtualModeDashboard = () => {
       try {
         const [userData, betsData] = await Promise.all([
           getUser(),
-          getRecentBets()
+          getRecentBets('virtual')
         ]);
         setUser(userData);
         // Filter only virtual bets
@@ -56,7 +56,7 @@ const VirtualModeDashboard = () => {
     try {
       const [userData, betsData] = await Promise.all([
         getUser(),
-        getRecentBets()
+        getRecentBets('virtual')
       ]);
       setUser(userData);
       setBets(betsData.filter(bet => bet.currency_type === 'virtual'));

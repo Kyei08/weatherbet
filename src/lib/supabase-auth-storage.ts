@@ -113,7 +113,7 @@ export const updateUsername = async (username: string): Promise<void> => {
 };
 
 // Bet management - Optimized queries
-export const getBets = async (limit?: number): Promise<Bet[]> => {
+export const getBets = async (limit?: number, currencyType?: 'virtual' | 'real'): Promise<Bet[]> => {
   const userId = await getCurrentUserId();
   if (!userId) return [];
   
@@ -122,6 +122,11 @@ export const getBets = async (limit?: number): Promise<Bet[]> => {
     .select('*')
     .eq('user_id', userId)
     .order('created_at', { ascending: false });
+  
+  // Filter by currency type if specified
+  if (currencyType) {
+    query = query.eq('currency_type', currencyType);
+  }
     
   if (limit) {
     query = query.limit(limit);
@@ -133,8 +138,8 @@ export const getBets = async (limit?: number): Promise<Bet[]> => {
 };
 
 // Get recent bets for dashboard (optimized)
-export const getRecentBets = async (): Promise<Bet[]> => {
-  return getBets(5); // Only fetch 5 most recent
+export const getRecentBets = async (currencyType?: 'virtual' | 'real'): Promise<Bet[]> => {
+  return getBets(5, currencyType); // Only fetch 5 most recent
 };
 
 export const addBet = async (bet: Omit<BetInsert, 'id' | 'user_id' | 'created_at' | 'updated_at'>, currencyType: 'virtual' | 'real' = 'virtual'): Promise<Bet> => {

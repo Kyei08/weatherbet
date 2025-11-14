@@ -10,6 +10,7 @@ import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { getBets } from '@/lib/supabase-auth-storage';
 import { Bet } from '@/types/supabase-betting';
+import { useCurrencyMode } from '@/contexts/CurrencyModeContext';
 import {
   calculateBettingStats,
   getCityPerformance,
@@ -36,6 +37,7 @@ interface DateRange {
 
 const Analytics = ({ onBack }: AnalyticsProps) => {
   const navigate = useNavigate();
+  const { mode } = useCurrencyMode();
   const [bets, setBets] = useState<Bet[]>([]);
   const [loading, setLoading] = useState(true);
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('all');
@@ -46,12 +48,12 @@ const Analytics = ({ onBack }: AnalyticsProps) => {
 
   useEffect(() => {
     loadBets();
-  }, []);
+  }, [mode]);
 
   const loadBets = async () => {
     try {
       setLoading(true);
-      const data = await getBets();
+      const data = await getBets(undefined, mode);
       setBets(data);
     } catch (error) {
       console.error('Error loading bets:', error);

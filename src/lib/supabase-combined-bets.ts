@@ -58,7 +58,7 @@ export const createCombinedBet = async (
   return combinedBetId;
 };
 
-export const getCombinedBets = async (limit?: number): Promise<CombinedBetWithCategories[]> => {
+export const getCombinedBets = async (limit?: number, currencyType?: 'virtual' | 'real'): Promise<CombinedBetWithCategories[]> => {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Not authenticated');
 
@@ -70,6 +70,11 @@ export const getCombinedBets = async (limit?: number): Promise<CombinedBetWithCa
     `)
     .eq('user_id', user.id)
     .order('created_at', { ascending: false });
+
+  // Filter by currency type if specified
+  if (currencyType) {
+    query = query.eq('currency_type', currencyType);
+  }
 
   if (limit) {
     query = query.limit(limit);
