@@ -9,21 +9,24 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Area, AreaChart, Bar, BarChart, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis, Cell, CartesianGrid, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, Legend } from 'recharts';
 import { ChartContainer, ChartTooltipContent } from '@/components/ui/chart';
 import { useNavigate } from 'react-router-dom';
+import { useCurrencyMode } from '@/contexts/CurrencyModeContext';
 
 const CityAnalytics = () => {
   const navigate = useNavigate();
+  const { mode } = useCurrencyMode();
   const [bets, setBets] = useState<Bet[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedCity, setSelectedCity] = useState<string>(CITIES[0]);
 
   useEffect(() => {
     loadBets();
-  }, []);
+  }, [mode]);
 
   const loadBets = async () => {
     try {
       setLoading(true);
-      const data = await getBets();
+      const currencyType = mode === 'real' ? 'real' : 'virtual';
+      const data = await getBets(undefined, currencyType);
       setBets(data);
       
       // Set default city to the one with most bets
