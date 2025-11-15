@@ -2,10 +2,12 @@ import { useAuth } from '@/contexts/AuthContext';
 import { ModeRouter } from '@/components/betting/ModeRouter';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, LogOut } from 'lucide-react';
+import { Loader2, LogOut, BarChart3 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 const Index = () => {
   const { user, loading, signOut } = useAuth();
+  const navigate = useNavigate();
 
   if (loading) {
     return (
@@ -44,10 +46,20 @@ const Index = () => {
           <h1 className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
             ⛈️ WeatherBet SA
           </h1>
-          <Button variant="ghost" size="sm" onClick={signOut}>
-            <LogOut className="h-4 w-4 mr-2" />
-            Sign Out
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => navigate('/mode-comparison')}
+            >
+              <BarChart3 className="h-4 w-4 mr-2" />
+              Compare Modes
+            </Button>
+            <Button variant="ghost" size="sm" onClick={signOut}>
+              <LogOut className="h-4 w-4 mr-2" />
+              Sign Out
+            </Button>
+          </div>
         </div>
       </header>
       <main>
