@@ -343,8 +343,15 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
       
       const totalCost = getTotalCost();
 
-      // Deduct total cost (stake + insurance) from user points
-      await updateUserPoints(user.points - totalCost);
+      // Deduct total cost (stake + insurance) from user balance
+      const currencyType = mode === 'real' ? 'real' : 'virtual';
+      await supabase.rpc('update_user_points_safe', {
+        user_uuid: user.id,
+        points_change: -totalCost,
+        currency_type: currencyType,
+        transaction_type: 'bet_placed',
+        reference_type: 'bet'
+      });
 
       // Add bet (target date is selected day, expires at deadline)
       const betDeadline = getBetDeadline();
@@ -469,7 +476,9 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
         <Card>
           <CardHeader>
             <CardTitle>Betting Slip</CardTitle>
-            <p className="text-muted-foreground">Available Balance: {user.points.toLocaleString()} points</p>
+            <p className="text-muted-foreground">
+              Available Balance: {formatCurrency(mode === 'real' ? (user.balance_cents || 0) : user.points, mode)}
+            </p>
           </CardHeader>
           <CardContent className="space-y-6">
             {/* Active Shop Bonuses */}

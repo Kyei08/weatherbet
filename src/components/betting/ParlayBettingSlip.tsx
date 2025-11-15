@@ -353,9 +353,6 @@ const ParlayBettingSlip = ({ onBack, onBetPlaced }: ParlayBettingSlipProps) => {
         };
       });
 
-      // Deduct total cost (stake + insurance)
-      await updateUserPoints(user.points - totalCost);
-
       // Create parlay with insurance and currency type
       const parlayId = await createParlay(stakeNum, parlayPredictions, getDaysAhead(), selectedDay, hasInsurance, mode);
       
