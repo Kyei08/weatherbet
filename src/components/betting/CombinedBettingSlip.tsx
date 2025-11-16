@@ -41,9 +41,12 @@ const getDeadlineForDay = (betDay: Date) => {
   return deadline;
 };
 
-const combinedBetSchema = z.object({
+// Dynamic schema that adjusts based on currency mode
+const getCombinedBetSchema = (mode: 'real' | 'virtual') => z.object({
   city: z.string().min(1, 'Please select a city'),
-  stake: z.number().min(10, 'Minimum stake is 10 points').max(1000, 'Maximum stake is 1000 points'),
+  stake: mode === 'real' 
+    ? z.number().min(100, 'Minimum stake is R1').max(10000, 'Maximum stake is R100')
+    : z.number().min(10, 'Minimum stake is 10 points').max(1000, 'Maximum stake is 1000 points'),
   categories: z.array(z.string()).min(1, 'Select at least 1 category').max(5, 'Maximum 5 categories allowed')
 });
 
@@ -64,7 +67,7 @@ export function CombinedBettingSlip({ onBack, onBetPlaced }: CombinedBettingSlip
   const [selectedDay, setSelectedDay] = useState<Date>(getNext7Days()[0]);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [categoryValues, setCategoryValues] = useState<Record<string, CategorySelection>>({});
-  const [stake, setStake] = useState<number>(50);
+  const [stake, setStake] = useState<number>(mode === 'real' ? 5000 : 50); // R50 = 5000 cents or 50 points
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [placing, setPlacing] = useState(false);
@@ -212,7 +215,7 @@ export function CombinedBettingSlip({ onBack, onBetPlaced }: CombinedBettingSlip
   const canPlaceBet = (): boolean => {
     if (!user || placing || isDeadlinePassed(selectedDay)) return false;
     
-    const validation = combinedBetSchema.safeParse({
+    const validation = getCombinedBetSchema(mode).safeParse({
       city,
       stake,
       categories: selectedCategories
@@ -620,12 +623,15 @@ export function CombinedBettingSlip({ onBack, onBetPlaced }: CombinedBettingSlip
 
         {/* Stake Input */}
         <div className="space-y-2">
-          <Label htmlFor="stake">Stake Amount</Label>
+          <Label htmlFor="stake">
+            Stake Amount ({mode === 'real' ? 'R1-R100' : '10-1000 points'})
+          </Label>
           <Input
             id="stake"
             type="number"
-            min={10}
-            max={1000}
+            min={mode === 'real' ? 100 : 10}
+            max={mode === 'real' ? 10000 : 1000}
+            step={mode === 'real' ? 100 : 1}
             value={stake}
             onChange={(e) => setStake(Number(e.target.value))}
           />

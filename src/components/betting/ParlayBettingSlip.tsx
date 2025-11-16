@@ -274,7 +274,8 @@ const ParlayBettingSlip = ({ onBack, onBetPlaced }: ParlayBettingSlipProps) => {
     const stakeNum = parseInt(stake);
     const totalCost = getTotalCost();
     const userBalance = mode === 'real' ? (user?.balance_cents || 0) : (user?.points || 0);
-    if (!stakeNum || stakeNum < 10 || totalCost > userBalance) return false;
+    const minStake = mode === 'real' ? 100 : 10; // R1 = 100 cents, 10 points
+    if (!stakeNum || stakeNum < minStake || totalCost > userBalance) return false;
     
     // Check for duplicate city predictions
     const cities = predictions.map(p => p.city);
@@ -809,14 +810,15 @@ const ParlayBettingSlip = ({ onBack, onBetPlaced }: ParlayBettingSlipProps) => {
         </div>
 
         <div>
-          <Label>Stake Amount</Label>
+          <Label>Stake Amount ({mode === 'real' ? 'R1-R100' : '10-100 points'})</Label>
             <Input
               type="number"
-              placeholder={`Minimum ${formatCurrency(10, mode)}`}
+              placeholder={mode === 'real' ? 'Enter stake (R1-R100)' : 'Minimum 10 points'}
               value={stake}
               onChange={(e) => setStake(e.target.value)}
-              min="10"
-              max={mode === 'real' ? user.balance_cents : user.points}
+              min={mode === 'real' ? 100 : 10}
+              max={mode === 'real' ? 10000 : 100}
+              step={mode === 'real' ? 100 : 1}
             />
             <p className="text-sm text-muted-foreground mt-1">
               Available: {formatCurrency(mode === 'real' ? user.balance_cents : user.points, mode)}
