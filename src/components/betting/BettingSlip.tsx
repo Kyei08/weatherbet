@@ -223,7 +223,14 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
   };
 
   const getMaxStake = () => {
-    return 100 + maxStakeBoost;
+    // R100 = 10000 cents for real money, 100 points for virtual
+    const baseMax = mode === 'real' ? 10000 : 100;
+    return baseMax + (mode === 'real' ? maxStakeBoost * 100 : maxStakeBoost);
+  };
+
+  const getMinStake = () => {
+    // R1 = 100 cents for real money, 10 points for virtual
+    return mode === 'real' ? 100 : 10;
   };
 
   const formatTimeRemaining = (expiresAt: string) => {
@@ -838,20 +845,21 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
             {/* Stake */}
             <div className="space-y-2">
               <Label>
-                Stake (10-{getMaxStake()} {mode === 'real' ? 'currency' : 'points'})
+                Stake ({mode === 'real' ? 'R1-R100' : `${getMinStake()}-${getMaxStake()} points`})
                 {maxStakeBoost > 0 && (
                   <span className="ml-2 text-xs text-primary font-medium">
-                    +{maxStakeBoost} from boost!
+                    +{mode === 'real' ? `R${maxStakeBoost}` : `${maxStakeBoost} points`} from boost!
                   </span>
                 )}
               </Label>
               <Input
                 type="number"
-                min="10"
+                min={getMinStake()}
                 max={getMaxStake()}
+                step={mode === 'real' ? 100 : 1}
                 value={stake}
                 onChange={(e) => setStake(e.target.value)}
-                placeholder="Enter stake amount"
+                placeholder={mode === 'real' ? 'Enter stake (R1-R100)' : 'Enter stake amount'}
               />
             </div>
 
