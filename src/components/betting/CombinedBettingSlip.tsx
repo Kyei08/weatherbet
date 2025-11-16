@@ -212,6 +212,17 @@ export function CombinedBettingSlip({ onBack, onBetPlaced }: CombinedBettingSlip
     return Math.floor(stake * getCombinedOdds());
   };
 
+  const getRemainingBalance = () => {
+    const userBalance = mode === 'real' ? user.balance_cents : user.points;
+    return userBalance - getTotalCost();
+  };
+
+  const isLowBalanceWarning = () => {
+    const remaining = getRemainingBalance();
+    const threshold = mode === 'real' ? 1000 : 10; // R10 or 10 points
+    return remaining >= 0 && remaining < threshold;
+  };
+
   const canPlaceBet = (): boolean => {
     if (!user || placing || isDeadlinePassed(selectedDay)) return false;
     
@@ -639,6 +650,26 @@ export function CombinedBettingSlip({ onBack, onBetPlaced }: CombinedBettingSlip
             Min: {formatCurrency(10, mode)} - Max: {formatCurrency(1000, mode)}
           </p>
         </div>
+
+        {/* Low Balance Warning */}
+        {stake > 0 && isLowBalanceWarning() && (
+          <Card className="border-2 border-yellow-500/50 bg-yellow-500/10">
+            <CardContent className="p-4">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="h-5 w-5 text-yellow-500 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-semibold text-yellow-700 dark:text-yellow-400">
+                    Low Balance Warning
+                  </p>
+                  <p className="text-sm text-yellow-600 dark:text-yellow-300 mt-1">
+                    Your remaining balance will be {formatCurrency(getRemainingBalance(), mode)} after this bet.
+                    Consider betting less to keep funds for future bets.
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Insurance */}
         <div className="flex items-center justify-between p-4 border rounded-lg">
