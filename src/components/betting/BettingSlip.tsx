@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { ArrowLeft, Activity, Sparkles, Clock, Zap, Info } from 'lucide-react';
+import { ArrowLeft, Activity, Sparkles, Clock, Zap, Info, AlertTriangle } from 'lucide-react';
 import { getUser, addBet, updateUserPoints } from '@/lib/supabase-auth-storage';
 import { CITIES, TEMPERATURE_RANGES, City, RAINFALL_RANGES, WIND_RANGES, DEW_POINT_RANGES, PRESSURE_RANGES, CLOUD_COVERAGE_RANGES } from '@/types/supabase-betting';
 import { useToast } from '@/hooks/use-toast';
@@ -231,6 +231,17 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
   const getMinStake = () => {
     // R1 = 100 cents for real money, 10 points for virtual
     return mode === 'real' ? 100 : 10;
+  };
+
+  const getRemainingBalance = () => {
+    const userBalance = mode === 'real' ? (user?.balance_cents || 0) : (user?.points || 0);
+    return userBalance - getTotalCost();
+  };
+
+  const isLowBalanceWarning = () => {
+    const remaining = getRemainingBalance();
+    const threshold = mode === 'real' ? 1000 : 10; // R10 or 10 points
+    return remaining >= 0 && remaining < threshold;
   };
 
   const formatTimeRemaining = (expiresAt: string) => {
@@ -862,6 +873,26 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
                 placeholder={mode === 'real' ? 'Enter stake (R1-R100)' : 'Enter stake amount'}
               />
             </div>
+
+            {/* Low Balance Warning */}
+            {stake && isLowBalanceWarning() && (
+              <Card className="border-2 border-yellow-500/50 bg-yellow-500/10">
+                <CardContent className="p-4">
+                  <div className="flex items-start gap-3">
+                    <AlertTriangle className="h-5 w-5 text-yellow-500 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-semibold text-yellow-700 dark:text-yellow-400">
+                        Low Balance Warning
+                      </p>
+                      <p className="text-sm text-yellow-600 dark:text-yellow-300 mt-1">
+                        Your remaining balance will be {formatCurrency(getRemainingBalance(), mode)} after this bet.
+                        Consider betting less to keep funds for future bets.
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
             {/* Bet Insurance */}
             {stake && parseInt(stake) >= 10 && (
