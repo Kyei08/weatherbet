@@ -843,7 +843,7 @@ const ParlayBettingSlip = ({ onBack, onBetPlaced }: ParlayBettingSlipProps) => {
                     </Label>
                   </div>
                   <p className="text-sm text-muted-foreground">
-                    Protect your parlay! If it loses, get back <span className="font-medium text-foreground">{getInsurancePayout()} points</span> (75% of stake)
+                    Protect your parlay! If it loses, get back <span className="font-medium text-foreground">{formatCurrency(getInsurancePayout(), mode)}</span> (75% of stake)
                   </p>
                   <div className="flex items-center justify-between text-sm">
                     <span>Insurance Cost:</span>
