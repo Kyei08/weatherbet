@@ -838,7 +838,7 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
             {/* Stake */}
             <div className="space-y-2">
               <Label>
-                Stake (10-{getMaxStake()} points)
+                Stake (10-{getMaxStake()} {mode === 'real' ? 'currency' : 'points'})
                 {maxStakeBoost > 0 && (
                   <span className="ml-2 text-xs text-primary font-medium">
                     +{maxStakeBoost} from boost!
@@ -874,11 +874,11 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
                         </Label>
                       </div>
                       <p className="text-sm text-muted-foreground">
-                        Protect your bet! If you lose, get back <span className="font-medium text-foreground">{getInsurancePayout()} points</span> (80% of stake)
+                        Protect your bet! If you lose, get back <span className="font-medium text-foreground">{formatCurrency(getInsurancePayout(), mode)}</span> (80% of stake)
                       </p>
                       <div className="flex items-center justify-between text-sm">
                         <span>Insurance Cost:</span>
-                        <span className="font-medium">{getInsuranceCost()} points (15% of stake)</span>
+                        <span className="font-medium">{formatCurrency(getInsuranceCost(), mode)} (15% of stake)</span>
                       </div>
                     </div>
                   </div>
@@ -918,17 +918,17 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
                     </div>
                     <div className="flex justify-between">
                       <span>Stake:</span>
-                      <span className="font-medium">{stake} points</span>
+                      <span className="font-medium">{formatCurrency(parseInt(stake), mode)}</span>
                     </div>
                     {hasInsurance && (
                       <>
                         <div className="flex justify-between text-muted-foreground">
                           <span>Insurance:</span>
-                          <span>+{getInsuranceCost()} points</span>
+                          <span>+{formatCurrency(getInsuranceCost(), mode)}</span>
                         </div>
                         <div className="flex justify-between font-medium border-t pt-2">
                           <span>Total Cost:</span>
-                          <span>{getTotalCost()} points</span>
+                          <span>{formatCurrency(getTotalCost(), mode)}</span>
                         </div>
                       </>
                     )}
@@ -949,7 +949,7 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
                                   <li>Casino games: 2-25% edge</li>
                                   <li>Weather betting: 10% edge (transparent)</li>
                                 </ul>
-                                <p className="text-xs">This means for every 100 points wagered across all bets, the house keeps 10 points on average to maintain the platform.</p>
+                                <p className="text-xs">This means for every 100 {mode === 'real' ? 'currency' : 'points'} wagered across all bets, the house keeps 10 {mode === 'real' ? 'currency' : 'points'} on average to maintain the platform.</p>
                               </div>
                             </TooltipContent>
                           </Tooltip>
@@ -972,25 +972,25 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
                       <>
                         <div className="flex justify-between text-muted-foreground">
                           <span>Base Win:</span>
-                          <span>{getBaseWin()} points</span>
+                          <span>{formatCurrency(getBaseWin(), mode)}</span>
                         </div>
                         <div className="flex justify-between text-primary">
                           <span className="flex items-center gap-1">
                             <Sparkles className="h-3 w-3" />
                             Multiplier ({activeMultiplier}x):
                           </span>
-                          <span>+{getPotentialWin() - getBaseWin()} points</span>
+                          <span>+{formatCurrency(getPotentialWin() - getBaseWin(), mode)}</span>
                         </div>
                       </>
                     )}
                     <div className="flex justify-between font-bold text-success">
                       <span>If Win:</span>
-                      <span>+{getPotentialWin()} points</span>
+                      <span>+{formatCurrency(getPotentialWin(), mode)}</span>
                     </div>
                     {hasInsurance && (
                       <div className="flex justify-between font-bold text-primary">
                         <span>If Lose (Insured):</span>
-                        <span>-{parseInt(stake) - getInsurancePayout()} points</span>
+                        <span>-{formatCurrency(parseInt(stake) - getInsurancePayout(), mode)}</span>
                       </div>
                     )}
                   </div>
