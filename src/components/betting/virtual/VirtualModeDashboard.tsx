@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { getUser, getRecentBets } from '@/lib/supabase-auth-storage';
 import { User, Bet } from '@/types/supabase-betting';
 import { Coins, TrendingUp, Activity, Trophy, ShoppingCart, Layers, History, MapPin, Shield, Gamepad2 } from 'lucide-react';
+import { ModeBadge } from '../ModeBadge';
 import { useNavigate } from 'react-router-dom';
 import { useAdminCheck } from '@/hooks/useAdminCheck';
 import BettingSlip from '../BettingSlip';
@@ -112,9 +113,12 @@ const VirtualModeDashboard = () => {
       <div className="max-w-4xl mx-auto space-y-6">
         {/* Header */}
         <div className={`text-center p-6 rounded-xl border-2 ${theme.borderColor} ${theme.cardBg} backdrop-blur-sm ${theme.glowShadow}`}>
-          <h1 className={`text-4xl font-bold mb-2 ${theme.primaryText}`}>
-            🎮 WeatherBet SA - Virtual Mode
-          </h1>
+          <div className="flex items-center justify-center gap-3 mb-2">
+            <h1 className={`text-4xl font-bold ${theme.primaryText}`}>
+              🎮 WeatherBet SA
+            </h1>
+            <ModeBadge size="lg" />
+          </div>
           <p className="text-muted-foreground">
             Practice mode - Learn weather betting risk-free with virtual points!
           </p>
