@@ -1,3 +1,5 @@
+import { BETTING_CONFIG, CATEGORY_MULTIPLIERS, getAdjustedOdds } from './betting-config';
+
 interface WeatherForecast {
   date: string;
   temp_min: number;
@@ -13,9 +15,6 @@ interface DynamicOddsParams {
   forecast: WeatherForecast[];
   daysAhead: number;
 }
-
-// House edge configuration (10% = 0.90 multiplier for fair payouts)
-const HOUSE_EDGE = 0.90;
 
 /**
  * Calculate dynamic odds based on actual weather probabilities with house edge
@@ -37,23 +36,25 @@ export const calculateDynamicOdds = ({
     return calculateCategoryOdds(predictionType as any, predictionValue);
   }
 
+  // Use configurable house edge
+  const houseEdge = 1 - (BETTING_CONFIG.houseEdgePercentage / 100);
+
   if (predictionType === 'rain') {
     const rainProb = targetForecast.rain_probability;
     
     if (predictionValue === 'yes') {
       // Predicting rain - use actual rain probability
-      // Ensure probability is at least 1% to avoid extreme odds
       const probability = Math.max(rainProb, 1);
-      const odds = (100 / probability) * HOUSE_EDGE;
-      // Cap maximum odds at 50x for safety
-      return Math.min(Math.max(odds, 1.01), 50);
+      const odds = (100 / probability) * houseEdge;
+      const adjustedOdds = getAdjustedOdds(odds, 'rain');
+      return Math.min(Math.max(adjustedOdds, BETTING_CONFIG.minOdds), BETTING_CONFIG.maxOdds);
     } else {
       // Predicting no rain - use inverse probability
       const noRainProb = 100 - rainProb;
       const probability = Math.max(noRainProb, 1);
-      const odds = (100 / probability) * HOUSE_EDGE;
-      // Cap maximum odds at 50x for safety
-      return Math.min(Math.max(odds, 1.01), 50);
+      const odds = (100 / probability) * houseEdge;
+      const adjustedOdds = getAdjustedOdds(odds, 'rain');
+      return Math.min(Math.max(adjustedOdds, BETTING_CONFIG.minOdds), BETTING_CONFIG.maxOdds);
     }
   }
 
@@ -69,7 +70,6 @@ export const calculateDynamicOdds = ({
     } else if (forecastTemp > max) {
       distance = forecastTemp - max;
     }
-    // If within range, distance = 0
 
     // Base odds on range width
     const rangeWidth = max - min;
@@ -80,21 +80,19 @@ export const calculateDynamicOdds = ({
 
     // Adjust odds based on distance from forecast
     if (distance === 0) {
-      // Forecast is within the predicted range - very likely to win
-      return Math.max(1.2, baseOdds * 0.4);
+      baseOdds = Math.max(1.2, baseOdds * 0.4);
     } else if (distance <= 3) {
-      // Close to the range
-      return baseOdds * 0.7;
+      baseOdds = baseOdds * 0.7;
     } else if (distance <= 7) {
-      // Moderate distance
-      return baseOdds * 1.0;
+      baseOdds = baseOdds * 1.0;
     } else if (distance <= 12) {
-      // Far from range
-      return baseOdds * 1.4;
+      baseOdds = baseOdds * 1.4;
     } else {
-      // Very far - unlikely to win
-      return baseOdds * 2.0;
+      baseOdds = baseOdds * 2.0;
     }
+
+    // Apply configuration multipliers
+    return getAdjustedOdds(baseOdds, 'temperature');
   }
 
   return 2.0; // Default fallback
@@ -140,71 +138,57 @@ export const getProbabilityPercentage = (
 };
 
 /**
- * Calculate odds for new weather categories
+ * Static odds for weather categories with configurable multipliers
  */
 export const calculateCategoryOdds = (
   predictionType: 'rainfall' | 'snow' | 'wind' | 'dew_point' | 'pressure' | 'cloud_coverage',
   predictionValue: string
 ): number => {
-  // For now, use static odds based on the category
-  // These can be made dynamic when we integrate more detailed weather data
-  
-  if (predictionType === 'snow') {
-    // Snow yes/no
-    return predictionValue === 'yes' ? 3.5 : 1.5;
-  }
-  
-  // For range-based predictions, use the odds from the ranges
-  if (predictionType === 'rainfall') {
-    const rainfallOdds: { [key: string]: number } = {
+  const categoryOddsMap: Record<string, Record<string, number>> = {
+    rainfall: {
       '0-5': 2.0,
       '5-10': 2.5,
       '10-20': 3.0,
       '20-999': 4.0,
-    };
-    return rainfallOdds[predictionValue] || 2.0;
-  }
-  
-  if (predictionType === 'wind') {
-    const windOdds: { [key: string]: number } = {
+    },
+    wind: {
       '0-10': 2.0,
       '10-20': 2.2,
       '20-30': 2.5,
       '30-999': 3.5,
-    };
-    return windOdds[predictionValue] || 2.0;
-  }
-  
-  if (predictionType === 'dew_point') {
-    const dewPointOdds: { [key: string]: number } = {
+    },
+    dew_point: {
       '0-10': 2.0,
       '10-15': 2.2,
       '15-20': 2.5,
       '20-999': 3.0,
-    };
-    return dewPointOdds[predictionValue] || 2.0;
-  }
-  
-  if (predictionType === 'pressure') {
-    const pressureOdds: { [key: string]: number } = {
+    },
+    pressure: {
       '980-1000': 2.5,
       '1000-1020': 2.0,
       '1020-1040': 2.5,
-    };
-    return pressureOdds[predictionValue] || 2.0;
-  }
-  
-  if (predictionType === 'cloud_coverage') {
-    const cloudOdds: { [key: string]: number } = {
+    },
+    cloud_coverage: {
       '0-25': 2.5,
       '25-50': 2.2,
       '50-75': 2.2,
       '75-100': 2.5,
-    };
-    return cloudOdds[predictionValue] || 2.0;
-  }
+    },
+    snow: {
+      'yes': 5.0,
+      'no': 1.2,
+    },
+  };
+
+  const categoryOdds = categoryOddsMap[predictionType];
+  let baseOdds = 2.0; // Default fallback
   
-  return 2.0;
+  if (categoryOdds && categoryOdds[predictionValue]) {
+    baseOdds = categoryOdds[predictionValue];
+  }
+
+  // Apply configuration multipliers
+  return getAdjustedOdds(baseOdds, predictionType);
 };
 
 /**
