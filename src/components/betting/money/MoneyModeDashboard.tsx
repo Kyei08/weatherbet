@@ -15,6 +15,7 @@ import ActiveBetsWeather from '../ActiveBetsWeather';
 import Analytics from '../Analytics';
 import { formatCurrency } from '@/lib/currency';
 import { useModeTheme } from '@/hooks/useModeTheme';
+import { LiveOddsFeed } from '../LiveOddsFeed';
 
 const MoneyModeDashboard = () => {
   const navigate = useNavigate();
@@ -114,6 +115,9 @@ const MoneyModeDashboard = () => {
 
         {/* Weather Alerts */}
         {bets.length > 0 && <ActiveBetsWeather bets={bets} />}
+
+        {/* Live Odds Feed */}
+        <LiveOddsFeed />
 
         {/* User Stats */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
