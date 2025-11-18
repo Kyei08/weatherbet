@@ -808,9 +808,59 @@ export type Database = {
         }
         Relationships: []
       }
+      weather_accuracy_log: {
+        Row: {
+          accuracy_score: number
+          actual_value: string
+          category: string
+          city: string
+          created_at: string | null
+          id: string
+          metadata: Json | null
+          predicted_value: string
+          prediction_date: string
+          target_date: string
+        }
+        Insert: {
+          accuracy_score: number
+          actual_value: string
+          category: string
+          city: string
+          created_at?: string | null
+          id?: string
+          metadata?: Json | null
+          predicted_value: string
+          prediction_date: string
+          target_date: string
+        }
+        Update: {
+          accuracy_score?: number
+          actual_value?: string
+          category?: string
+          city?: string
+          created_at?: string | null
+          id?: string
+          metadata?: Json | null
+          predicted_value?: string
+          prediction_date?: string
+          target_date?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
-      [_ in never]: never
+      weather_accuracy_summary: {
+        Row: {
+          avg_accuracy: number | null
+          category: string | null
+          city: string | null
+          max_accuracy: number | null
+          min_accuracy: number | null
+          month: string | null
+          total_predictions: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       assign_user_to_leaderboard_group: {

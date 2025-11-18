@@ -16,6 +16,7 @@ import Analytics from '../Analytics';
 import { formatCurrency } from '@/lib/currency';
 import { useModeTheme } from '@/hooks/useModeTheme';
 import { LiveOddsFeed } from '../LiveOddsFeed';
+import { WeatherAccuracy } from '../WeatherAccuracy';
 
 const MoneyModeDashboard = () => {
   const navigate = useNavigate();
@@ -156,6 +157,9 @@ const MoneyModeDashboard = () => {
             </CardContent>
           </Card>
         </div>
+
+        {/* Weather Accuracy */}
+        <WeatherAccuracy />
 
         {/* Quick Actions */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
