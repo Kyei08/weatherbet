@@ -23,6 +23,7 @@ import Analytics from '../Analytics';
 import { TransactionHistory } from '../TransactionHistory';
 import { formatCurrency } from '@/lib/currency';
 import { useModeTheme } from '@/hooks/useModeTheme';
+import { LiveOddsFeed } from '../LiveOddsFeed';
 
 const VirtualModeDashboard = () => {
   const navigate = useNavigate();
@@ -130,6 +131,9 @@ const VirtualModeDashboard = () => {
 
         {/* Weather Alerts */}
         {bets.length > 0 && <ActiveBetsWeather bets={bets} />}
+
+        {/* Live Odds Feed */}
+        <LiveOddsFeed />
 
         {/* Level Display */}
         <LevelDisplay />
