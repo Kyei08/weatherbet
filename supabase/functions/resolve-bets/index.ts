@@ -126,6 +126,48 @@ Deno.serve(async (req) => {
 
         const result = isWin ? 'win' : 'loss';
         
+        // Log weather accuracy for this prediction
+        try {
+          let accuracyScore = 0;
+          let actualValue = '';
+          
+          if (bet.prediction_type === 'rain') {
+            const isRaining = weatherData.weather.some(w => 
+              w.main.toLowerCase() === 'rain' || 
+              w.description.toLowerCase().includes('rain')
+            );
+            actualValue = isRaining ? 'yes' : 'no';
+            const predictedRain = bet.prediction_value.toLowerCase() === 'yes';
+            accuracyScore = isRaining === predictedRain ? 100 : 0;
+          } else if (bet.prediction_type === 'temperature') {
+            const actualTemp = Math.round(weatherData.main.temp);
+            actualValue = `${actualTemp}`;
+            const predictedTemp = parseInt(bet.prediction_value);
+            const difference = Math.abs(actualTemp - predictedTemp);
+            accuracyScore = Math.max(0, 100 - (difference * 10));
+          }
+          
+          // Insert accuracy log
+          await supabase.from('weather_accuracy_log').insert({
+            city: bet.city,
+            prediction_date: bet.created_at,
+            target_date: new Date().toISOString(),
+            category: bet.prediction_type,
+            predicted_value: bet.prediction_value,
+            actual_value: actualValue,
+            accuracy_score: accuracyScore,
+            metadata: {
+              bet_id: bet.id,
+              actual_weather: weatherData
+            }
+          });
+          
+          console.log(`Logged accuracy for bet ${bet.id}: ${accuracyScore}%`);
+        } catch (accError) {
+          console.error(`Error logging accuracy for bet ${bet.id}:`, accError);
+          // Continue with bet resolution even if accuracy logging fails
+        }
+        
         // Calculate points change considering insurance
         let pointsChange: number;
         if (isWin) {
