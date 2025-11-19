@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.calculate-weather-accuracy]
 verify_jwt = false
+
+[functions.verify-yoco-signature]
+verify_jwt = false

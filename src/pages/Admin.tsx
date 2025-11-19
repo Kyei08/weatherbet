@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { ArrowLeft, Shield, Users, Activity, Settings, AlertTriangle, CheckCircle, Package, Target, Award, Plus, Pencil, Trash2, DollarSign, TrendingUp, TrendingDown, ArrowUpRight, ArrowDownLeft, Wallet } from 'lucide-react';
+import { ArrowLeft, Shield, Users, Activity, Settings, AlertTriangle, CheckCircle, Package, Target, Award, Plus, Pencil, Trash2, DollarSign, TrendingUp, TrendingDown, ArrowUpRight, ArrowDownLeft, Wallet, Webhook } from 'lucide-react';
 import { useAdminCheck } from '@/hooks/useAdminCheck';
 import { getAllUsersWithRoles, getAuditLogs, grantRole, revokeRole, logAdminAction } from '@/lib/admin';
 import { getAllShopItems, getAllChallenges, getAllAchievements, deleteShopItem, deleteChallenge, deleteAchievement } from '@/lib/admin-content';
@@ -25,6 +25,7 @@ import {
 import { ShopItemForm } from '@/components/admin/ShopItemForm';
 import { ChallengeForm } from '@/components/admin/ChallengeForm';
 import { AchievementForm } from '@/components/admin/AchievementForm';
+import { WebhookTester } from '@/components/admin/WebhookTester';
 import {
   Select,
   SelectContent,
@@ -427,6 +428,10 @@ const Admin = () => {
             <TabsTrigger value="audit" className="gap-2">
               <Activity className="h-4 w-4" />
               Audit Logs
+            </TabsTrigger>
+            <TabsTrigger value="webhooks" className="gap-2">
+              <Webhook className="h-4 w-4" />
+              Webhooks
             </TabsTrigger>
             <TabsTrigger value="settings" className="gap-2">
               <Settings className="h-4 w-4" />
@@ -1046,6 +1051,11 @@ const Admin = () => {
                 )}
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* Webhooks Tab */}
+          <TabsContent value="webhooks">
+            <WebhookTester />
           </TabsContent>
 
           {/* Settings Tab */}
