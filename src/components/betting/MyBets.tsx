@@ -30,6 +30,7 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
   const [loading, setLoading] = useState(true);
   const [cashOutCalculations, setCashOutCalculations] = useState<Record<string, any>>({});
   const [calculatingCashOuts, setCalculatingCashOuts] = useState(false);
+  const [settlingBets, setSettlingBets] = useState<Set<string>>(new Set());
   const { toast } = useToast();
   const { checkAndUpdateChallenges } = useChallengeTracker();
   const { checkAchievements } = useAchievementTracker();
@@ -141,6 +142,9 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
   };
 
   const handleManualSettle = async (bet: Bet, result: 'win' | 'loss') => {
+    if (settlingBets.has(bet.id)) return;
+    
+    setSettlingBets(prev => new Set(prev).add(bet.id));
     try {
       await updateBetResult(bet.id, result);
       
@@ -191,6 +195,12 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
         title: "Error",
         description: "Failed to settle bet. Please try again.",
         variant: "destructive",
+      });
+    } finally {
+      setSettlingBets(prev => {
+        const next = new Set(prev);
+        next.delete(bet.id);
+        return next;
       });
     }
   };
@@ -256,6 +266,9 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
   };
 
   const handleParlaySettle = async (parlay: ParlayWithLegs, result: 'win' | 'loss') => {
+    if (settlingBets.has(parlay.id)) return;
+    
+    setSettlingBets(prev => new Set(prev).add(parlay.id));
     try {
       await updateParlayResult(parlay.id, result);
       
@@ -301,6 +314,12 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
         description: "Failed to settle parlay. Please try again.",
         variant: "destructive",
       });
+    } finally {
+      setSettlingBets(prev => {
+        const next = new Set(prev);
+        next.delete(parlay.id);
+        return next;
+      });
     }
   };
 
@@ -335,6 +354,9 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
   };
 
   const handleCombinedBetSettle = async (combinedBet: any, result: 'win' | 'loss') => {
+    if (settlingBets.has(combinedBet.id)) return;
+    
+    setSettlingBets(prev => new Set(prev).add(combinedBet.id));
     try {
       await updateCombinedBetResult(combinedBet.id, result);
       
@@ -379,6 +401,12 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
         title: "Error",
         description: "Failed to settle combined bet. Please try again.",
         variant: "destructive",
+      });
+    } finally {
+      setSettlingBets(prev => {
+        const next = new Set(prev);
+        next.delete(combinedBet.id);
+        return next;
       });
     }
   };
@@ -557,17 +585,19 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
                         size="sm" 
                         variant="outline"
                         onClick={() => handleManualSettle(bet, 'win')}
+                        disabled={settlingBets.has(bet.id)}
                         className="text-green-600 border-green-200 hover:bg-green-50"
                       >
-                        Mark as Win
+                        {settlingBets.has(bet.id) ? 'Processing...' : 'Mark as Win'}
                       </Button>
                       <Button 
                         size="sm" 
                         variant="outline"
                         onClick={() => handleManualSettle(bet, 'loss')}
+                        disabled={settlingBets.has(bet.id)}
                         className="text-red-600 border-red-200 hover:bg-red-50"
                       >
-                        Mark as Loss
+                        {settlingBets.has(bet.id) ? 'Processing...' : 'Mark as Loss'}
                       </Button>
                     </div>
                   </div>
@@ -708,17 +738,19 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
                         size="sm" 
                         variant="outline"
                         onClick={() => handleParlaySettle(parlay, 'win')}
+                        disabled={settlingBets.has(parlay.id)}
                         className="text-green-600 border-green-200 hover:bg-green-50"
                       >
-                        Mark as Win
+                        {settlingBets.has(parlay.id) ? 'Processing...' : 'Mark as Win'}
                       </Button>
                       <Button 
                         size="sm" 
                         variant="outline"
                         onClick={() => handleParlaySettle(parlay, 'loss')}
+                        disabled={settlingBets.has(parlay.id)}
                         className="text-red-600 border-red-200 hover:bg-red-50"
                       >
-                        Mark as Loss
+                        {settlingBets.has(parlay.id) ? 'Processing...' : 'Mark as Loss'}
                       </Button>
                     </div>
                   </div>
@@ -817,17 +849,19 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
                         size="sm" 
                         variant="outline"
                         onClick={() => handleCombinedBetSettle(combinedBet, 'win')}
+                        disabled={settlingBets.has(combinedBet.id)}
                         className="text-green-600 border-green-200 hover:bg-green-50"
                       >
-                        Mark as Win
+                        {settlingBets.has(combinedBet.id) ? 'Processing...' : 'Mark as Win'}
                       </Button>
                       <Button 
                         size="sm" 
                         variant="outline"
                         onClick={() => handleCombinedBetSettle(combinedBet, 'loss')}
+                        disabled={settlingBets.has(combinedBet.id)}
                         className="text-red-600 border-red-200 hover:bg-red-50"
                       >
-                        Mark as Loss
+                        {settlingBets.has(combinedBet.id) ? 'Processing...' : 'Mark as Loss'}
                       </Button>
                     </div>
                   </div>

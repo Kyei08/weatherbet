@@ -301,6 +301,8 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
   const handlePlaceBet = async () => {
     if (loading) return;
     
+    setLoading(true);
+    
     // Check if deadline has passed
     if (isDeadlinePassed(selectedDay)) {
       toast({
@@ -308,12 +310,14 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
         description: `The betting deadline for ${format(selectedDay, 'EEEE, MMMM dd')} has already passed. Please select a different day.`,
         variant: 'destructive',
       });
+      setLoading(false);
       return;
     }
 
-    if (!canPlaceBet()) return;
-
-    setLoading(true);
+    if (!canPlaceBet()) {
+      setLoading(false);
+      return;
+    }
 
     // Validate inputs
     const validation = betSchema.safeParse({

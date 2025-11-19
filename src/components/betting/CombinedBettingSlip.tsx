@@ -242,7 +242,7 @@ export function CombinedBettingSlip({ onBack, onBetPlaced }: CombinedBettingSlip
   };
 
   const handlePlaceBet = async () => {
-    if (!canPlaceBet()) return;
+    if (placing || !canPlaceBet()) return;
 
     if (isDeadlinePassed(selectedDay)) {
       toast({
