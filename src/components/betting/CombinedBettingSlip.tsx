@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -71,6 +71,7 @@ export function CombinedBettingSlip({ onBack, onBetPlaced }: CombinedBettingSlip
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [placing, setPlacing] = useState(false);
+  const isPlacingBetRef = useRef(false);
   const [hasInsurance, setHasInsurance] = useState(false);
   const [weatherForecast, setWeatherForecast] = useState<any>(null);
   const [timezone] = useState(getUserTimezone());
@@ -242,7 +243,8 @@ export function CombinedBettingSlip({ onBack, onBetPlaced }: CombinedBettingSlip
   };
 
   const handlePlaceBet = async () => {
-    if (placing || !canPlaceBet()) return;
+    // Prevent duplicate submissions using ref (synchronous check)
+    if (isPlacingBetRef.current || placing || !canPlaceBet()) return;
 
     if (isDeadlinePassed(selectedDay)) {
       toast({
@@ -254,6 +256,7 @@ export function CombinedBettingSlip({ onBack, onBetPlaced }: CombinedBettingSlip
     }
 
     try {
+      isPlacingBetRef.current = true;
       setPlacing(true);
 
       const categories = Object.values(categoryValues).map(cat => ({
@@ -278,6 +281,7 @@ export function CombinedBettingSlip({ onBack, onBetPlaced }: CombinedBettingSlip
       });
     } finally {
       setPlacing(false);
+      isPlacingBetRef.current = false;
     }
   };
 

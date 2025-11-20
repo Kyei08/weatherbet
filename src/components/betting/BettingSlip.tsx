@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -71,6 +71,7 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
   const [stake, setStake] = useState<string>('');
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+  const isPlacingBetRef = useRef(false);
   const [userTimezone] = useState(() => getUserTimezone());
   const [availableDays] = useState(() => getNext7Days());
   const [selectedDay, setSelectedDay] = useState<Date>(getNext7Days()[0]); // Default to tomorrow
@@ -299,8 +300,10 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
   };
 
   const handlePlaceBet = async () => {
-    if (loading) return;
+    // Prevent duplicate submissions using ref (synchronous check)
+    if (isPlacingBetRef.current || loading) return;
     
+    isPlacingBetRef.current = true;
     setLoading(true);
     
     // Check if deadline has passed
@@ -473,6 +476,7 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
       });
     } finally {
       setLoading(false);
+      isPlacingBetRef.current = false;
     }
   };
 

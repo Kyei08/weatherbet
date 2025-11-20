@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -91,6 +91,7 @@ const ParlayBettingSlip = ({ onBack, onBetPlaced }: ParlayBettingSlipProps) => {
   const [stake, setStake] = useState('');
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+  const isPlacingBetRef = useRef(false);
   const [weatherForecasts, setWeatherForecasts] = useState<Record<string, any[]>>({});
   const [hasInsurance, setHasInsurance] = useState(false);
   const [userTimezone] = useState(() => getUserTimezone());
@@ -297,6 +298,9 @@ const ParlayBettingSlip = ({ onBack, onBetPlaced }: ParlayBettingSlipProps) => {
   };
 
   const handlePlaceParlay = async () => {
+    // Prevent duplicate submissions using ref (synchronous check)
+    if (isPlacingBetRef.current || loading) return;
+    
     // Check if deadline has passed
     if (isDeadlinePassed(selectedDay)) {
       toast({
@@ -309,6 +313,7 @@ const ParlayBettingSlip = ({ onBack, onBetPlaced }: ParlayBettingSlipProps) => {
 
     if (!canPlaceParlay()) return;
 
+    isPlacingBetRef.current = true;
     setLoading(true);
 
     // Validate inputs
@@ -407,6 +412,7 @@ const ParlayBettingSlip = ({ onBack, onBetPlaced }: ParlayBettingSlipProps) => {
       });
     } finally {
       setLoading(false);
+      isPlacingBetRef.current = false;
     }
   };
 
