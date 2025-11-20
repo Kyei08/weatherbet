@@ -331,6 +331,7 @@ const ParlayBettingSlip = ({ onBack, onBetPlaced }: ParlayBettingSlipProps) => {
         variant: 'destructive',
       });
       setLoading(false);
+      isPlacingBetRef.current = false;
       return;
     }
 
@@ -343,6 +344,7 @@ const ParlayBettingSlip = ({ onBack, onBetPlaced }: ParlayBettingSlipProps) => {
         variant: 'destructive',
       });
       setLoading(false);
+      isPlacingBetRef.current = false;
       return;
     }
 
@@ -403,6 +405,7 @@ const ParlayBettingSlip = ({ onBack, onBetPlaced }: ParlayBettingSlipProps) => {
 
       onBetPlaced();
       onBack();
+      window.location.href = '/';
     } catch (error: any) {
       console.error('Error placing parlay:', error);
       toast({

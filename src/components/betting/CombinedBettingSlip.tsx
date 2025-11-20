@@ -273,6 +273,7 @@ export function CombinedBettingSlip({ onBack, onBetPlaced }: CombinedBettingSlip
       });
 
       onBetPlaced();
+      window.location.href = '/';
     } catch (error: any) {
       toast({
         title: "Error",
