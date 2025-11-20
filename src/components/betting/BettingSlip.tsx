@@ -314,11 +314,13 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
         variant: 'destructive',
       });
       setLoading(false);
+      isPlacingBetRef.current = false;
       return;
     }
 
     if (!canPlaceBet()) {
       setLoading(false);
+      isPlacingBetRef.current = false;
       return;
     }
 
@@ -338,6 +340,7 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
         variant: 'destructive',
       });
       setLoading(false);
+      isPlacingBetRef.current = false;
       return;
     }
 
@@ -349,6 +352,7 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
         variant: 'destructive',
       });
       setLoading(false);
+      isPlacingBetRef.current = false;
       return;
     }
 
@@ -467,6 +471,7 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
 
       onBetPlaced();
       onBack();
+      window.location.href = '/';
     } catch (error) {
       console.error('Error placing bet:', error);
       toast({
