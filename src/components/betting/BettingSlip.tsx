@@ -23,6 +23,7 @@ import { z } from 'zod';
 import { format, addDays, startOfDay, endOfDay, setHours, setMinutes, setSeconds } from 'date-fns';
 import { useCurrencyMode } from '@/contexts/CurrencyModeContext';
 import { formatCurrency } from '@/lib/currency';
+import { DuplicateBetDialog } from './DuplicateBetDialog';
 
 // Get user's timezone
 const getUserTimezone = () => {
@@ -81,6 +82,7 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
   const [activePurchases, setActivePurchases] = useState<PurchaseWithItem[]>([]);
   const [activeMultiplier, setActiveMultiplier] = useState(1);
   const [maxStakeBoost, setMaxStakeBoost] = useState(0);
+  const [showDuplicateDialog, setShowDuplicateDialog] = useState(false);
   const { toast } = useToast();
   const { checkAndUpdateChallenges } = useChallengeTracker();
   const { checkAchievements } = useAchievementTracker();
@@ -472,13 +474,19 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
       onBetPlaced();
       onBack();
       window.location.href = '/';
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error placing bet:', error);
-      toast({
-        title: "Error",
-        description: "Failed to place bet. Please try again.",
-        variant: "destructive",
-      });
+      
+      // Check if it's a duplicate bet error
+      if (error?.message?.includes('wait a few seconds before placing another identical')) {
+        setShowDuplicateDialog(true);
+      } else {
+        toast({
+          title: "Error",
+          description: error?.message || "Failed to place bet. Please try again.",
+          variant: "destructive",
+        });
+      }
     } finally {
       setLoading(false);
       isPlacingBetRef.current = false;
@@ -1067,6 +1075,12 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
           </CardContent>
         </Card>
       </div>
+      
+      <DuplicateBetDialog 
+        open={showDuplicateDialog} 
+        onOpenChange={setShowDuplicateDialog}
+        betType="single"
+      />
     </div>
   );
 };

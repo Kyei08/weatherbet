@@ -22,6 +22,7 @@ import { Clock, Calendar } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { formatCurrency } from '@/lib/currency';
 import { useCurrencyMode } from '@/contexts/CurrencyModeContext';
+import { DuplicateBetDialog } from './DuplicateBetDialog';
 
 // Get user's timezone
 const getUserTimezone = () => {
@@ -97,6 +98,7 @@ const ParlayBettingSlip = ({ onBack, onBetPlaced }: ParlayBettingSlipProps) => {
   const [userTimezone] = useState(() => getUserTimezone());
   const [availableDays] = useState(() => getNext7Days());
   const [selectedDay, setSelectedDay] = useState<Date>(getNext7Days()[0]); // Default to tomorrow
+  const [showDuplicateDialog, setShowDuplicateDialog] = useState(false);
   const { toast } = useToast();
   const { checkAndUpdateChallenges } = useChallengeTracker();
   const { checkAchievements } = useAchievementTracker();
@@ -408,11 +410,17 @@ const ParlayBettingSlip = ({ onBack, onBetPlaced }: ParlayBettingSlipProps) => {
       window.location.href = '/';
     } catch (error: any) {
       console.error('Error placing parlay:', error);
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to place parlay',
-        variant: 'destructive',
-      });
+      
+      // Check if it's a duplicate parlay error
+      if (error?.message?.includes('wait a few seconds before placing another identical')) {
+        setShowDuplicateDialog(true);
+      } else {
+        toast({
+          title: 'Error',
+          description: error?.message || 'Failed to place parlay',
+          variant: 'destructive',
+        });
+      }
     } finally {
       setLoading(false);
       isPlacingBetRef.current = false;
@@ -430,16 +438,17 @@ const ParlayBettingSlip = ({ onBack, onBetPlaced }: ParlayBettingSlipProps) => {
   }
 
   return (
-    <Card className="w-full">
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <Button variant="ghost" size="sm" onClick={onBack}>
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back
-          </Button>
-          <CardTitle className="text-xl">Parlay Bet</CardTitle>
-          <div className="w-20" />
-        </div>
+    <>
+      <Card className="w-full">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <Button variant="ghost" size="sm" onClick={onBack}>
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back
+            </Button>
+            <CardTitle className="text-xl">Parlay Bet</CardTitle>
+            <div className="w-20" />
+          </div>
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="bg-primary/10 p-4 rounded-lg">
@@ -965,6 +974,13 @@ const ParlayBettingSlip = ({ onBack, onBetPlaced }: ParlayBettingSlipProps) => {
         </Button>
       </CardContent>
     </Card>
+    
+    <DuplicateBetDialog 
+      open={showDuplicateDialog} 
+      onOpenChange={setShowDuplicateDialog}
+      betType="parlay"
+    />
+    </>
   );
 };
 
