@@ -18,6 +18,7 @@ import { calculateDynamicOdds, calculateCategoryOdds } from '@/lib/dynamic-odds'
 import WeatherDisplay from './WeatherDisplay';
 import { formatCurrency } from '@/lib/currency';
 import { useCurrencyMode } from '@/contexts/CurrencyModeContext';
+import { DuplicateBetDialog } from './DuplicateBetDialog';
 
 const getUserTimezone = () => Intl.DateTimeFormat().resolvedOptions().timeZone;
 
@@ -75,6 +76,7 @@ export function CombinedBettingSlip({ onBack, onBetPlaced }: CombinedBettingSlip
   const [hasInsurance, setHasInsurance] = useState(false);
   const [weatherForecast, setWeatherForecast] = useState<any>(null);
   const [timezone] = useState(getUserTimezone());
+  const [showDuplicateDialog, setShowDuplicateDialog] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -275,11 +277,16 @@ export function CombinedBettingSlip({ onBack, onBetPlaced }: CombinedBettingSlip
       onBetPlaced();
       window.location.href = '/';
     } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive"
-      });
+      // Check if it's a duplicate combined bet error
+      if (error?.message?.includes('wait a few seconds before placing another identical')) {
+        setShowDuplicateDialog(true);
+      } else {
+        toast({
+          title: "Error",
+          description: error?.message || "Failed to place combined bet",
+          variant: "destructive"
+        });
+      }
     } finally {
       setPlacing(false);
       isPlacingBetRef.current = false;
@@ -295,12 +302,13 @@ export function CombinedBettingSlip({ onBack, onBetPlaced }: CombinedBettingSlip
   const deadlinePassed = isDeadlinePassed(selectedDay);
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon" onClick={onBack}>
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
+    <>
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="icon" onClick={onBack}>
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
           <CardTitle>Combined Weather Bet</CardTitle>
         </div>
         <p className="text-sm text-muted-foreground mt-2">
@@ -741,5 +749,12 @@ export function CombinedBettingSlip({ onBack, onBetPlaced }: CombinedBettingSlip
         </Button>
       </CardContent>
     </Card>
+    
+    <DuplicateBetDialog 
+      open={showDuplicateDialog} 
+      onOpenChange={setShowDuplicateDialog}
+      betType="combined"
+    />
+    </>
   );
 }
