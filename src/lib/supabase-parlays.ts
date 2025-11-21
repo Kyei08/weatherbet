@@ -46,7 +46,12 @@ export const createParlay = async (
     _currency_type: currencyType
   });
 
-  if (parlayError) throw parlayError;
+  if (parlayError) {
+    if (parlayError.message?.includes('Duplicate parlay detected')) {
+      throw new Error('Please wait a few seconds before placing another identical parlay');
+    }
+    throw parlayError;
+  }
 
   // Create all legs
   const legs = predictions.map(pred => ({
