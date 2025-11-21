@@ -39,7 +39,12 @@ export const createCombinedBet = async (
     _currency_type: currencyType
   });
 
-  if (betError) throw betError;
+  if (betError) {
+    if (betError.message?.includes('Duplicate combined bet detected')) {
+      throw new Error('Please wait a few seconds before placing another identical combined bet');
+    }
+    throw betError;
+  }
 
   // Create category predictions
   const categoryInserts = categories.map(cat => ({

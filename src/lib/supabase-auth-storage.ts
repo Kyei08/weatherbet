@@ -156,7 +156,12 @@ export const addBet = async (bet: Omit<BetInsert, 'id' | 'user_id' | 'created_at
     _currency_type: currencyType
   });
 
-  if (error) throw error;
+  if (error) {
+    if (error.message?.includes('Duplicate bet detected')) {
+      throw new Error('Please wait a few seconds before placing another identical bet');
+    }
+    throw error;
+  }
 
   // Fetch the created bet
   const { data: createdBet, error: fetchError } = await supabase
