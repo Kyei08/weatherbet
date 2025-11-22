@@ -373,18 +373,10 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
       else if (predictionType === 'cloud_coverage') predictionValue = cloudCoverageRange;
       
       const totalCost = getTotalCost();
-
-      // Deduct total cost (stake + insurance) from user balance
       const currencyType = mode === 'real' ? 'real' : 'virtual';
-      await supabase.rpc('update_user_points_safe', {
-        user_uuid: user.id,
-        points_change: -totalCost,
-        currency_type: currencyType,
-        transaction_type: 'bet_placed',
-        reference_type: 'bet'
-      });
 
       // Add bet (target date is selected day, expires at deadline)
+      // Note: create_bet_atomic handles both bet creation and points deduction atomically
       const betDeadline = getBetDeadline();
       const targetDateEnd = endOfDay(selectedDay);
       const betData = await addBet({
