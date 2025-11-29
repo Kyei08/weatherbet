@@ -31,10 +31,60 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
   const [cashOutCalculations, setCashOutCalculations] = useState<Record<string, any>>({});
   const [calculatingCashOuts, setCalculatingCashOuts] = useState(false);
   const [settlingBets, setSettlingBets] = useState<Set<string>>(new Set());
+  const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'settled'>('all');
   const { toast } = useToast();
   const { checkAndUpdateChallenges } = useChallengeTracker();
   const { checkAchievements } = useAchievementTracker();
   const { awardXPForAction } = useLevelSystem();
+
+  // Calculate comprehensive statistics
+  const calculateStats = () => {
+    const allBets = [...bets, ...parlays, ...combinedBets];
+    const settledBets = allBets.filter(bet => bet.result === 'win' || bet.result === 'loss' || bet.result === 'cashed_out');
+    const wonBets = allBets.filter(bet => bet.result === 'win');
+    const lostBets = allBets.filter(bet => bet.result === 'loss');
+    const cashedOutBets = allBets.filter(bet => bet.result === 'cashed_out');
+    
+    const totalWagered = allBets.reduce((sum, bet) => {
+      if ('total_stake' in bet) return sum + bet.total_stake;
+      return sum + bet.stake;
+    }, 0);
+    
+    const totalWon = wonBets.reduce((sum, bet) => {
+      const stake = 'total_stake' in bet ? bet.total_stake : bet.stake;
+      const odds = 'combined_odds' in bet ? bet.combined_odds : bet.odds;
+      return sum + Math.floor(stake * Number(odds));
+    }, 0);
+    
+    const totalLost = lostBets.reduce((sum, bet) => {
+      const stake = 'total_stake' in bet ? bet.total_stake : bet.stake;
+      const hasInsurance = (bet as any).has_insurance;
+      const insurancePayout = hasInsurance ? Math.floor(stake * 0.8) : 0;
+      return sum + (stake - insurancePayout);
+    }, 0);
+    
+    const totalCashedOut = cashedOutBets.reduce((sum, bet) => {
+      return sum + ((bet as any).cashout_amount || 0);
+    }, 0);
+    
+    const netProfit = totalWon + totalCashedOut - totalLost;
+    const winRate = settledBets.length > 0 ? ((wonBets.length / settledBets.length) * 100).toFixed(1) : '0.0';
+    
+    return {
+      totalBets: allBets.length,
+      totalWagered,
+      totalWon,
+      totalLost,
+      totalCashedOut,
+      netProfit,
+      winRate,
+      wonCount: wonBets.length,
+      lostCount: lostBets.length,
+      cashedOutCount: cashedOutBets.length,
+    };
+  };
+
+  const stats = calculateStats();
   
   useEffect(() => {
     const fetchData = async () => {
@@ -452,6 +502,29 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
     );
   }
 
+  const filteredBets = bets.filter(bet => {
+    if (filterStatus === 'all') return true;
+    if (filterStatus === 'pending') return bet.result === 'pending';
+    return bet.result !== 'pending';
+  });
+
+  const filteredParlays = parlays.filter(parlay => {
+    if (filterStatus === 'all') return true;
+    if (filterStatus === 'pending') return parlay.result === 'pending';
+    return parlay.result !== 'pending';
+  });
+
+  const filteredCombinedBets = combinedBets.filter(cb => {
+    if (filterStatus === 'all') return true;
+    if (filterStatus === 'pending') return cb.result === 'pending';
+    return cb.result !== 'pending';
+  });
+
+  const formatCurrency = (amount: number) => {
+    if (mode === 'real') return formatRands(amount);
+    return `${amount} pts`;
+  };
+
   return (
     <div className="min-h-screen bg-background p-4">
       <div className="max-w-4xl mx-auto space-y-6">
@@ -469,15 +542,90 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
           </Button>
         </div>
 
-        {/* Pending Bets */}
-        {pendingBets.length > 0 && (
+        {/* Summary Statistics */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <Card>
+            <CardContent className="pt-4">
+              <div className="text-sm text-muted-foreground">Total Bets</div>
+              <div className="text-2xl font-bold">{stats.totalBets}</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-4">
+              <div className="text-sm text-muted-foreground">Win Rate</div>
+              <div className="text-2xl font-bold text-green-600">{stats.winRate}%</div>
+              <div className="text-xs text-muted-foreground">
+                {stats.wonCount}W - {stats.lostCount}L
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-4">
+              <div className="text-sm text-muted-foreground">Total Wagered</div>
+              <div className="text-2xl font-bold">{formatCurrency(stats.totalWagered)}</div>
+            </CardContent>
+          </Card>
+          <Card className={stats.netProfit >= 0 ? 'border-green-500/50' : 'border-red-500/50'}>
+            <CardContent className="pt-4">
+              <div className="text-sm text-muted-foreground flex items-center gap-1">
+                Net Profit/Loss
+                <TrendingUp className={`h-3 w-3 ${stats.netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`} />
+              </div>
+              <div className={`text-2xl font-bold ${stats.netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                {stats.netProfit >= 0 ? '+' : ''}{formatCurrency(stats.netProfit)}
+              </div>
+              <div className="text-xs text-muted-foreground mt-1">
+                Won: {formatCurrency(stats.totalWon)} | Lost: {formatCurrency(stats.totalLost)}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Filters */}
+        <Card>
+          <CardContent className="pt-4">
+            <div className="flex gap-2">
+              <Button
+                variant={filterStatus === 'all' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setFilterStatus('all')}
+              >
+                All ({bets.length + parlays.length + combinedBets.length})
+              </Button>
+              <Button
+                variant={filterStatus === 'pending' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setFilterStatus('pending')}
+              >
+                Pending ({pendingBets.length + pendingParlays.length + combinedBets.filter(cb => cb.result === 'pending').length})
+              </Button>
+              <Button
+                variant={filterStatus === 'settled' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setFilterStatus('settled')}
+              >
+                Settled ({settledBets.length + settledParlays.length + combinedBets.filter(cb => cb.result !== 'pending').length})
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Pending/Filtered Bets */}
+        {filteredBets.length > 0 && (
           <Card>
             <CardHeader>
-              <CardTitle>Pending Single Bets ({pendingBets.length})</CardTitle>
+              <CardTitle>Single Bets ({filteredBets.length})</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {pendingBets.map((bet) => (
+                {filteredBets.map((bet) => {
+                  const stake = bet.stake;
+                  const potentialWin = Math.floor(stake * Number(bet.odds));
+                  const profitLoss = bet.result === 'win' ? potentialWin : 
+                                    bet.result === 'loss' ? -stake :
+                                    bet.result === 'cashed_out' ? ((bet as any).cashout_amount - stake) : 0;
+                  
+                  return (
                   <div key={bet.id} className="border rounded-lg p-4 space-y-3">
                     <div className="flex justify-between items-start">
                       <div>
@@ -502,10 +650,20 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
                             </Badge>
                           )}
                         </div>
-                        <p className="text-sm mt-1">Stake: {bet.stake} pts</p>
-                        <p className="text-sm">Odds: {bet.odds}x</p>
+                        <p className="text-sm mt-1">Stake: {formatCurrency(stake)}</p>
+                        <p className="text-sm">Odds: {Number(bet.odds).toFixed(2)}x</p>
+                        {bet.result === 'pending' && (
+                          <p className="text-sm text-muted-foreground">
+                            Potential: {formatCurrency(potentialWin)}
+                          </p>
+                        )}
+                        {bet.result !== 'pending' && (
+                          <p className={`text-sm font-semibold ${profitLoss >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                            P/L: {profitLoss >= 0 ? '+' : ''}{formatCurrency(Math.abs(profitLoss))}
+                          </p>
+                        )}
                         {(bet as any).has_insurance && (
-                          <p className="text-xs text-primary">Protected: {Math.floor(bet.stake * ((bet as any).insurance_payout_percentage || 0.8))} pts</p>
+                          <p className="text-xs text-primary">Protected: {formatCurrency(Math.floor(stake * ((bet as any).insurance_payout_percentage || 0.8)))}</p>
                         )}
                       </div>
                     </div>
@@ -545,7 +703,7 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
                             disabled={calculatingCashOuts}
                           >
                             Cash Out
-                            <span className="ml-2 font-bold">{cashOutCalculations[bet.id].amount} pts</span>
+                            <span className="ml-2 font-bold">{formatCurrency(cashOutCalculations[bet.id].amount)}</span>
                           </Button>
                         </div>
                         
@@ -601,21 +759,28 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
                       </Button>
                     </div>
                   </div>
-                ))}
+                )})}
               </div>
             </CardContent>
           </Card>
         )}
 
-        {/* Pending Parlays */}
-        {pendingParlays.length > 0 && (
+        {/* Filtered Parlays */}
+        {filteredParlays.length > 0 && (
           <Card>
             <CardHeader>
-              <CardTitle>Pending Parlays ({pendingParlays.length})</CardTitle>
+              <CardTitle>Parlays ({filteredParlays.length})</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {pendingParlays.map((parlay) => (
+                {filteredParlays.map((parlay) => {
+                  const stake = parlay.total_stake;
+                  const potentialWin = Math.floor(stake * Number(parlay.combined_odds));
+                  const profitLoss = parlay.result === 'win' ? potentialWin : 
+                                    parlay.result === 'loss' ? -stake :
+                                    parlay.result === 'cashed_out' ? ((parlay as any).cashout_amount - stake) : 0;
+                  
+                  return (
                   <div key={parlay.id} className="border-2 border-primary/20 rounded-lg p-4 space-y-3 bg-gradient-primary/5">
                     <div className="flex justify-between items-start">
                       <div>
@@ -636,13 +801,20 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
                             </Badge>
                           )}
                         </div>
-                        <p className="text-sm mt-1 font-bold">Stake: {parlay.total_stake} pts</p>
+                        <p className="text-sm mt-1 font-bold">Stake: {formatCurrency(stake)}</p>
                         <p className="text-sm font-bold text-primary">Odds: {Number(parlay.combined_odds).toFixed(2)}x</p>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Potential: {Math.floor(parlay.total_stake * Number(parlay.combined_odds))} pts
-                        </p>
+                        {parlay.result === 'pending' && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Potential: {formatCurrency(potentialWin)}
+                          </p>
+                        )}
+                        {parlay.result !== 'pending' && (
+                          <p className={`text-sm font-semibold ${profitLoss >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                            P/L: {profitLoss >= 0 ? '+' : ''}{formatCurrency(Math.abs(profitLoss))}
+                          </p>
+                        )}
                         {parlay.has_insurance && (
-                          <p className="text-xs text-primary">Protected: {Math.floor(parlay.total_stake * (parlay.insurance_payout_percentage || 0.75))} pts</p>
+                          <p className="text-xs text-primary">Protected: {formatCurrency(Math.floor(stake * (parlay.insurance_payout_percentage || 0.75)))}</p>
                         )}
                       </div>
                     </div>
@@ -697,7 +869,7 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
                             disabled={calculatingCashOuts}
                           >
                             Cash Out
-                            <span className="ml-2 font-bold">{cashOutCalculations[parlay.id].amount} pts</span>
+                            <span className="ml-2 font-bold">{formatCurrency(cashOutCalculations[parlay.id].amount)}</span>
                           </Button>
                         </div>
                         
@@ -754,21 +926,29 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
                       </Button>
                     </div>
                   </div>
-                ))}
+                  )
+                })}
               </div>
             </CardContent>
           </Card>
         )}
 
-        {/* Pending Combined Bets */}
-        {combinedBets.filter(cb => cb.result === 'pending').length > 0 && (
+        {/* Filtered Combined Bets */}
+        {filteredCombinedBets.length > 0 && (
           <Card>
             <CardHeader>
-              <CardTitle>Pending Combined Bets ({combinedBets.filter(cb => cb.result === 'pending').length})</CardTitle>
+              <CardTitle>Combined Bets ({filteredCombinedBets.length})</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {combinedBets.filter(cb => cb.result === 'pending').map((combinedBet) => (
+                {filteredCombinedBets.map((combinedBet) => {
+                  const stake = combinedBet.total_stake;
+                  const potentialWin = Math.floor(stake * Number(combinedBet.combined_odds));
+                  const profitLoss = combinedBet.result === 'win' ? potentialWin : 
+                                    combinedBet.result === 'loss' ? -stake :
+                                    combinedBet.result === 'cashed_out' ? ((combinedBet as any).cashout_amount - stake) : 0;
+                  
+                  return (
                   <div key={combinedBet.id} className="border-2 border-accent/20 rounded-lg p-4 space-y-3 bg-gradient-to-br from-accent/5 to-primary/5">
                     <div className="flex justify-between items-start">
                       <div>
@@ -790,13 +970,20 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
                             </Badge>
                           )}
                         </div>
-                        <p className="text-sm mt-1 font-bold">Stake: {combinedBet.total_stake} pts</p>
+                        <p className="text-sm mt-1 font-bold">Stake: {formatCurrency(stake)}</p>
                         <p className="text-sm font-bold text-primary">Odds: {Number(combinedBet.combined_odds).toFixed(2)}x</p>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Potential: {Math.floor(combinedBet.total_stake * Number(combinedBet.combined_odds))} pts
-                        </p>
+                        {combinedBet.result === 'pending' && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Potential: {formatCurrency(potentialWin)}
+                          </p>
+                        )}
+                        {combinedBet.result !== 'pending' && (
+                          <p className={`text-sm font-semibold ${profitLoss >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                            P/L: {profitLoss >= 0 ? '+' : ''}{formatCurrency(Math.abs(profitLoss))}
+                          </p>
+                        )}
                         {combinedBet.has_insurance && (
-                          <p className="text-xs text-primary">Protected: {Math.floor(combinedBet.total_stake * (combinedBet.insurance_payout_percentage || 0.75))} pts</p>
+                          <p className="text-xs text-primary">Protected: {formatCurrency(Math.floor(stake * (combinedBet.insurance_payout_percentage || 0.75)))}</p>
                         )}
                       </div>
                     </div>
@@ -836,7 +1023,7 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
                             disabled={calculatingCashOuts}
                           >
                             Cash Out
-                            <span className="ml-2 font-bold">{cashOutCalculations[combinedBet.id].amount} pts</span>
+                            <span className="ml-2 font-bold">{formatCurrency(cashOutCalculations[combinedBet.id].amount)}</span>
                           </Button>
                         </div>
                       </div>
@@ -865,159 +1052,8 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
                       </Button>
                     </div>
                   </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Settled Bets */}
-        {settledBets.length > 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Single Bet History ({settledBets.length})</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {settledBets.map((bet) => (
-                  <div key={bet.id} className="flex justify-between items-center p-3 border rounded">
-                    <div>
-                      <h3 className="font-medium">{bet.city}</h3>
-                      <p className="text-sm text-muted-foreground">
-                        {bet.prediction_type === 'rain' 
-                          ? `Rain: ${bet.prediction_value}` 
-                          : `Temperature: ${bet.prediction_value}°C`
-                        }
-                      </p>
-                      <p className="text-xs text-muted-foreground">{formatDate(bet.created_at)}</p>
-                    </div>
-                    <div className="text-right">
-                      <Badge variant={getCashOutBadgeVariant(bet.result)}>
-                        {formatResult(bet.result)}
-                      </Badge>
-                      <p className="text-sm mt-1">
-                        {bet.result === 'win' 
-                          ? `+${Math.floor(bet.stake * Number(bet.odds))} pts`
-                          : bet.result === 'cashed_out'
-                          ? `+${(bet as any).cashout_amount || 0} pts`
-                          : `-${bet.stake} pts`
-                        }
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Settled Parlays */}
-        {settledParlays.length > 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Parlay History ({settledParlays.length})</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {settledParlays.map((parlay) => (
-                  <div key={parlay.id} className="border rounded-lg p-4 space-y-3">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <h3 className="font-semibold text-lg flex items-center gap-2">
-                          💰 {parlay.parlay_legs.length}-Leg Parlay
-                        </h3>
-                        <p className="text-sm text-muted-foreground">{formatDate(parlay.created_at)}</p>
-                      </div>
-                      <div className="text-right">
-                        <Badge variant={getCashOutBadgeVariant(parlay.result)}>
-                          {formatResult(parlay.result)}
-                        </Badge>
-                        <p className="text-sm mt-1">Stake: {parlay.total_stake} pts</p>
-                        <p className="text-sm">Odds: {Number(parlay.combined_odds).toFixed(2)}x</p>
-                        {parlay.result === 'win' && (
-                          <p className="text-sm font-bold text-green-600">
-                            Won: {Math.floor(parlay.total_stake * Number(parlay.combined_odds))} pts
-                          </p>
-                        )}
-                        {parlay.result === 'cashed_out' && (
-                          <p className="text-sm font-bold text-primary">
-                            Cashed Out: {parlay.cashout_amount || 0} pts
-                          </p>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Parlay Legs */}
-                    <div className="space-y-1 pl-4 border-l-2 border-muted">
-                      {parlay.parlay_legs.map((leg, idx) => (
-                        <div key={leg.id} className="text-sm text-muted-foreground">
-                          <span className="font-medium">Leg {idx + 1}: {leg.city}</span>
-                          <span className="ml-2">
-                            {leg.prediction_type === 'rain' 
-                              ? `Rain: ${leg.prediction_value}` 
-                              : `Temp: ${leg.prediction_value}°C`
-                            } ({Number(leg.odds).toFixed(2)}x)
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Settled Combined Bets */}
-        {combinedBets.filter(cb => cb.result !== 'pending').length > 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Combined Bet History ({combinedBets.filter(cb => cb.result !== 'pending').length})</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {combinedBets.filter(cb => cb.result !== 'pending').map((combinedBet) => (
-                  <div key={combinedBet.id} className="border rounded-lg p-4 space-y-3">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <h3 className="font-semibold text-lg flex items-center gap-2">
-                          ⚡ {combinedBet.combined_bet_categories.length}-Category Combined
-                        </h3>
-                        <p className="text-sm text-muted-foreground">{combinedBet.city}</p>
-                        <p className="text-sm text-muted-foreground">{formatDate(combinedBet.created_at)}</p>
-                      </div>
-                      <div className="text-right">
-                        <Badge variant={getCashOutBadgeVariant(combinedBet.result)}>
-                          {formatResult(combinedBet.result)}
-                        </Badge>
-                        <p className="text-sm mt-1">Stake: {combinedBet.total_stake} pts</p>
-                        <p className="text-sm">Odds: {Number(combinedBet.combined_odds).toFixed(2)}x</p>
-                        {combinedBet.result === 'win' && (
-                          <p className="text-sm font-bold text-green-600">
-                            Won: {Math.floor(combinedBet.total_stake * Number(combinedBet.combined_odds))} pts
-                          </p>
-                        )}
-                        {combinedBet.result === 'cashed_out' && (
-                          <p className="text-sm font-bold text-primary">
-                            Cashed Out: {combinedBet.cashout_amount || 0} pts
-                          </p>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Categories */}
-                    <div className="space-y-1 pl-4 border-l-2 border-muted">
-                      {combinedBet.combined_bet_categories.map((cat: any, idx: number) => (
-                        <div key={cat.id} className="text-sm text-muted-foreground">
-                          <span className="font-medium">Category {idx + 1}: {cat.prediction_type}</span>
-                          <span className="ml-2">
-                            {cat.prediction_value} ({Number(cat.odds).toFixed(2)}x)
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             </CardContent>
           </Card>
