@@ -73,6 +73,8 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const isPlacingBetRef = useRef(false);
+  const lastBetDetailsRef = useRef<string>('');
+  const lastBetTimeRef = useRef<number>(0);
   const [userTimezone] = useState(() => getUserTimezone());
   const [availableDays] = useState(() => getNext7Days());
   const [selectedDay, setSelectedDay] = useState<Date>(getNext7Days()[0]); // Default to tomorrow
@@ -304,6 +306,32 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
   const handlePlaceBet = async () => {
     // Prevent duplicate submissions using ref (synchronous check)
     if (isPlacingBetRef.current || loading) return;
+    
+    // Get prediction value for duplicate check
+    let predictionValue = '';
+    if (predictionType === 'rain') predictionValue = rainPrediction;
+    else if (predictionType === 'temperature') predictionValue = tempRange;
+    else if (predictionType === 'rainfall') predictionValue = rainfallRange;
+    else if (predictionType === 'snow') predictionValue = snowPrediction;
+    else if (predictionType === 'wind') predictionValue = windRange;
+    else if (predictionType === 'dew_point') predictionValue = dewPointRange;
+    else if (predictionType === 'pressure') predictionValue = pressureRange;
+    else if (predictionType === 'cloud_coverage') predictionValue = cloudCoverageRange;
+    
+    // Create a unique bet signature for duplicate detection
+    const betSignature = `${city}|${predictionType}|${predictionValue}|${stake}|${format(selectedDay, 'yyyy-MM-dd')}|${mode}`;
+    const now = Date.now();
+    const timeSinceLastBet = now - lastBetTimeRef.current;
+    
+    // Block if identical bet was placed in last 5 seconds
+    if (lastBetDetailsRef.current === betSignature && timeSinceLastBet < 5000) {
+      setShowDuplicateDialog(true);
+      return;
+    }
+    
+    // Store bet details and timestamp
+    lastBetDetailsRef.current = betSignature;
+    lastBetTimeRef.current = now;
     
     isPlacingBetRef.current = true;
     setLoading(true);
