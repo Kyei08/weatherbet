@@ -93,6 +93,8 @@ const ParlayBettingSlip = ({ onBack, onBetPlaced }: ParlayBettingSlipProps) => {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const isPlacingBetRef = useRef(false);
+  const lastBetDetailsRef = useRef<string>('');
+  const lastBetTimeRef = useRef<number>(0);
   const [weatherForecasts, setWeatherForecasts] = useState<Record<string, any[]>>({});
   const [hasInsurance, setHasInsurance] = useState(false);
   const [userTimezone] = useState(() => getUserTimezone());
@@ -302,6 +304,24 @@ const ParlayBettingSlip = ({ onBack, onBetPlaced }: ParlayBettingSlipProps) => {
   const handlePlaceParlay = async () => {
     // Prevent duplicate submissions using ref (synchronous check)
     if (isPlacingBetRef.current || loading) return;
+    
+    // Create a unique bet signature for duplicate detection
+    const betSignature = predictions.map(p => 
+      `${p.city}|${p.predictionType}|${p.rainPrediction || p.temperatureRange || p.rainfallRange || p.snowPrediction || p.windRange || p.dewPointRange || p.pressureRange || p.cloudCoverageRange}`
+    ).join('||') + `|${stake}|${format(selectedDay, 'yyyy-MM-dd')}|${mode}`;
+    
+    const now = Date.now();
+    const timeSinceLastBet = now - lastBetTimeRef.current;
+    
+    // Block if identical bet was placed in last 5 seconds
+    if (lastBetDetailsRef.current === betSignature && timeSinceLastBet < 5000) {
+      setShowDuplicateDialog(true);
+      return;
+    }
+    
+    // Store bet details and timestamp
+    lastBetDetailsRef.current = betSignature;
+    lastBetTimeRef.current = now;
     
     // Check if deadline has passed
     if (isDeadlinePassed(selectedDay)) {

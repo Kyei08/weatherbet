@@ -19,6 +19,7 @@ import WeatherDisplay from './WeatherDisplay';
 import { formatCurrency } from '@/lib/currency';
 import { useCurrencyMode } from '@/contexts/CurrencyModeContext';
 import { DuplicateBetDialog } from './DuplicateBetDialog';
+import { format } from 'date-fns';
 
 const getUserTimezone = () => Intl.DateTimeFormat().resolvedOptions().timeZone;
 
@@ -73,6 +74,8 @@ export function CombinedBettingSlip({ onBack, onBetPlaced }: CombinedBettingSlip
   const [loading, setLoading] = useState(true);
   const [placing, setPlacing] = useState(false);
   const isPlacingBetRef = useRef(false);
+  const lastBetDetailsRef = useRef<string>('');
+  const lastBetTimeRef = useRef<number>(0);
   const [hasInsurance, setHasInsurance] = useState(false);
   const [weatherForecast, setWeatherForecast] = useState<any>(null);
   const [timezone] = useState(getUserTimezone());
@@ -247,6 +250,21 @@ export function CombinedBettingSlip({ onBack, onBetPlaced }: CombinedBettingSlip
   const handlePlaceBet = async () => {
     // Prevent duplicate submissions using ref (synchronous check)
     if (isPlacingBetRef.current || placing || !canPlaceBet()) return;
+    
+    // Create a unique bet signature for duplicate detection
+    const betSignature = `${city}|${Object.values(categoryValues).map(c => `${c.type}:${c.value}`).join('|')}|${stake}|${format(selectedDay, 'yyyy-MM-dd')}|${mode}`;
+    const now = Date.now();
+    const timeSinceLastBet = now - lastBetTimeRef.current;
+    
+    // Block if identical bet was placed in last 5 seconds
+    if (lastBetDetailsRef.current === betSignature && timeSinceLastBet < 5000) {
+      setShowDuplicateDialog(true);
+      return;
+    }
+    
+    // Store bet details and timestamp
+    lastBetDetailsRef.current = betSignature;
+    lastBetTimeRef.current = now;
 
     if (isDeadlinePassed(selectedDay)) {
       toast({
