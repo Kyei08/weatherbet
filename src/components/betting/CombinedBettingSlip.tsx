@@ -276,8 +276,8 @@ export function CombinedBettingSlip({ onBack, onBetPlaced }: CombinedBettingSlip
       await createCombinedBet(city, stake, categories, selectedDay, hasInsurance, mode);
 
       toast({
-        title: "Success!",
-        description: `Combined bet placed! ${selectedCategories.length} categories with ${getCombinedOdds().toFixed(2)}x odds`,
+        title: "Combined Bet Placed Successfully! 🎯",
+        description: `${formatCurrency(stake, mode)} on ${city} • ${selectedCategories.length} categories • ${getCombinedOdds().toFixed(2)}x odds • Potential win: ${formatCurrency(getPotentialWin(), mode)}${hasInsurance ? ' (Insured)' : ''}`,
       });
 
       onBetPlaced();
