@@ -473,10 +473,8 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
       await awardXPForAction('BET_PLACED');
 
       toast({
-        title: "Bet Placed!",
-        description: hasInsurance 
-          ? `Your ${stakeNum} point bet on ${city} has been placed with insurance protection.`
-          : `Your ${stakeNum} point bet on ${city} has been placed.`,
+        title: "Bet Placed Successfully! 🎯",
+        description: `${formatCurrency(stakeNum, mode)} on ${city} • ${getCurrentOdds().toFixed(2)}x odds • Potential win: ${formatCurrency(getPotentialWin(), mode)}${hasInsurance ? ' (Insured)' : ''}`,
       });
 
       onBetPlaced();

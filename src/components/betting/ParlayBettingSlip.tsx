@@ -407,10 +407,8 @@ const ParlayBettingSlip = ({ onBack, onBetPlaced }: ParlayBettingSlipProps) => {
       await awardXPForAction('BET_PLACED');
 
       toast({
-        title: 'Parlay Placed! 🎯',
-        description: hasInsurance
-          ? `${predictions.length}-leg parlay with ${getCombinedOdds().toFixed(2)}x odds and insurance protection!`
-          : `${predictions.length}-leg parlay with ${getCombinedOdds().toFixed(2)}x odds. Good luck!`,
+        title: 'Parlay Placed Successfully! 🎯',
+        description: `${formatCurrency(stakeNum, mode)} • ${predictions.length} legs • ${getCombinedOdds().toFixed(2)}x odds • Potential win: ${formatCurrency(getPotentialWin(), mode)}${hasInsurance ? ' (Insured)' : ''}`,
       });
 
       onBetPlaced();
