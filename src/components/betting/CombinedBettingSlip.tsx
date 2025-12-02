@@ -7,7 +7,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Switch } from '@/components/ui/switch';
-import { ArrowLeft, TrendingUp, AlertTriangle, Cloud, Droplets, Thermometer, Snowflake, Wind, Droplet, Gauge, CloudFog } from 'lucide-react';
+import { ArrowLeft, TrendingUp, AlertTriangle, Cloud, Droplets, Thermometer, Snowflake, Wind, Droplet, Gauge, CloudFog, Loader2 } from 'lucide-react';
+import { useDuplicateBetPrevention } from '@/hooks/useDuplicateBetPrevention';
 import { CITIES, City, TEMPERATURE_RANGES, RAINFALL_RANGES, WIND_RANGES, DEW_POINT_RANGES, PRESSURE_RANGES, CLOUD_COVERAGE_RANGES } from '@/types/supabase-betting';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -74,12 +75,10 @@ export function CombinedBettingSlip({ onBack, onBetPlaced }: CombinedBettingSlip
   const [loading, setLoading] = useState(true);
   const [placing, setPlacing] = useState(false);
   const isPlacingBetRef = useRef(false);
-  const lastBetDetailsRef = useRef<string>('');
-  const lastBetTimeRef = useRef<number>(0);
+  const { showDuplicateDialog, setShowDuplicateDialog, checkAndRecord } = useDuplicateBetPrevention();
   const [hasInsurance, setHasInsurance] = useState(false);
   const [weatherForecast, setWeatherForecast] = useState<any>(null);
   const [timezone] = useState(getUserTimezone());
-  const [showDuplicateDialog, setShowDuplicateDialog] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -251,20 +250,9 @@ export function CombinedBettingSlip({ onBack, onBetPlaced }: CombinedBettingSlip
     // Prevent duplicate submissions using ref (synchronous check)
     if (isPlacingBetRef.current || placing || !canPlaceBet()) return;
     
-    // Create a unique bet signature for duplicate detection
+    // Create a unique bet signature and check for duplicates
     const betSignature = `${city}|${Object.values(categoryValues).map(c => `${c.type}:${c.value}`).join('|')}|${stake}|${format(selectedDay, 'yyyy-MM-dd')}|${mode}`;
-    const now = Date.now();
-    const timeSinceLastBet = now - lastBetTimeRef.current;
-    
-    // Block if identical bet was placed in last 5 seconds
-    if (lastBetDetailsRef.current === betSignature && timeSinceLastBet < 5000) {
-      setShowDuplicateDialog(true);
-      return;
-    }
-    
-    // Store bet details and timestamp
-    lastBetDetailsRef.current = betSignature;
-    lastBetTimeRef.current = now;
+    if (!checkAndRecord(betSignature)) return;
 
     if (isDeadlinePassed(selectedDay)) {
       toast({
@@ -763,6 +751,7 @@ export function CombinedBettingSlip({ onBack, onBetPlaced }: CombinedBettingSlip
           className="w-full"
           size="lg"
         >
+          {placing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
           {deadlinePassed ? 'Deadline Passed' : placing ? 'Placing Bet...' : 'Place Combined Bet'}
         </Button>
       </CardContent>
