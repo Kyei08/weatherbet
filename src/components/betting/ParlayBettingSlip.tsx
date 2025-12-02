@@ -5,7 +5,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { ArrowLeft, Plus, X, TrendingUp, Activity, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Plus, X, TrendingUp, Activity, AlertTriangle, Loader2 } from 'lucide-react';
+import { useDuplicateBetPrevention } from '@/hooks/useDuplicateBetPrevention';
 import { CITIES, TEMPERATURE_RANGES, RAINFALL_RANGES, WIND_RANGES, DEW_POINT_RANGES, PRESSURE_RANGES, CLOUD_COVERAGE_RANGES } from '@/types/betting';
 import { createParlay, ParlayPrediction } from '@/lib/supabase-parlays';
 import { getUser, updateUserPoints } from '@/lib/supabase-auth-storage';
@@ -93,14 +94,12 @@ const ParlayBettingSlip = ({ onBack, onBetPlaced }: ParlayBettingSlipProps) => {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const isPlacingBetRef = useRef(false);
-  const lastBetDetailsRef = useRef<string>('');
-  const lastBetTimeRef = useRef<number>(0);
+  const { showDuplicateDialog, setShowDuplicateDialog, checkAndRecord } = useDuplicateBetPrevention();
   const [weatherForecasts, setWeatherForecasts] = useState<Record<string, any[]>>({});
   const [hasInsurance, setHasInsurance] = useState(false);
   const [userTimezone] = useState(() => getUserTimezone());
   const [availableDays] = useState(() => getNext7Days());
   const [selectedDay, setSelectedDay] = useState<Date>(getNext7Days()[0]); // Default to tomorrow
-  const [showDuplicateDialog, setShowDuplicateDialog] = useState(false);
   const { toast } = useToast();
   const { checkAndUpdateChallenges } = useChallengeTracker();
   const { checkAchievements } = useAchievementTracker();
@@ -305,23 +304,12 @@ const ParlayBettingSlip = ({ onBack, onBetPlaced }: ParlayBettingSlipProps) => {
     // Prevent duplicate submissions using ref (synchronous check)
     if (isPlacingBetRef.current || loading) return;
     
-    // Create a unique bet signature for duplicate detection
+    // Create a unique bet signature and check for duplicates
     const betSignature = predictions.map(p => 
       `${p.city}|${p.predictionType}|${p.rainPrediction || p.temperatureRange || p.rainfallRange || p.snowPrediction || p.windRange || p.dewPointRange || p.pressureRange || p.cloudCoverageRange}`
     ).join('||') + `|${stake}|${format(selectedDay, 'yyyy-MM-dd')}|${mode}`;
     
-    const now = Date.now();
-    const timeSinceLastBet = now - lastBetTimeRef.current;
-    
-    // Block if identical bet was placed in last 5 seconds
-    if (lastBetDetailsRef.current === betSignature && timeSinceLastBet < 5000) {
-      setShowDuplicateDialog(true);
-      return;
-    }
-    
-    // Store bet details and timestamp
-    lastBetDetailsRef.current = betSignature;
-    lastBetTimeRef.current = now;
+    if (!checkAndRecord(betSignature)) return;
     
     // Check if deadline has passed
     if (isDeadlinePassed(selectedDay)) {
@@ -985,6 +973,7 @@ const ParlayBettingSlip = ({ onBack, onBetPlaced }: ParlayBettingSlipProps) => {
           onClick={handlePlaceParlay}
           disabled={!canPlaceParlay() || loading || isDeadlinePassed(selectedDay)}
         >
+          {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
           {isDeadlinePassed(selectedDay)
             ? 'Deadline Passed'
             : loading 
