@@ -413,7 +413,9 @@ const ParlayBettingSlip = ({ onBack, onBetPlaced }: ParlayBettingSlipProps) => {
 
       onBetPlaced();
       onBack();
-      window.location.href = '/';
+      setTimeout(() => {
+        window.location.href = '/';
+      }, 1500);
     } catch (error: any) {
       console.error('Error placing parlay:', error);
       

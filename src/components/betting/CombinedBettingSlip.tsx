@@ -281,7 +281,9 @@ export function CombinedBettingSlip({ onBack, onBetPlaced }: CombinedBettingSlip
       });
 
       onBetPlaced();
-      window.location.href = '/';
+      setTimeout(() => {
+        window.location.href = '/';
+      }, 1500);
     } catch (error: any) {
       // Check if it's a duplicate combined bet error
       if (error?.message?.includes('wait a few seconds before placing another identical')) {
