@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback } from 'react';
+import { useRef, useState, useCallback, useEffect } from 'react';
 
 interface DuplicateCheckResult {
   isDuplicate: boolean;
@@ -13,6 +13,29 @@ export function useDuplicateBetPrevention(cooldownMs: number = 5000) {
   const lastBetDetailsRef = useRef<string>('');
   const lastBetTimeRef = useRef<number>(0);
   const [showDuplicateDialog, setShowDuplicateDialog] = useState(false);
+  const [remainingCooldown, setRemainingCooldown] = useState(0);
+
+  // Update remaining cooldown every 100ms when dialog is open
+  useEffect(() => {
+    if (!showDuplicateDialog) {
+      setRemainingCooldown(0);
+      return;
+    }
+
+    const updateCooldown = () => {
+      const elapsed = Date.now() - lastBetTimeRef.current;
+      const remaining = Math.max(0, Math.ceil((cooldownMs - elapsed) / 1000));
+      setRemainingCooldown(remaining);
+      
+      if (remaining === 0) {
+        setShowDuplicateDialog(false);
+      }
+    };
+
+    updateCooldown();
+    const interval = setInterval(updateCooldown, 100);
+    return () => clearInterval(interval);
+  }, [showDuplicateDialog, cooldownMs]);
 
   /**
    * Check if a bet with the given signature is a duplicate.
@@ -52,6 +75,7 @@ export function useDuplicateBetPrevention(cooldownMs: number = 5000) {
   return {
     showDuplicateDialog,
     setShowDuplicateDialog,
+    remainingCooldown,
     checkDuplicate,
     checkAndRecord,
   };

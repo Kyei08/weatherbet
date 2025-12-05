@@ -13,9 +13,10 @@ interface DuplicateBetDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   betType?: 'single' | 'parlay' | 'combined';
+  remainingSeconds?: number;
 }
 
-export const DuplicateBetDialog = ({ open, onOpenChange, betType = 'single' }: DuplicateBetDialogProps) => {
+export const DuplicateBetDialog = ({ open, onOpenChange, betType = 'single', remainingSeconds = 0 }: DuplicateBetDialogProps) => {
   const getBetTypeDisplay = () => {
     switch (betType) {
       case 'parlay':
@@ -43,9 +44,14 @@ export const DuplicateBetDialog = ({ open, onOpenChange, betType = 'single' }: D
             <p>
               You've already placed an identical {betDisplay.text} within the last 5 seconds.
             </p>
-            <p className="font-medium text-foreground">
-              Please wait a few seconds before placing another identical {betDisplay.text}.
-            </p>
+            {remainingSeconds > 0 && (
+              <div className="flex items-center justify-center gap-2 py-3 px-4 bg-muted rounded-lg">
+                <Clock className="h-4 w-4 text-muted-foreground animate-pulse" />
+                <span className="font-semibold text-foreground">
+                  Try again in {remainingSeconds} second{remainingSeconds !== 1 ? 's' : ''}
+                </span>
+              </div>
+            )}
             <p className="text-sm text-muted-foreground">
               This protection prevents accidental duplicate bets from being charged to your account.
             </p>
