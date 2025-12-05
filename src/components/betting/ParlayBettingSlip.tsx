@@ -94,7 +94,7 @@ const ParlayBettingSlip = ({ onBack, onBetPlaced }: ParlayBettingSlipProps) => {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const isPlacingBetRef = useRef(false);
-  const { showDuplicateDialog, setShowDuplicateDialog, checkAndRecord } = useDuplicateBetPrevention();
+  const { showDuplicateDialog, setShowDuplicateDialog, remainingCooldown, checkAndRecord } = useDuplicateBetPrevention();
   const [weatherForecasts, setWeatherForecasts] = useState<Record<string, any[]>>({});
   const [hasInsurance, setHasInsurance] = useState(false);
   const [userTimezone] = useState(() => getUserTimezone());
@@ -986,6 +986,7 @@ const ParlayBettingSlip = ({ onBack, onBetPlaced }: ParlayBettingSlipProps) => {
       open={showDuplicateDialog} 
       onOpenChange={setShowDuplicateDialog}
       betType="parlay"
+      remainingSeconds={remainingCooldown}
     />
     </>
   );

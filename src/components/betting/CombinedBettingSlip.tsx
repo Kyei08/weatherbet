@@ -75,7 +75,7 @@ export function CombinedBettingSlip({ onBack, onBetPlaced }: CombinedBettingSlip
   const [loading, setLoading] = useState(true);
   const [placing, setPlacing] = useState(false);
   const isPlacingBetRef = useRef(false);
-  const { showDuplicateDialog, setShowDuplicateDialog, checkAndRecord } = useDuplicateBetPrevention();
+  const { showDuplicateDialog, setShowDuplicateDialog, remainingCooldown, checkAndRecord } = useDuplicateBetPrevention();
   const [hasInsurance, setHasInsurance] = useState(false);
   const [weatherForecast, setWeatherForecast] = useState<any>(null);
   const [timezone] = useState(getUserTimezone());
@@ -761,6 +761,7 @@ export function CombinedBettingSlip({ onBack, onBetPlaced }: CombinedBettingSlip
       open={showDuplicateDialog} 
       onOpenChange={setShowDuplicateDialog}
       betType="combined"
+      remainingSeconds={remainingCooldown}
     />
     </>
   );

@@ -74,7 +74,7 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const isPlacingBetRef = useRef(false);
-  const { showDuplicateDialog, setShowDuplicateDialog, checkAndRecord } = useDuplicateBetPrevention();
+  const { showDuplicateDialog, setShowDuplicateDialog, remainingCooldown, checkAndRecord } = useDuplicateBetPrevention();
   const [userTimezone] = useState(() => getUserTimezone());
   const [availableDays] = useState(() => getNext7Days());
   const [selectedDay, setSelectedDay] = useState<Date>(getNext7Days()[0]); // Default to tomorrow
@@ -1087,6 +1087,7 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
         open={showDuplicateDialog} 
         onOpenChange={setShowDuplicateDialog}
         betType="single"
+        remainingSeconds={remainingCooldown}
       />
     </div>
   );
