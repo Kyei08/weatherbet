@@ -479,7 +479,9 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
 
       onBetPlaced();
       onBack();
-      window.location.href = '/';
+      setTimeout(() => {
+        window.location.href = '/';
+      }, 1500);
     } catch (error: any) {
       console.error('Error placing bet:', error);
       
