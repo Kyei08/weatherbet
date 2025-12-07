@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, RefreshCw, Shield, TrendingUp } from 'lucide-react';
+import { ArrowLeft, RefreshCw, Shield, TrendingUp, Zap } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 import { getBets, updateBetResult, getUser, updateUserPoints, cashOutBet } from '@/lib/supabase-auth-storage';
 import { getParlays, updateParlayResult, ParlayWithLegs, cashOutParlay } from '@/lib/supabase-parlays';
 import { getCombinedBets, updateCombinedBetResult, cashOutCombinedBet } from '@/lib/supabase-combined-bets';
@@ -32,6 +33,7 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
   const [calculatingCashOuts, setCalculatingCashOuts] = useState(false);
   const [settlingBets, setSettlingBets] = useState<Set<string>>(new Set());
   const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'settled'>('all');
+  const [resolvingBets, setResolvingBets] = useState(false);
   const { toast } = useToast();
   const { checkAndUpdateChallenges } = useChallengeTracker();
   const { checkAchievements } = useAchievementTracker();
@@ -188,6 +190,34 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
       onRefresh();
     } catch (error) {
       console.error('Error refreshing bets:', error);
+    }
+  };
+
+  const handleResolveBets = async () => {
+    setResolvingBets(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('resolve-bets');
+      
+      if (error) {
+        throw error;
+      }
+      
+      toast({
+        title: "Bets Resolved",
+        description: `Resolved ${data?.singleBetsResolved || 0} single bets, ${data?.parlaysResolved || 0} parlays, ${data?.combinedBetsResolved || 0} combined bets`,
+      });
+      
+      // Refresh the bets list
+      await refreshBets();
+    } catch (error) {
+      console.error('Error resolving bets:', error);
+      toast({
+        title: "Error",
+        description: "Failed to resolve bets. Check console for details.",
+        variant: "destructive",
+      });
+    } finally {
+      setResolvingBets(false);
     }
   };
 
@@ -536,10 +566,22 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
             </Button>
             <h1 className="text-2xl font-bold">My Bets</h1>
           </div>
-          <Button variant="outline" size="sm" onClick={refreshBets}>
-            <RefreshCw className="h-4 w-4 mr-2" />
-            Refresh
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={handleResolveBets}
+              disabled={resolvingBets}
+              className="bg-primary/10 border-primary/30 hover:bg-primary/20"
+            >
+              <Zap className={`h-4 w-4 mr-2 ${resolvingBets ? 'animate-pulse' : ''}`} />
+              {resolvingBets ? 'Resolving...' : 'Resolve Bets'}
+            </Button>
+            <Button variant="outline" size="sm" onClick={refreshBets}>
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Refresh
+            </Button>
+          </div>
         </div>
 
         {/* Summary Statistics */}
