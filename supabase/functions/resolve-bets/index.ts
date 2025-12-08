@@ -18,13 +18,77 @@ interface WeatherData {
   }>;
   wind?: {
     speed: number;
+    gust?: number;
   };
   clouds?: {
     all: number;
   };
   rain?: {
     '1h'?: number;
+    '3h'?: number;
   };
+  snow?: {
+    '1h'?: number;
+    '3h'?: number;
+  };
+}
+
+// Smart timing configuration for each category
+// Each category is measured at its optimal time for accurate predictions
+const CATEGORY_TIMING = {
+  temperature: { hour: 14, tolerance: 30, isCumulative: false }, // 2:00 PM peak
+  rain: { hour: 23, tolerance: 0, isCumulative: true },          // Any time today
+  rainfall: { hour: 23, tolerance: 0, isCumulative: true },      // Daily total
+  wind: { hour: 20, tolerance: 0, isCumulative: true },          // Max gust by 8 PM
+  snow: { hour: 23, tolerance: 0, isCumulative: true },          // Any time today
+  cloud_coverage: { hour: 12, tolerance: 30, isCumulative: false }, // Solar noon
+  pressure: { hour: 9, tolerance: 30, isCumulative: false },     // 9:00 AM reading
+  dew_point: { hour: 18, tolerance: 30, isCumulative: false },   // 6:00 PM reading
+  humidity: { hour: 12, tolerance: 30, isCumulative: false },    // Noon reading
+};
+
+// City coordinates for timezone calculations
+const CITY_COORDS: Record<string, { lat: number; lon: number; tzOffset: number }> = {
+  'New York': { lat: 40.7128, lon: -74.0060, tzOffset: -5 },
+  'Tokyo': { lat: 35.6762, lon: 139.6503, tzOffset: 9 },
+  'London': { lat: 51.5074, lon: -0.1278, tzOffset: 0 },
+  'Paris': { lat: 48.8566, lon: 2.3522, tzOffset: 1 },
+  'Sydney': { lat: -33.8688, lon: 151.2093, tzOffset: 10 },
+  'Cape Town': { lat: -33.9249, lon: 18.4241, tzOffset: 2 },
+  'Sao Paulo': { lat: -23.5505, lon: -46.6333, tzOffset: -3 },
+  'Mumbai': { lat: 19.0760, lon: 72.8777, tzOffset: 5.5 },
+  'Cairo': { lat: 30.0444, lon: 31.2357, tzOffset: 2 },
+  'Toronto': { lat: 43.6532, lon: -79.3832, tzOffset: -5 },
+};
+
+// Get local hour for a city
+function getCityLocalHour(city: string): number {
+  const now = new Date();
+  const utcHour = now.getUTCHours() + now.getUTCMinutes() / 60;
+  const cityInfo = CITY_COORDS[city];
+  if (!cityInfo) return utcHour;
+  
+  let localHour = utcHour + cityInfo.tzOffset;
+  if (localHour < 0) localHour += 24;
+  if (localHour >= 24) localHour -= 24;
+  return localHour;
+}
+
+// Check if it's time to resolve a bet based on category timing
+function isTimeToResolve(city: string, predictionType: string): boolean {
+  const timing = CATEGORY_TIMING[predictionType as keyof typeof CATEGORY_TIMING];
+  if (!timing) return true; // Default: resolve immediately
+  
+  const localHour = getCityLocalHour(city);
+  
+  // For cumulative measurements, resolve at end of day (after 11 PM local)
+  if (timing.isCumulative) {
+    return localHour >= 23;
+  }
+  
+  // For point-in-time measurements, check if we're past the measurement time
+  const toleranceHours = timing.tolerance / 60;
+  return localHour >= (timing.hour + toleranceHours);
 }
 
 // Helper to check if a value falls within a range like "10-20" or "10°C - 20°C"
@@ -50,39 +114,53 @@ function isInRange(actual: number, rangeStr: string): boolean {
   return false;
 }
 
-// Evaluate a prediction against actual weather
+// Evaluate a prediction against actual weather using smart timing logic
 function evaluatePrediction(predictionType: string, predictionValue: string, weather: WeatherData): boolean {
   const type = predictionType.toLowerCase();
   const value = predictionValue.toLowerCase();
 
   switch (type) {
-    case 'rain':
-    case 'rainfall': {
+    case 'rain': {
+      // Binary: Did it rain anytime today?
       const isRaining = weather.weather.some(w => 
         w.main.toLowerCase() === 'rain' || 
         w.description.toLowerCase().includes('rain')
       );
-      const rainAmount = weather.rain?.['1h'] || 0;
-      
-      // Handle yes/no predictions
-      if (value === 'yes' || value === 'no') {
-        return (value === 'yes') === isRaining;
-      }
-      // Handle range predictions like "0-5mm"
+      const rainAmount = (weather.rain?.['1h'] || 0) + (weather.rain?.['3h'] || 0);
+      return (value === 'yes') === (isRaining || rainAmount > 0);
+    }
+    
+    case 'rainfall': {
+      // Daily total rainfall accumulation
+      const rainAmount = (weather.rain?.['1h'] || 0) + (weather.rain?.['3h'] || 0);
       return isInRange(rainAmount, predictionValue);
     }
     
     case 'temperature': {
+      // Temperature at 2:00 PM (peak daily temp)
       const actualTemp = Math.round(weather.main.temp);
+      console.log(`Temperature check: actual=${actualTemp}°C, prediction=${predictionValue}`);
       return isInRange(actualTemp, predictionValue);
     }
     
     case 'wind':
     case 'wind_speed': {
+      // Maximum wind gust speed
       const windSpeed = weather.wind?.speed || 0;
-      // Convert m/s to km/h for comparison
-      const windKmh = windSpeed * 3.6;
-      return isInRange(windKmh, predictionValue);
+      const windGust = weather.wind?.gust || windSpeed;
+      const maxWindKmh = Math.max(windSpeed, windGust) * 3.6;
+      console.log(`Wind check: max gust=${maxWindKmh.toFixed(1)} km/h, prediction=${predictionValue}`);
+      return isInRange(maxWindKmh, predictionValue);
+    }
+    
+    case 'snow': {
+      // Binary: Did it snow anytime today?
+      const isSnowing = weather.weather.some(w => 
+        w.main.toLowerCase() === 'snow' || 
+        w.description.toLowerCase().includes('snow')
+      );
+      const snowAmount = (weather.snow?.['1h'] || 0) + (weather.snow?.['3h'] || 0);
+      return (value === 'yes') === (isSnowing || snowAmount > 0);
     }
     
     case 'humidity': {
@@ -91,21 +169,26 @@ function evaluatePrediction(predictionType: string, predictionValue: string, wea
     }
     
     case 'pressure': {
+      // Pressure at 9:00 AM
       const pressure = weather.main.pressure;
+      console.log(`Pressure check: actual=${pressure} hPa, prediction=${predictionValue}`);
       return isInRange(pressure, predictionValue);
     }
     
     case 'cloud_coverage':
     case 'clouds': {
+      // Cloud coverage at solar noon
       const clouds = weather.clouds?.all || 0;
+      console.log(`Cloud coverage check: actual=${clouds}%, prediction=${predictionValue}`);
       return isInRange(clouds, predictionValue);
     }
     
     case 'dew_point': {
-      // Approximate dew point from temp and humidity
+      // Dew point at 6:00 PM
       const temp = weather.main.temp;
       const humidity = weather.main.humidity;
       const dewPoint = temp - ((100 - humidity) / 5);
+      console.log(`Dew point check: actual=${dewPoint.toFixed(1)}°C, prediction=${predictionValue}`);
       return isInRange(dewPoint, predictionValue);
     }
     
@@ -199,7 +282,13 @@ Deno.serve(async (req) => {
     // Process single bets
     for (const bet of pendingBets || []) {
       try {
-        console.log(`Processing bet ${bet.id} for ${bet.city}`);
+        // Check if it's the right time to resolve based on category timing
+        if (!isTimeToResolve(bet.city, bet.prediction_type)) {
+          console.log(`Bet ${bet.id} (${bet.prediction_type}) - Not yet time to resolve for ${bet.city}`);
+          continue;
+        }
+        
+        console.log(`Processing bet ${bet.id} for ${bet.city} (${bet.prediction_type})`);
         
         const weather = await getWeather(bet.city);
         if (!weather) continue;

@@ -7,7 +7,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Switch } from '@/components/ui/switch';
-import { ArrowLeft, TrendingUp, AlertTriangle, Cloud, Droplets, Thermometer, Snowflake, Wind, Droplet, Gauge, CloudFog, Loader2 } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { ArrowLeft, TrendingUp, AlertTriangle, Cloud, Droplets, Thermometer, Snowflake, Wind, Droplet, Gauge, CloudFog, Loader2, Clock } from 'lucide-react';
 import { useDuplicateBetPrevention } from '@/hooks/useDuplicateBetPrevention';
 import { CITIES, City, TEMPERATURE_RANGES, RAINFALL_RANGES, WIND_RANGES, DEW_POINT_RANGES, PRESSURE_RANGES, CLOUD_COVERAGE_RANGES } from '@/types/supabase-betting';
 import { useToast } from '@/hooks/use-toast';
@@ -17,10 +18,12 @@ import { z } from 'zod';
 import { createCombinedBet } from '@/lib/supabase-combined-bets';
 import { calculateDynamicOdds, calculateCategoryOdds } from '@/lib/dynamic-odds';
 import WeatherDisplay from './WeatherDisplay';
+import CategoryTimingInfo from './CategoryTimingInfo';
 import { formatCurrency } from '@/lib/currency';
 import { useCurrencyMode } from '@/contexts/CurrencyModeContext';
 import { DuplicateBetDialog } from './DuplicateBetDialog';
 import { format } from 'date-fns';
+import { BettingCategory, getCategoryTiming } from '@/lib/betting-timing';
 
 const getUserTimezone = () => Intl.DateTimeFormat().resolvedOptions().timeZone;
 
@@ -396,14 +399,17 @@ export function CombinedBettingSlip({ onBack, onBetPlaced }: CombinedBettingSlip
           <div className="space-y-3">
             {/* Rain */}
             <div className="border rounded-lg p-4 space-y-3">
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  id="rain"
-                  checked={selectedCategories.includes('rain')}
-                  onCheckedChange={() => handleCategoryToggle('rain')}
-                />
-                <Cloud className="h-4 w-4" />
-                <Label htmlFor="rain" className="cursor-pointer flex-1">Rain</Label>
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="rain"
+                    checked={selectedCategories.includes('rain')}
+                    onCheckedChange={() => handleCategoryToggle('rain')}
+                  />
+                  <Cloud className="h-4 w-4" />
+                  <Label htmlFor="rain" className="cursor-pointer">Rain</Label>
+                </div>
+                <CategoryTimingInfo category="rain" />
               </div>
               {selectedCategories.includes('rain') && (
                 <RadioGroup
@@ -424,14 +430,17 @@ export function CombinedBettingSlip({ onBack, onBetPlaced }: CombinedBettingSlip
 
             {/* Temperature */}
             <div className="border rounded-lg p-4 space-y-3">
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  id="temperature"
-                  checked={selectedCategories.includes('temperature')}
-                  onCheckedChange={() => handleCategoryToggle('temperature')}
-                />
-                <Thermometer className="h-4 w-4" />
-                <Label htmlFor="temperature" className="cursor-pointer flex-1">Temperature Range</Label>
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="temperature"
+                    checked={selectedCategories.includes('temperature')}
+                    onCheckedChange={() => handleCategoryToggle('temperature')}
+                  />
+                  <Thermometer className="h-4 w-4" />
+                  <Label htmlFor="temperature" className="cursor-pointer">Temperature Range</Label>
+                </div>
+                <CategoryTimingInfo category="temperature" />
               </div>
               {selectedCategories.includes('temperature') && (
                 <Select
