@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, LogOut, BarChart3 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-
+import { NotificationCenter } from '@/components/notifications/NotificationCenter';
 const Index = () => {
   const { user, loading, signOut } = useAuth();
   const navigate = useNavigate();
@@ -47,6 +47,7 @@ const Index = () => {
             ⛈️ WeatherBet SA
           </h1>
           <div className="flex items-center gap-2">
+            <NotificationCenter />
             <Button 
               variant="ghost" 
               size="sm" 
