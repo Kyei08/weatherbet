@@ -131,6 +131,30 @@ Deno.serve(async (req) => {
 
     const now = new Date().toISOString();
 
+    // Helper function to create notification
+    async function createNotification(
+      userId: string,
+      title: string,
+      message: string,
+      type: string,
+      referenceId?: string,
+      referenceType?: string
+    ) {
+      try {
+        await supabase.from('notifications').insert({
+          user_id: userId,
+          title,
+          message,
+          type,
+          reference_id: referenceId,
+          reference_type: referenceType
+        });
+        console.log(`Notification created for user ${userId}: ${title}`);
+      } catch (error) {
+        console.error('Failed to create notification:', error);
+      }
+    }
+
     // ============================================
     // 1. RESOLVE SINGLE BETS
     // ============================================
@@ -240,6 +264,33 @@ Deno.serve(async (req) => {
           });
         }
 
+        // Create notification for user
+        const currencyLabel = bet.currency_type === 'real' ? 'R' : '';
+        const currencySuffix = bet.currency_type === 'virtual' ? ' points' : '';
+        
+        if (isWin) {
+          await createNotification(
+            bet.user_id,
+            '🎉 Bet Won!',
+            `Your ${bet.prediction_type} bet for ${bet.city} won! You earned ${currencyLabel}${pointsChange}${currencySuffix}.`,
+            'bet_won',
+            bet.id,
+            'bet'
+          );
+        } else {
+          const insuranceMsg = bet.has_insurance 
+            ? ` Insurance returned ${currencyLabel}${pointsChange}${currencySuffix}.`
+            : '';
+          await createNotification(
+            bet.user_id,
+            '❌ Bet Lost',
+            `Your ${bet.prediction_type} bet for ${bet.city} didn't win.${insuranceMsg}`,
+            'bet_lost',
+            bet.id,
+            'bet'
+          );
+        }
+
         resolvedBets++;
       } catch (error) {
         console.error(`Error processing bet ${bet.id}:`, error);
@@ -319,6 +370,34 @@ Deno.serve(async (req) => {
           });
         }
 
+        // Create notification for parlay
+        const currencyLabel = parlay.currency_type === 'real' ? 'R' : '';
+        const currencySuffix = parlay.currency_type === 'virtual' ? ' points' : '';
+        const legCount = parlay.parlay_legs?.length || 0;
+        
+        if (allLegsWin) {
+          await createNotification(
+            parlay.user_id,
+            '🎉 Parlay Won!',
+            `Your ${legCount}-leg parlay won! You earned ${currencyLabel}${pointsChange}${currencySuffix}.`,
+            'bet_won',
+            parlay.id,
+            'parlay'
+          );
+        } else {
+          const insuranceMsg = parlay.has_insurance 
+            ? ` Insurance returned ${currencyLabel}${pointsChange}${currencySuffix}.`
+            : '';
+          await createNotification(
+            parlay.user_id,
+            '❌ Parlay Lost',
+            `Your ${legCount}-leg parlay didn't win.${insuranceMsg}`,
+            'bet_lost',
+            parlay.id,
+            'parlay'
+          );
+        }
+
         resolvedParlays++;
       } catch (error) {
         console.error(`Error processing parlay ${parlay.id}:`, error);
@@ -393,6 +472,34 @@ Deno.serve(async (req) => {
             reference_type: 'combined_bet',
             currency_type: combinedBet.currency_type || 'virtual'
           });
+        }
+
+        // Create notification for combined bet
+        const currencyLabel = combinedBet.currency_type === 'real' ? 'R' : '';
+        const currencySuffix = combinedBet.currency_type === 'virtual' ? ' points' : '';
+        const categoryCount = combinedBet.combined_bet_categories?.length || 0;
+        
+        if (allCategoriesWin) {
+          await createNotification(
+            combinedBet.user_id,
+            '🎉 Combined Bet Won!',
+            `Your ${categoryCount}-category bet on ${combinedBet.city} won! You earned ${currencyLabel}${pointsChange}${currencySuffix}.`,
+            'bet_won',
+            combinedBet.id,
+            'combined_bet'
+          );
+        } else {
+          const insuranceMsg = combinedBet.has_insurance 
+            ? ` Insurance returned ${currencyLabel}${pointsChange}${currencySuffix}.`
+            : '';
+          await createNotification(
+            combinedBet.user_id,
+            '❌ Combined Bet Lost',
+            `Your ${categoryCount}-category bet on ${combinedBet.city} didn't win.${insuranceMsg}`,
+            'bet_lost',
+            combinedBet.id,
+            'combined_bet'
+          );
         }
 
         resolvedCombinedBets++;
