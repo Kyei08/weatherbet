@@ -13,6 +13,7 @@ import { getUser, addBet, updateUserPoints } from '@/lib/supabase-auth-storage';
 import { CITIES, TEMPERATURE_RANGES, City, RAINFALL_RANGES, WIND_RANGES, DEW_POINT_RANGES, PRESSURE_RANGES, CLOUD_COVERAGE_RANGES } from '@/types/supabase-betting';
 import { useToast } from '@/hooks/use-toast';
 import WeatherDisplay from './WeatherDisplay';
+import CategoryTimingInfo from './CategoryTimingInfo';
 import { useChallengeTracker } from '@/hooks/useChallengeTracker';
 import { useAchievementTracker } from '@/hooks/useAchievementTracker';
 import { useLevelSystem } from '@/hooks/useLevelSystem';
@@ -25,6 +26,7 @@ import { format, addDays, startOfDay, endOfDay, setHours, setMinutes, setSeconds
 import { useCurrencyMode } from '@/contexts/CurrencyModeContext';
 import { formatCurrency } from '@/lib/currency';
 import { DuplicateBetDialog } from './DuplicateBetDialog';
+import { BettingCategory, getCategoryTiming } from '@/lib/betting-timing';
 
 // Get user's timezone
 const getUserTimezone = () => {
@@ -697,42 +699,87 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
 
             {/* Prediction Type */}
             <div className="space-y-3">
-              <Label>Prediction Type</Label>
+              <div className="flex items-center justify-between">
+                <Label>Prediction Type</Label>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Badge variant="outline" className="text-xs cursor-help">
+                        <Info className="h-3 w-3 mr-1" />
+                        Smart Timing
+                      </Badge>
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-xs">
+                      <p className="font-semibold mb-1">⏱️ Smart Timing System</p>
+                      <p className="text-xs">Each category is measured at its optimal time for accurate predictions. Click any category to see when it's measured.</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
               <RadioGroup value={predictionType} onValueChange={(value) => setPredictionType(value as any)}>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="rain" id="rain" />
-                  <Label htmlFor="rain">Rain (Yes/No)</Label>
+                <div className="flex items-center justify-between space-x-2 p-2 rounded-lg hover:bg-accent/50 transition-colors">
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="rain" id="rain" />
+                    <Label htmlFor="rain" className="cursor-pointer">🌧️ Rain (Yes/No)</Label>
+                  </div>
+                  <CategoryTimingInfo category="rain" />
                 </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="temperature" id="temperature" />
-                  <Label htmlFor="temperature">Temperature Range</Label>
+                <div className="flex items-center justify-between space-x-2 p-2 rounded-lg hover:bg-accent/50 transition-colors">
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="temperature" id="temperature" />
+                    <Label htmlFor="temperature" className="cursor-pointer">🌡️ Temperature Range</Label>
+                  </div>
+                  <CategoryTimingInfo category="temperature" />
                 </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="rainfall" id="rainfall" />
-                  <Label htmlFor="rainfall">Rainfall Amount</Label>
+                <div className="flex items-center justify-between space-x-2 p-2 rounded-lg hover:bg-accent/50 transition-colors">
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="rainfall" id="rainfall" />
+                    <Label htmlFor="rainfall" className="cursor-pointer">💧 Rainfall Amount</Label>
+                  </div>
+                  <CategoryTimingInfo category="rainfall" />
                 </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="snow" id="snow" />
-                  <Label htmlFor="snow">Snow (Yes/No)</Label>
+                <div className="flex items-center justify-between space-x-2 p-2 rounded-lg hover:bg-accent/50 transition-colors">
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="snow" id="snow" />
+                    <Label htmlFor="snow" className="cursor-pointer">❄️ Snow (Yes/No)</Label>
+                  </div>
+                  <CategoryTimingInfo category="snow" />
                 </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="wind" id="wind" />
-                  <Label htmlFor="wind">Wind Speed</Label>
+                <div className="flex items-center justify-between space-x-2 p-2 rounded-lg hover:bg-accent/50 transition-colors">
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="wind" id="wind" />
+                    <Label htmlFor="wind" className="cursor-pointer">💨 Wind Speed</Label>
+                  </div>
+                  <CategoryTimingInfo category="wind" />
                 </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="dew_point" id="dew_point" />
-                  <Label htmlFor="dew_point">Dew Point</Label>
+                <div className="flex items-center justify-between space-x-2 p-2 rounded-lg hover:bg-accent/50 transition-colors">
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="dew_point" id="dew_point" />
+                    <Label htmlFor="dew_point" className="cursor-pointer">💦 Dew Point</Label>
+                  </div>
+                  <CategoryTimingInfo category="dew_point" />
                 </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="pressure" id="pressure" />
-                  <Label htmlFor="pressure">Atmospheric Pressure</Label>
+                <div className="flex items-center justify-between space-x-2 p-2 rounded-lg hover:bg-accent/50 transition-colors">
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="pressure" id="pressure" />
+                    <Label htmlFor="pressure" className="cursor-pointer">📊 Atmospheric Pressure</Label>
+                  </div>
+                  <CategoryTimingInfo category="pressure" />
                 </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="cloud_coverage" id="cloud_coverage" />
-                  <Label htmlFor="cloud_coverage">Cloud Coverage</Label>
+                <div className="flex items-center justify-between space-x-2 p-2 rounded-lg hover:bg-accent/50 transition-colors">
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="cloud_coverage" id="cloud_coverage" />
+                    <Label htmlFor="cloud_coverage" className="cursor-pointer">☁️ Cloud Coverage</Label>
+                  </div>
+                  <CategoryTimingInfo category="cloud_coverage" />
                 </div>
               </RadioGroup>
             </div>
+
+            {/* Selected Category Timing Details */}
+            {predictionType && (
+              <CategoryTimingInfo category={predictionType as BettingCategory} showFull />
+            )}
 
             {/* Rain Options */}
             {predictionType === 'rain' && (

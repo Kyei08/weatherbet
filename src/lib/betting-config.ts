@@ -1,6 +1,15 @@
 /**
  * Centralized Betting Configuration
  * Adjust these values to buff/nerf odds, outcomes, and betting mechanics
+ * 
+ * SMART TIMING: Each category is measured at its optimal time
+ * - Temperature: 2:00 PM (peak daily temp)
+ * - Rainfall: Daily total accumulation
+ * - Wind: Maximum gust (6 AM - 8 PM)
+ * - Snow: Binary event (any time)
+ * - Cloud Coverage: Solar noon (12:00 PM)
+ * - Pressure: 9:00 AM (morning reading)
+ * - Dew Point: 6:00 PM (evening reading)
  */
 
 // ============================================
