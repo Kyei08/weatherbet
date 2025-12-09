@@ -1,6 +1,6 @@
 /**
- * Smart Timing-Based Betting Configuration
- * Each weather category is measured at its optimal time for accurate predictions
+ * Multi-Time Slot Betting Configuration
+ * Each weather category supports multiple measurement times for deeper betting strategy
  */
 
 export type BettingCategory = 
@@ -13,162 +13,410 @@ export type BettingCategory =
   | 'pressure'
   | 'dew_point';
 
-export interface TimingConfig {
-  /** Category identifier */
-  category: BettingCategory;
-  /** Display name for the timing */
-  timingLabel: string;
+export interface TimeSlotConfig {
+  /** Unique slot identifier */
+  slotId: string;
+  /** Display label for this time slot */
+  label: string;
   /** Short description of when/how it's measured */
   description: string;
-  /** Hour of day for measurement (24h format) */
-  measurementHour: number;
-  /** Tolerance in minutes (+/-) */
-  toleranceMinutes: number;
-  /** Is this a cumulative measurement (daily total) vs point-in-time? */
-  isCumulative: boolean;
+  /** Hour of day for measurement (24h format) - for point-in-time measurements */
+  measurementHour?: number;
+  /** Start hour for range-based measurements */
+  startHour?: number;
+  /** End hour for range-based measurements */
+  endHour?: number;
+  /** Tolerance in minutes (+/-) for point-in-time */
+  toleranceMinutes?: number;
+  /** Is this a cumulative/range measurement vs point-in-time? */
+  isRange: boolean;
+  /** Base odds multiplier for this time slot (affects betting value) */
+  oddsMultiplier: number;
   /** Icon for display */
   icon: string;
   /** Reasoning for this timing */
   reason: string;
 }
 
+export interface CategoryTimingConfig {
+  /** Category identifier */
+  category: BettingCategory;
+  /** Display name for the category */
+  displayName: string;
+  /** All available time slots for this category */
+  timeSlots: TimeSlotConfig[];
+  /** Default time slot ID */
+  defaultSlotId: string;
+}
+
 /**
- * Optimal measurement times for each betting category
- * Based on meteorological best practices
+ * Multi-time slot configurations for each betting category
+ * Based on meteorological best practices and user engagement optimization
  */
-export const CATEGORY_TIMING: Record<BettingCategory, TimingConfig> = {
+export const CATEGORY_TIME_SLOTS: Record<BettingCategory, CategoryTimingConfig> = {
   temperature: {
     category: 'temperature',
-    timingLabel: '2:00 PM Peak',
-    description: 'Temperature at 2:00 PM local time',
-    measurementHour: 14, // 2:00 PM
-    toleranceMinutes: 30,
-    isCumulative: false,
-    icon: '🌡️',
-    reason: 'Peak daily temperature - most stable and predictable'
+    displayName: 'Temperature',
+    defaultSlotId: 'peak',
+    timeSlots: [
+      {
+        slotId: 'morning',
+        label: '9:00 AM',
+        description: 'Morning temperature at 9:00 AM local time',
+        measurementHour: 9,
+        toleranceMinutes: 30,
+        isRange: false,
+        oddsMultiplier: 1.1,
+        icon: '🌅',
+        reason: "Day's starting temperature - stable morning reading"
+      },
+      {
+        slotId: 'peak',
+        label: '2:00 PM Peak',
+        description: 'Peak temperature at 2:00 PM local time',
+        measurementHour: 14,
+        toleranceMinutes: 30,
+        isRange: false,
+        oddsMultiplier: 1.0,
+        icon: '☀️',
+        reason: 'Maximum daily heat - most predictable measurement'
+      },
+      {
+        slotId: 'evening',
+        label: '8:00 PM',
+        description: 'Evening temperature at 8:00 PM local time',
+        measurementHour: 20,
+        toleranceMinutes: 30,
+        isRange: false,
+        oddsMultiplier: 1.15,
+        icon: '🌙',
+        reason: 'Nighttime cooling - harder to predict precisely'
+      }
+    ]
   },
   
   rain: {
     category: 'rain',
-    timingLabel: 'Any Time Today',
-    description: 'Rain occurrence anytime during the day',
-    measurementHour: 23, // Check at end of day
-    toleranceMinutes: 0,
-    isCumulative: true,
-    icon: '🌧️',
-    reason: 'Binary event - either rains or doesn\'t during the day'
+    displayName: 'Rain Occurrence',
+    defaultSlotId: 'daily',
+    timeSlots: [
+      {
+        slotId: 'daily',
+        label: 'Any Time Today',
+        description: 'Rain occurrence anytime during the day (00:00-23:59)',
+        startHour: 0,
+        endHour: 23,
+        isRange: true,
+        oddsMultiplier: 1.0,
+        icon: '🌧️',
+        reason: 'Binary event - easiest to predict overall rain occurrence'
+      }
+    ]
   },
   
   rainfall: {
     category: 'rainfall',
-    timingLabel: 'Daily Total',
-    description: 'Total rainfall accumulation (00:00-23:59)',
-    measurementHour: 23, // End of day total
-    toleranceMinutes: 0,
-    isCumulative: true,
-    icon: '💧',
-    reason: 'Total water matters most for predictions'
+    displayName: 'Rainfall Amount',
+    defaultSlotId: 'daily_total',
+    timeSlots: [
+      {
+        slotId: 'morning',
+        label: 'Morning (6AM-12PM)',
+        description: 'Rainfall accumulation 6:00 AM to 12:00 PM',
+        startHour: 6,
+        endHour: 12,
+        isRange: true,
+        oddsMultiplier: 1.3,
+        icon: '⛈️',
+        reason: 'Morning showers - common weather pattern'
+      },
+      {
+        slotId: 'afternoon',
+        label: 'Afternoon (12PM-6PM)',
+        description: 'Rainfall accumulation 12:00 PM to 6:00 PM',
+        startHour: 12,
+        endHour: 18,
+        isRange: true,
+        oddsMultiplier: 1.25,
+        icon: '🌦️',
+        reason: 'Afternoon thunderstorms - peak convection time'
+      },
+      {
+        slotId: 'evening',
+        label: 'Evening (6PM-12AM)',
+        description: 'Rainfall accumulation 6:00 PM to 12:00 AM',
+        startHour: 18,
+        endHour: 24,
+        isRange: true,
+        oddsMultiplier: 1.35,
+        icon: '🌙',
+        reason: 'Evening/night rain - less predictable window'
+      },
+      {
+        slotId: 'daily_total',
+        label: 'Daily Total',
+        description: 'Total rainfall accumulation (00:00-23:59)',
+        startHour: 0,
+        endHour: 23,
+        isRange: true,
+        oddsMultiplier: 1.0,
+        icon: '💧',
+        reason: 'Total daily water - most reliable measurement'
+      }
+    ]
   },
   
   wind: {
     category: 'wind',
-    timingLabel: 'Max Gust',
-    description: 'Maximum wind gust (6:00 AM - 8:00 PM)',
-    measurementHour: 20, // Check at 8 PM for max gust
-    toleranceMinutes: 0,
-    isCumulative: true, // Looking for maximum
-    icon: '💨',
-    reason: 'Peak wind matters most for storms and safety'
+    displayName: 'Wind Speed',
+    defaultSlotId: 'daytime',
+    timeSlots: [
+      {
+        slotId: 'morning',
+        label: 'Morning Peak (6AM-12PM)',
+        description: 'Maximum gust 6:00 AM to 12:00 PM',
+        startHour: 6,
+        endHour: 12,
+        isRange: true,
+        oddsMultiplier: 1.2,
+        icon: '🌅',
+        reason: 'Morning wind patterns - thermal mixing begins'
+      },
+      {
+        slotId: 'daytime',
+        label: 'Daytime Peak (12PM-6PM)',
+        description: 'Maximum gust 12:00 PM to 6:00 PM',
+        startHour: 12,
+        endHour: 18,
+        isRange: true,
+        oddsMultiplier: 1.0,
+        icon: '☀️',
+        reason: 'Peak wind hours - strongest thermal activity'
+      },
+      {
+        slotId: 'evening',
+        label: 'Evening Peak (6PM-12AM)',
+        description: 'Maximum gust 6:00 PM to 12:00 AM',
+        startHour: 18,
+        endHour: 24,
+        isRange: true,
+        oddsMultiplier: 1.25,
+        icon: '🌙',
+        reason: 'Evening gusts - storm fronts and cooling'
+      }
+    ]
   },
   
   snow: {
     category: 'snow',
-    timingLabel: 'Any Time Today',
-    description: 'Snow occurrence anytime (00:00-23:59)',
-    measurementHour: 23,
-    toleranceMinutes: 0,
-    isCumulative: true,
-    icon: '❄️',
-    reason: 'Binary event - rare, either happens or doesn\'t'
+    displayName: 'Snow Occurrence',
+    defaultSlotId: 'daily',
+    timeSlots: [
+      {
+        slotId: 'daily',
+        label: 'Any Time Today',
+        description: 'Snow occurrence anytime (00:00-23:59)',
+        startHour: 0,
+        endHour: 23,
+        isRange: true,
+        oddsMultiplier: 1.0,
+        icon: '❄️',
+        reason: 'Binary event - rare, either happens or doesn\'t'
+      }
+    ]
   },
   
   cloud_coverage: {
     category: 'cloud_coverage',
-    timingLabel: 'Solar Noon',
-    description: 'Cloud coverage at 12:00 PM',
-    measurementHour: 12, // Solar noon
-    toleranceMinutes: 30,
-    isCumulative: false,
-    icon: '☁️',
-    reason: 'Midday represents typical daily conditions'
+    displayName: 'Cloud Coverage',
+    defaultSlotId: 'midday',
+    timeSlots: [
+      {
+        slotId: 'morning',
+        label: '10:00 AM',
+        description: 'Cloud coverage at 10:00 AM local time',
+        measurementHour: 10,
+        toleranceMinutes: 30,
+        isRange: false,
+        oddsMultiplier: 1.15,
+        icon: '🌅',
+        reason: 'Morning cloud cover - early solar heating effects'
+      },
+      {
+        slotId: 'midday',
+        label: '2:00 PM',
+        description: 'Cloud coverage at 2:00 PM local time',
+        measurementHour: 14,
+        toleranceMinutes: 30,
+        isRange: false,
+        oddsMultiplier: 1.0,
+        icon: '☀️',
+        reason: 'Peak sun hours - most representative conditions'
+      },
+      {
+        slotId: 'evening',
+        label: '7:00 PM',
+        description: 'Cloud coverage at 7:00 PM local time',
+        measurementHour: 19,
+        toleranceMinutes: 30,
+        isRange: false,
+        oddsMultiplier: 1.2,
+        icon: '🌙',
+        reason: 'Sunset conditions - transitional period'
+      }
+    ]
   },
   
   pressure: {
     category: 'pressure',
-    timingLabel: '9:00 AM Reading',
-    description: 'Atmospheric pressure at 9:00 AM',
-    measurementHour: 9, // 9:00 AM
-    toleranceMinutes: 30,
-    isCumulative: false,
-    icon: '📊',
-    reason: 'Morning pressure predicts day\'s weather patterns'
+    displayName: 'Atmospheric Pressure',
+    defaultSlotId: 'morning',
+    timeSlots: [
+      {
+        slotId: 'morning',
+        label: '9:00 AM',
+        description: 'Atmospheric pressure at 9:00 AM local time',
+        measurementHour: 9,
+        toleranceMinutes: 30,
+        isRange: false,
+        oddsMultiplier: 1.0,
+        icon: '🌅',
+        reason: "Morning pressure predicts day's weather patterns"
+      },
+      {
+        slotId: 'evening',
+        label: '9:00 PM',
+        description: 'Atmospheric pressure at 9:00 PM local time',
+        measurementHour: 21,
+        toleranceMinutes: 30,
+        isRange: false,
+        oddsMultiplier: 1.1,
+        icon: '🌙',
+        reason: "Evening pressure indicates next day's weather"
+      }
+    ]
   },
   
   dew_point: {
     category: 'dew_point',
-    timingLabel: '6:00 PM Reading',
-    description: 'Dew point at 6:00 PM',
-    measurementHour: 18, // 6:00 PM
-    toleranceMinutes: 30,
-    isCumulative: false,
-    icon: '💦',
-    reason: 'Evening dew point indicates humidity and comfort'
+    displayName: 'Dew Point',
+    defaultSlotId: 'evening',
+    timeSlots: [
+      {
+        slotId: 'morning',
+        label: '6:00 AM',
+        description: 'Dew point at 6:00 AM local time',
+        measurementHour: 6,
+        toleranceMinutes: 30,
+        isRange: false,
+        oddsMultiplier: 1.1,
+        icon: '🌅',
+        reason: 'Morning humidity/fog indicator'
+      },
+      {
+        slotId: 'evening',
+        label: '6:00 PM',
+        description: 'Dew point at 6:00 PM local time',
+        measurementHour: 18,
+        toleranceMinutes: 30,
+        isRange: false,
+        oddsMultiplier: 1.0,
+        icon: '🌆',
+        reason: 'Evening comfort level - humidity indicator'
+      }
+    ]
   }
 };
 
 /**
  * Get timing configuration for a category
  */
-export function getCategoryTiming(category: BettingCategory): TimingConfig {
-  return CATEGORY_TIMING[category] || CATEGORY_TIMING.temperature;
+export function getCategoryTimingConfig(category: BettingCategory): CategoryTimingConfig {
+  return CATEGORY_TIME_SLOTS[category];
 }
 
 /**
- * Get a display string for the measurement time
+ * Get a specific time slot for a category
  */
-export function getMeasurementTimeDisplay(category: BettingCategory): string {
-  const timing = getCategoryTiming(category);
-  return timing.timingLabel;
+export function getTimeSlot(category: BettingCategory, slotId: string): TimeSlotConfig | undefined {
+  const config = CATEGORY_TIME_SLOTS[category];
+  return config?.timeSlots.find(slot => slot.slotId === slotId);
 }
 
 /**
- * Get full description for a category's timing
+ * Get the default time slot for a category
  */
-export function getMeasurementDescription(category: BettingCategory): string {
-  const timing = getCategoryTiming(category);
-  return timing.description;
+export function getDefaultTimeSlot(category: BettingCategory): TimeSlotConfig {
+  const config = CATEGORY_TIME_SLOTS[category];
+  return config.timeSlots.find(slot => slot.slotId === config.defaultSlotId) || config.timeSlots[0];
 }
 
 /**
- * Format hour as display time (e.g., "2:00 PM")
+ * Get all available time slots for a category
  */
-export function formatMeasurementTime(hour: number): string {
-  const ampm = hour >= 12 ? 'PM' : 'AM';
-  const displayHour = hour > 12 ? hour - 12 : hour === 0 ? 12 : hour;
-  return `${displayHour}:00 ${ampm}`;
+export function getCategoryTimeSlots(category: BettingCategory): TimeSlotConfig[] {
+  return CATEGORY_TIME_SLOTS[category]?.timeSlots || [];
 }
 
 /**
- * Check if a category uses cumulative (daily) measurement
+ * Check if a category has multiple time slots
  */
-export function isCumulativeMeasurement(category: BettingCategory): boolean {
-  const timing = getCategoryTiming(category);
-  return timing.isCumulative;
+export function hasMultipleTimeSlots(category: BettingCategory): boolean {
+  return getCategoryTimeSlots(category).length > 1;
 }
 
 /**
- * Get all timing configs as an array
+ * Format time slot for display
  */
-export function getAllTimingConfigs(): TimingConfig[] {
-  return Object.values(CATEGORY_TIMING);
+export function formatTimeSlotDisplay(slot: TimeSlotConfig): string {
+  return `${slot.icon} ${slot.label}`;
+}
+
+/**
+ * Get timing label for display (backward compatibility)
+ */
+export function getCategoryTiming(category: BettingCategory): { 
+  icon: string; 
+  timingLabel: string; 
+  description: string; 
+  reason: string;
+} {
+  const defaultSlot = getDefaultTimeSlot(category);
+  return {
+    icon: defaultSlot.icon,
+    timingLabel: defaultSlot.label,
+    description: defaultSlot.description,
+    reason: defaultSlot.reason
+  };
+}
+
+/**
+ * Get measurement time display
+ */
+export function getMeasurementTimeDisplay(category: BettingCategory, slotId?: string): string {
+  const slot = slotId ? getTimeSlot(category, slotId) : getDefaultTimeSlot(category);
+  return slot?.label || 'Unknown';
+}
+
+/**
+ * Get measurement description
+ */
+export function getMeasurementDescription(category: BettingCategory, slotId?: string): string {
+  const slot = slotId ? getTimeSlot(category, slotId) : getDefaultTimeSlot(category);
+  return slot?.description || '';
+}
+
+/**
+ * Check if a category's slot uses cumulative/range measurement
+ */
+export function isCumulativeMeasurement(category: BettingCategory, slotId?: string): boolean {
+  const slot = slotId ? getTimeSlot(category, slotId) : getDefaultTimeSlot(category);
+  return slot?.isRange || false;
+}
+
+/**
+ * Get all timing configs as an array (for display purposes)
+ */
+export function getAllTimingConfigs(): CategoryTimingConfig[] {
+  return Object.values(CATEGORY_TIME_SLOTS);
 }
