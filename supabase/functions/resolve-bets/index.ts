@@ -33,18 +33,88 @@ interface WeatherData {
   };
 }
 
-// Smart timing configuration for each category
-// Each category is measured at its optimal time for accurate predictions
-const CATEGORY_TIMING = {
-  temperature: { hour: 14, tolerance: 30, isCumulative: false }, // 2:00 PM peak
-  rain: { hour: 23, tolerance: 0, isCumulative: true },          // Any time today
-  rainfall: { hour: 23, tolerance: 0, isCumulative: true },      // Daily total
-  wind: { hour: 20, tolerance: 0, isCumulative: true },          // Max gust by 8 PM
-  snow: { hour: 23, tolerance: 0, isCumulative: true },          // Any time today
-  cloud_coverage: { hour: 12, tolerance: 30, isCumulative: false }, // Solar noon
-  pressure: { hour: 9, tolerance: 30, isCumulative: false },     // 9:00 AM reading
-  dew_point: { hour: 18, tolerance: 30, isCumulative: false },   // 6:00 PM reading
-  humidity: { hour: 12, tolerance: 30, isCumulative: false },    // Noon reading
+// Multi-time slot configuration for each category
+// Each category can have multiple measurement times for deeper betting strategy
+interface TimeSlot {
+  slotId: string;
+  hour?: number;         // For point-in-time measurements
+  startHour?: number;    // For range measurements
+  endHour?: number;      // For range measurements
+  tolerance: number;     // Minutes tolerance
+  isRange: boolean;      // true = range/cumulative, false = point-in-time
+}
+
+interface CategoryTimingConfig {
+  defaultSlotId: string;
+  slots: TimeSlot[];
+}
+
+const CATEGORY_TIMING: Record<string, CategoryTimingConfig> = {
+  temperature: {
+    defaultSlotId: 'peak',
+    slots: [
+      { slotId: 'morning', hour: 9, tolerance: 30, isRange: false },
+      { slotId: 'peak', hour: 14, tolerance: 30, isRange: false },
+      { slotId: 'evening', hour: 20, tolerance: 30, isRange: false }
+    ]
+  },
+  rain: {
+    defaultSlotId: 'daily',
+    slots: [
+      { slotId: 'daily', startHour: 0, endHour: 23, tolerance: 0, isRange: true }
+    ]
+  },
+  rainfall: {
+    defaultSlotId: 'daily_total',
+    slots: [
+      { slotId: 'morning', startHour: 6, endHour: 12, tolerance: 0, isRange: true },
+      { slotId: 'afternoon', startHour: 12, endHour: 18, tolerance: 0, isRange: true },
+      { slotId: 'evening', startHour: 18, endHour: 24, tolerance: 0, isRange: true },
+      { slotId: 'daily_total', startHour: 0, endHour: 23, tolerance: 0, isRange: true }
+    ]
+  },
+  wind: {
+    defaultSlotId: 'daytime',
+    slots: [
+      { slotId: 'morning', startHour: 6, endHour: 12, tolerance: 0, isRange: true },
+      { slotId: 'daytime', startHour: 12, endHour: 18, tolerance: 0, isRange: true },
+      { slotId: 'evening', startHour: 18, endHour: 24, tolerance: 0, isRange: true }
+    ]
+  },
+  snow: {
+    defaultSlotId: 'daily',
+    slots: [
+      { slotId: 'daily', startHour: 0, endHour: 23, tolerance: 0, isRange: true }
+    ]
+  },
+  cloud_coverage: {
+    defaultSlotId: 'midday',
+    slots: [
+      { slotId: 'morning', hour: 10, tolerance: 30, isRange: false },
+      { slotId: 'midday', hour: 14, tolerance: 30, isRange: false },
+      { slotId: 'evening', hour: 19, tolerance: 30, isRange: false }
+    ]
+  },
+  pressure: {
+    defaultSlotId: 'morning',
+    slots: [
+      { slotId: 'morning', hour: 9, tolerance: 30, isRange: false },
+      { slotId: 'evening', hour: 21, tolerance: 30, isRange: false }
+    ]
+  },
+  dew_point: {
+    defaultSlotId: 'evening',
+    slots: [
+      { slotId: 'morning', hour: 6, tolerance: 30, isRange: false },
+      { slotId: 'evening', hour: 18, tolerance: 30, isRange: false }
+    ]
+  },
+  humidity: {
+    defaultSlotId: 'noon',
+    slots: [
+      { slotId: 'noon', hour: 12, tolerance: 30, isRange: false }
+    ]
+  }
 };
 
 // City coordinates for timezone calculations
@@ -74,21 +144,28 @@ function getCityLocalHour(city: string): number {
   return localHour;
 }
 
-// Check if it's time to resolve a bet based on category timing
-function isTimeToResolve(city: string, predictionType: string): boolean {
-  const timing = CATEGORY_TIMING[predictionType as keyof typeof CATEGORY_TIMING];
-  if (!timing) return true; // Default: resolve immediately
+// Check if it's time to resolve a bet based on category timing and slot
+function isTimeToResolve(city: string, predictionType: string, slotId?: string): boolean {
+  const config = CATEGORY_TIMING[predictionType];
+  if (!config) return true; // Default: resolve immediately
+  
+  // Find the specific slot or use default
+  const targetSlotId = slotId || config.defaultSlotId;
+  const slot = config.slots.find(s => s.slotId === targetSlotId) || config.slots[0];
+  if (!slot) return true;
   
   const localHour = getCityLocalHour(city);
   
-  // For cumulative measurements, resolve at end of day (after 11 PM local)
-  if (timing.isCumulative) {
-    return localHour >= 23;
+  // For range-based measurements, check if we're past the end hour
+  if (slot.isRange) {
+    const endHour = slot.endHour || 23;
+    return localHour >= endHour;
   }
   
   // For point-in-time measurements, check if we're past the measurement time
-  const toleranceHours = timing.tolerance / 60;
-  return localHour >= (timing.hour + toleranceHours);
+  const measurementHour = slot.hour || 12;
+  const toleranceHours = slot.tolerance / 60;
+  return localHour >= (measurementHour + toleranceHours);
 }
 
 // Helper to check if a value falls within a range like "10-20" or "10°C - 20°C"
