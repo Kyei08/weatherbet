@@ -14,6 +14,7 @@ import { CITIES, TEMPERATURE_RANGES, City, RAINFALL_RANGES, WIND_RANGES, DEW_POI
 import { useToast } from '@/hooks/use-toast';
 import WeatherDisplay from './WeatherDisplay';
 import CategoryTimingInfo from './CategoryTimingInfo';
+import TimeSlotSelector from './TimeSlotSelector';
 import { useChallengeTracker } from '@/hooks/useChallengeTracker';
 import { useAchievementTracker } from '@/hooks/useAchievementTracker';
 import { useLevelSystem } from '@/hooks/useLevelSystem';
@@ -26,7 +27,7 @@ import { format, addDays, startOfDay, endOfDay, setHours, setMinutes, setSeconds
 import { useCurrencyMode } from '@/contexts/CurrencyModeContext';
 import { formatCurrency } from '@/lib/currency';
 import { DuplicateBetDialog } from './DuplicateBetDialog';
-import { BettingCategory, getCategoryTiming } from '@/lib/betting-timing';
+import { BettingCategory, getCategoryTiming, getDefaultTimeSlot, getTimeSlot, hasMultipleTimeSlots } from '@/lib/betting-timing';
 
 // Get user's timezone
 const getUserTimezone = () => {
@@ -64,6 +65,7 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
   const { mode } = useCurrencyMode();
   const [city, setCity] = useState<City | ''>('');
   const [predictionType, setPredictionType] = useState<'rain' | 'temperature' | 'rainfall' | 'snow' | 'wind' | 'dew_point' | 'pressure' | 'cloud_coverage' | ''>('');
+  const [selectedTimeSlot, setSelectedTimeSlot] = useState<string>('');
   const [rainPrediction, setRainPrediction] = useState<'yes' | 'no' | ''>('');
   const [snowPrediction, setSnowPrediction] = useState<'yes' | 'no' | ''>('');
   const [tempRange, setTempRange] = useState<string>('');
@@ -90,6 +92,23 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
   const { checkAndUpdateChallenges } = useChallengeTracker();
   const { checkAchievements } = useAchievementTracker();
   const { awardXPForAction } = useLevelSystem();
+
+  // Update selected time slot when prediction type changes
+  useEffect(() => {
+    if (predictionType) {
+      const defaultSlot = getDefaultTimeSlot(predictionType as BettingCategory);
+      setSelectedTimeSlot(defaultSlot.slotId);
+    } else {
+      setSelectedTimeSlot('');
+    }
+  }, [predictionType]);
+
+  // Get the odds multiplier for the selected time slot
+  const getTimeSlotOddsMultiplier = () => {
+    if (!predictionType || !selectedTimeSlot) return 1;
+    const slot = getTimeSlot(predictionType as BettingCategory, selectedTimeSlot);
+    return slot?.oddsMultiplier || 1;
+  };
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -171,20 +190,24 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
     
     if (!predictionValue) return 0;
 
+    // Get time slot odds multiplier
+    const timeSlotMultiplier = getTimeSlotOddsMultiplier();
+
     // Use dynamic odds if we have forecast data
     if (weatherForecast.length > 0) {
-      return calculateDynamicOdds({
+      const baseOdds = calculateDynamicOdds({
         predictionType,
         predictionValue,
         forecast: weatherForecast,
         daysAhead: getDaysAhead(),
       });
+      return parseFloat((baseOdds * timeSlotMultiplier).toFixed(2));
     }
 
-    // Fallback to static odds
-    if (predictionType === 'rain') return 2.0;
+    // Fallback to static odds with time slot multiplier
+    if (predictionType === 'rain') return parseFloat((2.0 * timeSlotMultiplier).toFixed(2));
     const range = TEMPERATURE_RANGES.find(r => r.value === tempRange);
-    return range?.odds || 2.0;
+    return parseFloat(((range?.odds || 2.0) * timeSlotMultiplier).toFixed(2));
   };
 
   const getCurrentProbability = () => {
@@ -776,9 +799,22 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
               </RadioGroup>
             </div>
 
+            {/* Time Slot Selection - for categories with multiple measurement times */}
+            {predictionType && hasMultipleTimeSlots(predictionType as BettingCategory) && (
+              <TimeSlotSelector
+                category={predictionType as BettingCategory}
+                selectedSlotId={selectedTimeSlot}
+                onSlotChange={setSelectedTimeSlot}
+              />
+            )}
+
             {/* Selected Category Timing Details */}
             {predictionType && (
-              <CategoryTimingInfo category={predictionType as BettingCategory} showFull />
+              <CategoryTimingInfo 
+                category={predictionType as BettingCategory} 
+                showFull 
+                slotId={selectedTimeSlot}
+              />
             )}
 
             {/* Rain Options */}
