@@ -142,7 +142,7 @@ export const getRecentBets = async (currencyType?: 'virtual' | 'real'): Promise<
   return getBets(5, currencyType); // Only fetch 5 most recent
 };
 
-export const addBet = async (bet: Omit<BetInsert, 'id' | 'user_id' | 'created_at' | 'updated_at'>, currencyType: 'virtual' | 'real' = 'virtual'): Promise<Bet> => {
+export const addBet = async (bet: Omit<BetInsert, 'id' | 'user_id' | 'created_at' | 'updated_at'> & { time_slot_id?: string }, currencyType: 'virtual' | 'real' = 'virtual'): Promise<Bet> => {
   const { data: betId, error } = await supabase.rpc('create_bet_atomic', {
     _city: bet.city,
     _stake: bet.stake,
@@ -153,7 +153,8 @@ export const addBet = async (bet: Omit<BetInsert, 'id' | 'user_id' | 'created_at
     _expires_at: bet.expires_at,
     _has_insurance: bet.has_insurance || false,
     _insurance_cost: bet.insurance_cost || 0,
-    _currency_type: currencyType
+    _currency_type: currencyType,
+    _time_slot_id: bet.time_slot_id || null
   });
 
   if (error) {

@@ -434,6 +434,7 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
         insurance_cost: hasInsurance ? getInsuranceCost() : 0,
         insurance_payout_percentage: 0.8,
         currency_type: mode,
+        time_slot_id: selectedTimeSlot || undefined,
       } as any);
 
       // Record bonus earnings if multiplier was applied
