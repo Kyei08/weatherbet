@@ -99,6 +99,7 @@ export type Database = {
           result: string
           stake: number
           target_date: string | null
+          time_slot_id: string | null
           updated_at: string
           user_id: string
         }
@@ -120,6 +121,7 @@ export type Database = {
           result?: string
           stake: number
           target_date?: string | null
+          time_slot_id?: string | null
           updated_at?: string
           user_id: string
         }
@@ -141,6 +143,7 @@ export type Database = {
           result?: string
           stake?: number
           target_date?: string | null
+          time_slot_id?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -930,21 +933,38 @@ export type Database = {
         Args: { _max_size?: number; _user_id: string }
         Returns: string
       }
-      create_bet_atomic: {
-        Args: {
-          _city: string
-          _currency_type?: string
-          _expires_at: string
-          _has_insurance?: boolean
-          _insurance_cost?: number
-          _odds: number
-          _prediction_type: string
-          _prediction_value: string
-          _stake: number
-          _target_date: string
-        }
-        Returns: string
-      }
+      create_bet_atomic:
+        | {
+            Args: {
+              _city: string
+              _currency_type?: string
+              _expires_at: string
+              _has_insurance?: boolean
+              _insurance_cost?: number
+              _odds: number
+              _prediction_type: string
+              _prediction_value: string
+              _stake: number
+              _target_date: string
+            }
+            Returns: string
+          }
+        | {
+            Args: {
+              _city: string
+              _currency_type?: string
+              _expires_at: string
+              _has_insurance?: boolean
+              _insurance_cost?: number
+              _odds: number
+              _prediction_type: string
+              _prediction_value: string
+              _stake: number
+              _target_date: string
+              _time_slot_id?: string
+            }
+            Returns: string
+          }
       create_combined_bet_atomic: {
         Args: {
           _city: string
