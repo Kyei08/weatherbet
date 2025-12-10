@@ -19,11 +19,12 @@ import { createCombinedBet } from '@/lib/supabase-combined-bets';
 import { calculateDynamicOdds, calculateCategoryOdds } from '@/lib/dynamic-odds';
 import WeatherDisplay from './WeatherDisplay';
 import CategoryTimingInfo from './CategoryTimingInfo';
+import TimeSlotSelector from './TimeSlotSelector';
 import { formatCurrency } from '@/lib/currency';
 import { useCurrencyMode } from '@/contexts/CurrencyModeContext';
 import { DuplicateBetDialog } from './DuplicateBetDialog';
 import { format } from 'date-fns';
-import { BettingCategory, getCategoryTiming } from '@/lib/betting-timing';
+import { BettingCategory, getCategoryTiming, getDefaultTimeSlot, getTimeSlot, hasMultipleTimeSlots } from '@/lib/betting-timing';
 
 const getUserTimezone = () => Intl.DateTimeFormat().resolvedOptions().timeZone;
 
@@ -65,6 +66,7 @@ interface CategorySelection {
   type: string;
   value: string;
   odds: number;
+  timeSlotId?: string;
 }
 
 export function CombinedBettingSlip({ onBack, onBetPlaced }: CombinedBettingSlipProps) {
@@ -73,6 +75,7 @@ export function CombinedBettingSlip({ onBack, onBetPlaced }: CombinedBettingSlip
   const [selectedDay, setSelectedDay] = useState<Date>(getNext7Days()[0]);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [categoryValues, setCategoryValues] = useState<Record<string, CategorySelection>>({});
+  const [categoryTimeSlots, setCategoryTimeSlots] = useState<Record<string, string>>({});
   const [stake, setStake] = useState<number>(mode === 'real' ? 5000 : 50); // R50 = 5000 cents or 50 points
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -150,6 +153,10 @@ export function CombinedBettingSlip({ onBack, onBetPlaced }: CombinedBettingSlip
       const newValues = { ...categoryValues };
       delete newValues[category];
       setCategoryValues(newValues);
+      // Clean up time slot selection
+      const newTimeSlots = { ...categoryTimeSlots };
+      delete newTimeSlots[category];
+      setCategoryTimeSlots(newTimeSlots);
     } else {
       if (selectedCategories.length >= 5) {
         toast({
@@ -160,46 +167,75 @@ export function CombinedBettingSlip({ onBack, onBetPlaced }: CombinedBettingSlip
         return;
       }
       setSelectedCategories(prev => [...prev, category]);
+      // Initialize default time slot for this category
+      const defaultSlot = getDefaultTimeSlot(category as BettingCategory);
+      setCategoryTimeSlots(prev => ({ ...prev, [category]: defaultSlot.slotId }));
     }
   };
 
-  const getCategoryOdds = (type: string, value: string): number => {
+  const getTimeSlotMultiplier = (category: string): number => {
+    const slotId = categoryTimeSlots[category];
+    if (!slotId) return 1;
+    const slot = getTimeSlot(category as BettingCategory, slotId);
+    return slot?.oddsMultiplier || 1;
+  };
+
+  const getCategoryOddsWithSlot = (type: string, value: string): number => {
     const daysAhead = getDaysAhead();
+    const timeSlotMultiplier = getTimeSlotMultiplier(type);
     
     if (type === 'rain' || type === 'snow') {
       if (weatherForecast) {
-        return calculateDynamicOdds({
+        const baseOdds = calculateDynamicOdds({
           predictionType: type as 'rain' | 'snow',
           predictionValue: value,
           forecast: weatherForecast,
           daysAhead
         });
+        return parseFloat((baseOdds * timeSlotMultiplier).toFixed(2));
       }
-      return value === 'yes' ? 2.5 : 2.0;
+      const baseOdds = value === 'yes' ? 2.5 : 2.0;
+      return parseFloat((baseOdds * timeSlotMultiplier).toFixed(2));
     }
 
     if (type === 'temperature') {
       if (weatherForecast) {
-        return calculateDynamicOdds({
+        const baseOdds = calculateDynamicOdds({
           predictionType: type as 'temperature',
           predictionValue: value,
           forecast: weatherForecast,
           daysAhead
         });
+        return parseFloat((baseOdds * timeSlotMultiplier).toFixed(2));
       }
       const tempRange = TEMPERATURE_RANGES.find(r => r.value === value);
-      return tempRange?.odds || 2.0;
+      return parseFloat(((tempRange?.odds || 2.0) * timeSlotMultiplier).toFixed(2));
     }
 
-    return calculateCategoryOdds(type as 'rainfall' | 'wind' | 'dew_point' | 'pressure' | 'cloud_coverage' | 'snow', value);
+    const baseOdds = calculateCategoryOdds(type as 'rainfall' | 'wind' | 'dew_point' | 'pressure' | 'cloud_coverage' | 'snow', value);
+    return parseFloat((baseOdds * timeSlotMultiplier).toFixed(2));
   };
 
   const updateCategoryValue = (type: string, value: string) => {
-    const odds = getCategoryOdds(type, value);
+    const odds = getCategoryOddsWithSlot(type, value);
+    const timeSlotId = categoryTimeSlots[type];
     setCategoryValues(prev => ({
       ...prev,
-      [type]: { type, value, odds }
+      [type]: { type, value, odds, timeSlotId }
     }));
+  };
+
+  // Re-calculate odds when time slot changes
+  const handleTimeSlotChange = (category: string, slotId: string) => {
+    setCategoryTimeSlots(prev => ({ ...prev, [category]: slotId }));
+    // Update odds if value already selected
+    if (categoryValues[category]) {
+      const newOdds = getCategoryOddsWithSlot(category, categoryValues[category].value);
+      setCategoryValues(prev => ({
+        ...prev,
+        [category]: { ...prev[category], odds: newOdds, timeSlotId: slotId }
+      }));
+    }
   };
 
   const getCombinedOdds = (): number => {
@@ -409,22 +445,31 @@ export function CombinedBettingSlip({ onBack, onBetPlaced }: CombinedBettingSlip
                   <Cloud className="h-4 w-4" />
                   <Label htmlFor="rain" className="cursor-pointer">Rain</Label>
                 </div>
-                <CategoryTimingInfo category="rain" />
+                <CategoryTimingInfo category="rain" slotId={categoryTimeSlots.rain} />
               </div>
               {selectedCategories.includes('rain') && (
-                <RadioGroup
-                  value={categoryValues.rain?.value}
-                  onValueChange={(value) => updateCategoryValue('rain', value)}
-                >
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="yes" id="rain-yes" />
-                    <Label htmlFor="rain-yes">Yes ({getCategoryOdds('rain', 'yes').toFixed(2)}x)</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="no" id="rain-no" />
-                    <Label htmlFor="rain-no">No ({getCategoryOdds('rain', 'no').toFixed(2)}x)</Label>
-                  </div>
-                </RadioGroup>
+                <>
+                  {hasMultipleTimeSlots('rain') && (
+                    <TimeSlotSelector
+                      category="rain"
+                      selectedSlotId={categoryTimeSlots.rain || ''}
+                      onSlotChange={(slotId) => handleTimeSlotChange('rain', slotId)}
+                    />
+                  )}
+                  <RadioGroup
+                    value={categoryValues.rain?.value}
+                    onValueChange={(value) => updateCategoryValue('rain', value)}
+                  >
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="yes" id="rain-yes" />
+                      <Label htmlFor="rain-yes">Yes ({getCategoryOddsWithSlot('rain', 'yes').toFixed(2)}x)</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="no" id="rain-no" />
+                      <Label htmlFor="rain-no">No ({getCategoryOddsWithSlot('rain', 'no').toFixed(2)}x)</Label>
+                    </div>
+                  </RadioGroup>
+                </>
               )}
             </div>
 
@@ -440,67 +485,91 @@ export function CombinedBettingSlip({ onBack, onBetPlaced }: CombinedBettingSlip
                   <Thermometer className="h-4 w-4" />
                   <Label htmlFor="temperature" className="cursor-pointer">Temperature Range</Label>
                 </div>
-                <CategoryTimingInfo category="temperature" />
+                <CategoryTimingInfo category="temperature" slotId={categoryTimeSlots.temperature} />
               </div>
               {selectedCategories.includes('temperature') && (
-                <Select
-                  value={categoryValues.temperature?.value}
-                  onValueChange={(value) => updateCategoryValue('temperature', value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select range" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {TEMPERATURE_RANGES.map(range => (
-                      <SelectItem key={range.value} value={range.value}>
-                        {range.label} ({getCategoryOdds('temperature', range.value).toFixed(2)}x)
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <>
+                  {hasMultipleTimeSlots('temperature') && (
+                    <TimeSlotSelector
+                      category="temperature"
+                      selectedSlotId={categoryTimeSlots.temperature || ''}
+                      onSlotChange={(slotId) => handleTimeSlotChange('temperature', slotId)}
+                    />
+                  )}
+                  <Select
+                    value={categoryValues.temperature?.value}
+                    onValueChange={(value) => updateCategoryValue('temperature', value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select range" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {TEMPERATURE_RANGES.map(range => (
+                        <SelectItem key={range.value} value={range.value}>
+                          {range.label} ({getCategoryOddsWithSlot('temperature', range.value).toFixed(2)}x)
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </>
               )}
             </div>
 
             {/* Rainfall */}
             <div className="border rounded-lg p-4 space-y-3">
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  id="rainfall"
-                  checked={selectedCategories.includes('rainfall')}
-                  onCheckedChange={() => handleCategoryToggle('rainfall')}
-                />
-                <Droplets className="h-4 w-4" />
-                <Label htmlFor="rainfall" className="cursor-pointer flex-1">Rainfall Amount</Label>
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="rainfall"
+                    checked={selectedCategories.includes('rainfall')}
+                    onCheckedChange={() => handleCategoryToggle('rainfall')}
+                  />
+                  <Droplets className="h-4 w-4" />
+                  <Label htmlFor="rainfall" className="cursor-pointer flex-1">Rainfall Amount</Label>
+                </div>
+                <CategoryTimingInfo category="rainfall" slotId={categoryTimeSlots.rainfall} />
               </div>
               {selectedCategories.includes('rainfall') && (
-                <Select
-                  value={categoryValues.rainfall?.value}
-                  onValueChange={(value) => updateCategoryValue('rainfall', value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select range" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {RAINFALL_RANGES.map(range => (
-                      <SelectItem key={range.value} value={range.value}>
-                        {range.label} ({range.odds.toFixed(2)}x)
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <>
+                  {hasMultipleTimeSlots('rainfall') && (
+                    <TimeSlotSelector
+                      category="rainfall"
+                      selectedSlotId={categoryTimeSlots.rainfall || ''}
+                      onSlotChange={(slotId) => handleTimeSlotChange('rainfall', slotId)}
+                    />
+                  )}
+                  <Select
+                    value={categoryValues.rainfall?.value}
+                    onValueChange={(value) => updateCategoryValue('rainfall', value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select range" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {RAINFALL_RANGES.map(range => (
+                        <SelectItem key={range.value} value={range.value}>
+                          {range.label} ({getCategoryOddsWithSlot('rainfall', range.value).toFixed(2)}x)
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </>
               )}
             </div>
 
             {/* Snow */}
             <div className="border rounded-lg p-4 space-y-3">
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  id="snow"
-                  checked={selectedCategories.includes('snow')}
-                  onCheckedChange={() => handleCategoryToggle('snow')}
-                />
-                <Snowflake className="h-4 w-4" />
-                <Label htmlFor="snow" className="cursor-pointer flex-1">Snow</Label>
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="snow"
+                    checked={selectedCategories.includes('snow')}
+                    onCheckedChange={() => handleCategoryToggle('snow')}
+                  />
+                  <Snowflake className="h-4 w-4" />
+                  <Label htmlFor="snow" className="cursor-pointer flex-1">Snow</Label>
+                </div>
+                <CategoryTimingInfo category="snow" slotId={categoryTimeSlots.snow} />
               </div>
               {selectedCategories.includes('snow') && (
                 <RadioGroup
@@ -509,11 +578,11 @@ export function CombinedBettingSlip({ onBack, onBetPlaced }: CombinedBettingSlip
                 >
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem value="yes" id="snow-yes" />
-                    <Label htmlFor="snow-yes">Yes (3.50x)</Label>
+                    <Label htmlFor="snow-yes">Yes ({getCategoryOddsWithSlot('snow', 'yes').toFixed(2)}x)</Label>
                   </div>
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem value="no" id="snow-no" />
-                    <Label htmlFor="snow-no">No (1.50x)</Label>
+                    <Label htmlFor="snow-no">No ({getCategoryOddsWithSlot('snow', 'no').toFixed(2)}x)</Label>
                   </div>
                 </RadioGroup>
               )}
@@ -521,121 +590,169 @@ export function CombinedBettingSlip({ onBack, onBetPlaced }: CombinedBettingSlip
 
             {/* Wind */}
             <div className="border rounded-lg p-4 space-y-3">
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  id="wind"
-                  checked={selectedCategories.includes('wind')}
-                  onCheckedChange={() => handleCategoryToggle('wind')}
-                />
-                <Wind className="h-4 w-4" />
-                <Label htmlFor="wind" className="cursor-pointer flex-1">Wind Speed</Label>
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="wind"
+                    checked={selectedCategories.includes('wind')}
+                    onCheckedChange={() => handleCategoryToggle('wind')}
+                  />
+                  <Wind className="h-4 w-4" />
+                  <Label htmlFor="wind" className="cursor-pointer flex-1">Wind Speed</Label>
+                </div>
+                <CategoryTimingInfo category="wind" slotId={categoryTimeSlots.wind} />
               </div>
               {selectedCategories.includes('wind') && (
-                <Select
-                  value={categoryValues.wind?.value}
-                  onValueChange={(value) => updateCategoryValue('wind', value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select range" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {WIND_RANGES.map(range => (
-                      <SelectItem key={range.value} value={range.value}>
-                        {range.label} ({range.odds.toFixed(2)}x)
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <>
+                  {hasMultipleTimeSlots('wind') && (
+                    <TimeSlotSelector
+                      category="wind"
+                      selectedSlotId={categoryTimeSlots.wind || ''}
+                      onSlotChange={(slotId) => handleTimeSlotChange('wind', slotId)}
+                    />
+                  )}
+                  <Select
+                    value={categoryValues.wind?.value}
+                    onValueChange={(value) => updateCategoryValue('wind', value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select range" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {WIND_RANGES.map(range => (
+                        <SelectItem key={range.value} value={range.value}>
+                          {range.label} ({getCategoryOddsWithSlot('wind', range.value).toFixed(2)}x)
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </>
               )}
             </div>
 
             {/* Dew Point */}
             <div className="border rounded-lg p-4 space-y-3">
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  id="dew_point"
-                  checked={selectedCategories.includes('dew_point')}
-                  onCheckedChange={() => handleCategoryToggle('dew_point')}
-                />
-                <Droplet className="h-4 w-4" />
-                <Label htmlFor="dew_point" className="cursor-pointer flex-1">Dew Point</Label>
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="dew_point"
+                    checked={selectedCategories.includes('dew_point')}
+                    onCheckedChange={() => handleCategoryToggle('dew_point')}
+                  />
+                  <Droplet className="h-4 w-4" />
+                  <Label htmlFor="dew_point" className="cursor-pointer flex-1">Dew Point</Label>
+                </div>
+                <CategoryTimingInfo category="dew_point" slotId={categoryTimeSlots.dew_point} />
               </div>
               {selectedCategories.includes('dew_point') && (
-                <Select
-                  value={categoryValues.dew_point?.value}
-                  onValueChange={(value) => updateCategoryValue('dew_point', value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select range" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {DEW_POINT_RANGES.map(range => (
-                      <SelectItem key={range.value} value={range.value}>
-                        {range.label} ({range.odds.toFixed(2)}x)
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <>
+                  {hasMultipleTimeSlots('dew_point') && (
+                    <TimeSlotSelector
+                      category="dew_point"
+                      selectedSlotId={categoryTimeSlots.dew_point || ''}
+                      onSlotChange={(slotId) => handleTimeSlotChange('dew_point', slotId)}
+                    />
+                  )}
+                  <Select
+                    value={categoryValues.dew_point?.value}
+                    onValueChange={(value) => updateCategoryValue('dew_point', value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select range" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {DEW_POINT_RANGES.map(range => (
+                        <SelectItem key={range.value} value={range.value}>
+                          {range.label} ({getCategoryOddsWithSlot('dew_point', range.value).toFixed(2)}x)
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </>
               )}
             </div>
 
             {/* Pressure */}
             <div className="border rounded-lg p-4 space-y-3">
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  id="pressure"
-                  checked={selectedCategories.includes('pressure')}
-                  onCheckedChange={() => handleCategoryToggle('pressure')}
-                />
-                <Gauge className="h-4 w-4" />
-                <Label htmlFor="pressure" className="cursor-pointer flex-1">Atmospheric Pressure</Label>
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="pressure"
+                    checked={selectedCategories.includes('pressure')}
+                    onCheckedChange={() => handleCategoryToggle('pressure')}
+                  />
+                  <Gauge className="h-4 w-4" />
+                  <Label htmlFor="pressure" className="cursor-pointer flex-1">Atmospheric Pressure</Label>
+                </div>
+                <CategoryTimingInfo category="pressure" slotId={categoryTimeSlots.pressure} />
               </div>
               {selectedCategories.includes('pressure') && (
-                <Select
-                  value={categoryValues.pressure?.value}
-                  onValueChange={(value) => updateCategoryValue('pressure', value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select range" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {PRESSURE_RANGES.map(range => (
-                      <SelectItem key={range.value} value={range.value}>
-                        {range.label} ({range.odds.toFixed(2)}x)
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <>
+                  {hasMultipleTimeSlots('pressure') && (
+                    <TimeSlotSelector
+                      category="pressure"
+                      selectedSlotId={categoryTimeSlots.pressure || ''}
+                      onSlotChange={(slotId) => handleTimeSlotChange('pressure', slotId)}
+                    />
+                  )}
+                  <Select
+                    value={categoryValues.pressure?.value}
+                    onValueChange={(value) => updateCategoryValue('pressure', value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select range" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {PRESSURE_RANGES.map(range => (
+                        <SelectItem key={range.value} value={range.value}>
+                          {range.label} ({getCategoryOddsWithSlot('pressure', range.value).toFixed(2)}x)
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </>
               )}
             </div>
 
             {/* Cloud Coverage */}
             <div className="border rounded-lg p-4 space-y-3">
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  id="cloud_coverage"
-                  checked={selectedCategories.includes('cloud_coverage')}
-                  onCheckedChange={() => handleCategoryToggle('cloud_coverage')}
-                />
-                <CloudFog className="h-4 w-4" />
-                <Label htmlFor="cloud_coverage" className="cursor-pointer flex-1">Cloud Coverage</Label>
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="cloud_coverage"
+                    checked={selectedCategories.includes('cloud_coverage')}
+                    onCheckedChange={() => handleCategoryToggle('cloud_coverage')}
+                  />
+                  <CloudFog className="h-4 w-4" />
+                  <Label htmlFor="cloud_coverage" className="cursor-pointer flex-1">Cloud Coverage</Label>
+                </div>
+                <CategoryTimingInfo category="cloud_coverage" slotId={categoryTimeSlots.cloud_coverage} />
               </div>
               {selectedCategories.includes('cloud_coverage') && (
-                <Select
-                  value={categoryValues.cloud_coverage?.value}
-                  onValueChange={(value) => updateCategoryValue('cloud_coverage', value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select range" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {CLOUD_COVERAGE_RANGES.map(range => (
-                      <SelectItem key={range.value} value={range.value}>
-                        {range.label} ({range.odds.toFixed(2)}x)
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <>
+                  {hasMultipleTimeSlots('cloud_coverage') && (
+                    <TimeSlotSelector
+                      category="cloud_coverage"
+                      selectedSlotId={categoryTimeSlots.cloud_coverage || ''}
+                      onSlotChange={(slotId) => handleTimeSlotChange('cloud_coverage', slotId)}
+                    />
+                  )}
+                  <Select
+                    value={categoryValues.cloud_coverage?.value}
+                    onValueChange={(value) => updateCategoryValue('cloud_coverage', value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select range" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {CLOUD_COVERAGE_RANGES.map(range => (
+                        <SelectItem key={range.value} value={range.value}>
+                          {range.label} ({getCategoryOddsWithSlot('cloud_coverage', range.value).toFixed(2)}x)
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </>
               )}
             </div>
           </div>
@@ -646,12 +763,23 @@ export function CombinedBettingSlip({ onBack, onBetPlaced }: CombinedBettingSlip
           <div className="space-y-2 p-4 bg-muted rounded-lg">
             <h4 className="font-semibold text-sm">Your Combined Bet:</h4>
             <div className="space-y-1">
-              {Object.values(categoryValues).map((cat, i) => (
-                <div key={i} className="flex items-center justify-between text-sm">
-                  <span>✓ {cat.type}: {cat.value}</span>
-                  <span className="font-mono">{cat.odds.toFixed(2)}x</span>
-                </div>
-              ))}
+              {Object.values(categoryValues).map((cat, i) => {
+                const slotId = categoryTimeSlots[cat.type];
+                const slot = slotId ? getTimeSlot(cat.type as BettingCategory, slotId) : null;
+                return (
+                  <div key={i} className="flex items-center justify-between text-sm">
+                    <span className="flex items-center gap-1">
+                      ✓ {cat.type}: {cat.value}
+                      {slot && (
+                        <Badge variant="outline" className="text-xs ml-1">
+                          {slot.label}
+                        </Badge>
+                      )}
+                    </span>
+                    <span className="font-mono">{cat.odds.toFixed(2)}x</span>
+                  </div>
+                );
+              })}
             </div>
             <div className="pt-2 border-t border-border mt-2">
               <div className="flex items-center justify-between font-bold">
