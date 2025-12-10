@@ -360,12 +360,15 @@ Deno.serve(async (req) => {
     for (const bet of pendingBets || []) {
       try {
         // Check if it's the right time to resolve based on category timing
-        if (!isTimeToResolve(bet.city, bet.prediction_type)) {
-          console.log(`Bet ${bet.id} (${bet.prediction_type}) - Not yet time to resolve for ${bet.city}`);
+        // Use the stored time_slot_id from the bet for accurate resolution timing
+        if (!isTimeToResolve(bet.city, bet.prediction_type, bet.time_slot_id)) {
+          const slotInfo = bet.time_slot_id ? ` (slot: ${bet.time_slot_id})` : ' (default slot)';
+          console.log(`Bet ${bet.id} (${bet.prediction_type}${slotInfo}) - Not yet time to resolve for ${bet.city}`);
           continue;
         }
         
-        console.log(`Processing bet ${bet.id} for ${bet.city} (${bet.prediction_type})`);
+        const slotInfo = bet.time_slot_id ? ` at ${bet.time_slot_id} slot` : '';
+        console.log(`Processing bet ${bet.id} for ${bet.city} (${bet.prediction_type}${slotInfo})`);
         
         const weather = await getWeather(bet.city);
         if (!weather) continue;
@@ -398,7 +401,11 @@ Deno.serve(async (req) => {
             predicted_value: bet.prediction_value,
             actual_value: actualValue,
             accuracy_score: accuracyScore,
-            metadata: { bet_id: bet.id, weather }
+            metadata: { 
+              bet_id: bet.id, 
+              time_slot_id: bet.time_slot_id,
+              weather 
+            }
           });
         } catch (accError) {
           console.error(`Accuracy logging failed for bet ${bet.id}:`, accError);
