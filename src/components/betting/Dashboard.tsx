@@ -3,12 +3,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { getUser, getRecentBets } from '@/lib/supabase-auth-storage';
 import { User, Bet } from '@/types/supabase-betting';
-import { Coins, TrendingUp, Activity, Trophy, ShoppingCart, Layers, History, MapPin, Shield } from 'lucide-react';
+import { Coins, TrendingUp, Activity, Trophy, ShoppingCart, Layers, History, MapPin, Shield, Zap } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAdminCheck } from '@/hooks/useAdminCheck';
 import BettingSlip from './BettingSlip';
 import ParlayBettingSlip from './ParlayBettingSlip';
 import { CombinedBettingSlip } from './CombinedBettingSlip';
+import { MultiTimeComboBetting } from './MultiTimeComboBetting';
 import MyBets from './MyBets';
 import Leaderboard from './Leaderboard';
 import ActiveBetsWeather from './ActiveBetsWeather';
@@ -32,7 +33,7 @@ const Dashboard = () => {
   const theme = useModeTheme();
   const [user, setUser] = useState<User | null>(null);
   const [bets, setBets] = useState<Bet[]>([]);
-  const [activeView, setActiveView] = useState<'dashboard' | 'betting' | 'parlay' | 'combined' | 'mybets' | 'leaderboard' | 'shop' | 'analytics'>('dashboard');
+  const [activeView, setActiveView] = useState<'dashboard' | 'betting' | 'parlay' | 'combined' | 'multitime' | 'mybets' | 'leaderboard' | 'shop' | 'analytics'>('dashboard');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -91,6 +92,10 @@ const Dashboard = () => {
 
   if (activeView === 'combined') {
     return <CombinedBettingSlip onBack={() => setActiveView('dashboard')} onBetPlaced={refreshData} />;
+  }
+
+  if (activeView === 'multitime') {
+    return <MultiTimeComboBetting onBack={() => setActiveView('dashboard')} onBetPlaced={refreshData} />;
   }
 
   if (activeView === 'mybets') {
@@ -189,7 +194,7 @@ const Dashboard = () => {
         <Perks />
 
         {/* Quick Actions */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           <Button 
             size="lg" 
             className={`h-20 text-lg ${theme.buttonPrimary} border-2 ${theme.borderColor} ${theme.glowShadow} hover:scale-105 transition-all`}
@@ -214,9 +219,17 @@ const Dashboard = () => {
             💰 Parlay Bet
           </Button>
           <Button 
+            size="lg" 
+            className={`h-20 text-lg bg-gradient-to-r from-amber-500 to-orange-500 text-white border-2 ${theme.borderColor} ${theme.glowShadow} hover:scale-105 transition-all`}
+            onClick={() => setActiveView('multitime')}
+          >
+            <Zap className="mr-2 h-5 w-5" />
+            ⏰ Multi-Time Combo
+          </Button>
+          <Button 
             variant="outline" 
             size="lg" 
-            className={`h-20 text-lg border-2 ${theme.borderColorHeavy} ${theme.hoverBg} hover:scale-105 transition-all`}
+            className={`h-20 text-lg border-2 ${theme.borderColorHeavy} ${theme.hoverBg} hover:scale-105 transition-all md:col-span-2 lg:col-span-2`}
             onClick={() => setActiveView('mybets')}
           >
             📊 My Bets ({bets.length})
