@@ -580,7 +580,7 @@ Deno.serve(async (req) => {
     console.log(`Resolved ${resolvedParlays} parlays`);
 
     // ============================================
-    // 3. RESOLVE COMBINED BETS
+    // 3. RESOLVE COMBINED BETS (including multi-time combos)
     // ============================================
     const { data: pendingCombinedBets, error: combinedError } = await supabase
       .from('combined_bets')
@@ -597,6 +597,29 @@ Deno.serve(async (req) => {
 
     let resolvedCombinedBets = 0;
 
+    // Helper to parse prediction type that may include time slot (e.g., "temperature_morning" -> { category: "temperature", slotId: "morning" })
+    function parsePredictionType(predictionType: string): { category: string; slotId?: string } {
+      // Check if this is a multi-time combo format: category_slotId
+      const knownCategories = ['temperature', 'rain', 'rainfall', 'wind', 'snow', 'cloud_coverage', 'pressure', 'dew_point', 'humidity'];
+      
+      for (const category of knownCategories) {
+        if (predictionType === category) {
+          return { category };
+        }
+        if (predictionType.startsWith(category + '_')) {
+          const slotId = predictionType.substring(category.length + 1);
+          // Validate slotId exists in our config
+          const config = CATEGORY_TIMING[category];
+          if (config && config.slots.some(s => s.slotId === slotId)) {
+            return { category, slotId };
+          }
+        }
+      }
+      
+      // Fallback: treat the whole thing as the category
+      return { category: predictionType };
+    }
+
     for (const combinedBet of pendingCombinedBets || []) {
       try {
         console.log(`Processing combined bet ${combinedBet.id} for ${combinedBet.city} with ${combinedBet.combined_bet_categories?.length || 0} categories`);
@@ -605,21 +628,54 @@ Deno.serve(async (req) => {
         if (!weather) continue;
 
         let allCategoriesWin = true;
+        let allCategoriesResolvable = true;
+        let resolvedCategoryCount = 0;
 
         for (const category of combinedBet.combined_bet_categories || []) {
-          const categoryWins = evaluatePrediction(category.prediction_type, category.prediction_value, weather);
+          // Parse prediction type to extract category and time slot
+          const { category: baseCategory, slotId } = parsePredictionType(category.prediction_type);
+          
+          // Check if it's time to resolve this specific category/slot
+          if (!isTimeToResolve(combinedBet.city, baseCategory, slotId)) {
+            const slotInfo = slotId ? ` (slot: ${slotId})` : '';
+            console.log(`Combined bet category ${category.id} (${baseCategory}${slotInfo}) - Not yet time to resolve for ${combinedBet.city}`);
+            allCategoriesResolvable = false;
+            continue;
+          }
+
+          // Skip already resolved categories
+          if (category.result !== 'pending') {
+            console.log(`Category ${category.id} already resolved: ${category.result}`);
+            if (category.result === 'loss') {
+              allCategoriesWin = false;
+            }
+            resolvedCategoryCount++;
+            continue;
+          }
+
+          // Evaluate this category using the base category (not the full prediction_type with slot)
+          const categoryWins = evaluatePrediction(baseCategory, category.prediction_value, weather);
           
           // Update category result
           await supabase.from('combined_bet_categories').update({ 
             result: categoryWins ? 'win' : 'loss' 
           }).eq('id', category.id);
 
-          console.log(`Category ${category.id} (${category.prediction_type}): ${categoryWins ? 'WIN' : 'LOSS'}`);
+          const slotInfo = slotId ? ` at ${slotId}` : '';
+          console.log(`Category ${category.id} (${baseCategory}${slotInfo}): ${categoryWins ? 'WIN' : 'LOSS'}`);
+
+          resolvedCategoryCount++;
 
           if (!categoryWins) {
             allCategoriesWin = false;
-            // Don't break - update all category results for UI display
           }
+        }
+
+        // Only resolve the full combined bet if ALL categories have been resolved
+        const totalCategories = combinedBet.combined_bet_categories?.length || 0;
+        if (resolvedCategoryCount < totalCategories) {
+          console.log(`Combined bet ${combinedBet.id}: Only ${resolvedCategoryCount}/${totalCategories} categories resolved, waiting for remaining`);
+          continue;
         }
 
         const combinedResult = allCategoriesWin ? 'win' : 'loss';
@@ -652,11 +708,20 @@ Deno.serve(async (req) => {
         const currencySuffix = combinedBet.currency_type === 'virtual' ? ' points' : '';
         const categoryCount = combinedBet.combined_bet_categories?.length || 0;
         
+        // Detect if this is a multi-time combo (same category at different times)
+        const isMultiTimeCombo = combinedBet.combined_bet_categories?.every((c: any) => {
+          const { category } = parsePredictionType(c.prediction_type);
+          const { category: firstCategory } = parsePredictionType(combinedBet.combined_bet_categories[0].prediction_type);
+          return category === firstCategory;
+        }) && categoryCount > 1;
+
+        const betTypeLabel = isMultiTimeCombo ? 'multi-time combo' : `${categoryCount}-category bet`;
+        
         if (allCategoriesWin) {
           await createNotification(
             combinedBet.user_id,
             '🎉 Combined Bet Won!',
-            `Your ${categoryCount}-category bet on ${combinedBet.city} won! You earned ${currencyLabel}${pointsChange}${currencySuffix}.`,
+            `Your ${betTypeLabel} on ${combinedBet.city} won! You earned ${currencyLabel}${pointsChange}${currencySuffix}.`,
             'bet_won',
             combinedBet.id,
             'combined_bet'
@@ -668,7 +733,7 @@ Deno.serve(async (req) => {
           await createNotification(
             combinedBet.user_id,
             '❌ Combined Bet Lost',
-            `Your ${categoryCount}-category bet on ${combinedBet.city} didn't win.${insuranceMsg}`,
+            `Your ${betTypeLabel} on ${combinedBet.city} didn't win.${insuranceMsg}`,
             'bet_lost',
             combinedBet.id,
             'combined_bet'
