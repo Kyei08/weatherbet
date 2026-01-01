@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, RefreshCw, Shield, TrendingUp, Zap, Clock } from 'lucide-react';
+import { ArrowLeft, RefreshCw, Shield, TrendingUp, Zap, Clock, CheckCircle2, Circle, XCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { getBets, updateBetResult, getUser, updateUserPoints, cashOutBet } from '@/lib/supabase-auth-storage';
 import { getParlays, updateParlayResult, ParlayWithLegs, cashOutParlay } from '@/lib/supabase-parlays';
@@ -17,7 +17,41 @@ import CashOutHistoryChart from './CashOutHistoryChart';
 import OddsHistoryChart from './OddsHistoryChart';
 import { formatRands } from '@/lib/currency';
 import { useCurrencyMode } from '@/contexts/CurrencyModeContext';
-import { getTimeSlot, BettingCategory } from '@/lib/betting-timing';
+import { getTimeSlot, BettingCategory, CATEGORY_TIME_SLOTS } from '@/lib/betting-timing';
+import { Progress } from '@/components/ui/progress';
+
+// Helper to parse prediction type that may include time slot
+function parsePredictionType(predictionType: string): { category: string; slotId?: string } {
+  const knownCategories = ['temperature', 'rain', 'rainfall', 'wind', 'snow', 'cloud_coverage', 'pressure', 'dew_point', 'humidity'];
+  
+  for (const category of knownCategories) {
+    if (predictionType === category) {
+      return { category };
+    }
+    if (predictionType.startsWith(category + '_')) {
+      const slotId = predictionType.substring(category.length + 1);
+      const config = CATEGORY_TIME_SLOTS[category as BettingCategory];
+      if (config && config.timeSlots.some(s => s.slotId === slotId)) {
+        return { category, slotId };
+      }
+    }
+  }
+  
+  return { category: predictionType };
+}
+
+// Check if a combined bet is a multi-time combo (same category at different times)
+function isMultiTimeCombo(categories: any[]): boolean {
+  if (categories.length < 2) return false;
+  const { category: firstCategory } = parsePredictionType(categories[0].prediction_type);
+  return categories.every(cat => {
+    const { category } = parsePredictionType(cat.prediction_type);
+    return category === firstCategory;
+  }) && categories.some(cat => {
+    const { slotId } = parsePredictionType(cat.prediction_type);
+    return slotId !== undefined;
+  });
+}
 
 interface MyBetsProps {
   onBack: () => void;
@@ -1007,7 +1041,14 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
                     <div className="flex justify-between items-start">
                       <div>
                         <h3 className="font-semibold text-lg flex items-center gap-2">
-                          ⚡ {combinedBet.combined_bet_categories.length}-Category Combined
+                          {isMultiTimeCombo(combinedBet.combined_bet_categories) ? (
+                            <>
+                              <Zap className="h-4 w-4 text-primary" />
+                              Multi-Time Combo
+                            </>
+                          ) : (
+                            <>⚡ {combinedBet.combined_bet_categories.length}-Category Combined</>
+                          )}
                         </h3>
                         <p className="text-sm text-muted-foreground">{combinedBet.city}</p>
                         <p className="text-sm text-muted-foreground">{formatDate(combinedBet.created_at)}</p>
@@ -1042,16 +1083,75 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
                       </div>
                     </div>
 
-                    {/* Categories */}
-                    <div className="space-y-2 pl-4 border-l-2 border-accent/30">
-                      {combinedBet.combined_bet_categories.map((cat: any, idx: number) => (
-                        <div key={cat.id} className="text-sm">
-                          <span className="font-medium">Category {idx + 1}: {cat.prediction_type}</span>
-                          <span className="text-muted-foreground ml-2">
-                            {cat.prediction_value} ({Number(cat.odds).toFixed(2)}x)
+                    {/* Multi-Time Combo Progress Indicator */}
+                    {isMultiTimeCombo(combinedBet.combined_bet_categories) && combinedBet.result === 'pending' && (
+                      <div className="bg-muted/50 rounded-lg p-3 space-y-2">
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="font-medium flex items-center gap-1.5">
+                            <Clock className="h-3.5 w-3.5 text-primary" />
+                            Time Slot Progress
+                          </span>
+                          <span className="text-muted-foreground">
+                            {combinedBet.combined_bet_categories.filter((c: any) => c.result !== 'pending').length}/{combinedBet.combined_bet_categories.length} resolved
                           </span>
                         </div>
-                      ))}
+                        <Progress 
+                          value={(combinedBet.combined_bet_categories.filter((c: any) => c.result !== 'pending').length / combinedBet.combined_bet_categories.length) * 100} 
+                          className="h-2"
+                        />
+                        <div className="flex flex-wrap gap-2 mt-2">
+                          {combinedBet.combined_bet_categories.map((cat: any) => {
+                            const { category, slotId } = parsePredictionType(cat.prediction_type);
+                            const slot = slotId ? getTimeSlot(category as BettingCategory, slotId) : null;
+                            const statusIcon = cat.result === 'win' 
+                              ? <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />
+                              : cat.result === 'loss'
+                              ? <XCircle className="h-3.5 w-3.5 text-red-500" />
+                              : <Circle className="h-3.5 w-3.5 text-muted-foreground" />;
+                            
+                            return (
+                              <div 
+                                key={cat.id}
+                                className={`flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium ${
+                                  cat.result === 'win' ? 'bg-green-500/10 text-green-700 dark:text-green-400' :
+                                  cat.result === 'loss' ? 'bg-red-500/10 text-red-700 dark:text-red-400' :
+                                  'bg-muted text-muted-foreground'
+                                }`}
+                              >
+                                {statusIcon}
+                                {slot ? `${slot.icon} ${slot.label}` : cat.prediction_type}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Categories - Enhanced for multi-time combos */}
+                    <div className="space-y-2 pl-4 border-l-2 border-accent/30">
+                      {combinedBet.combined_bet_categories.map((cat: any, idx: number) => {
+                        const { category, slotId } = parsePredictionType(cat.prediction_type);
+                        const slot = slotId ? getTimeSlot(category as BettingCategory, slotId) : null;
+                        const displayName = slot 
+                          ? `${category.charAt(0).toUpperCase() + category.slice(1).replace('_', ' ')} @ ${slot.label}`
+                          : cat.prediction_type;
+                        
+                        return (
+                          <div key={cat.id} className="text-sm flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              {cat.result === 'win' && <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />}
+                              {cat.result === 'loss' && <XCircle className="h-3.5 w-3.5 text-red-500" />}
+                              {cat.result === 'pending' && <Circle className="h-3.5 w-3.5 text-muted-foreground" />}
+                              <span className="font-medium">
+                                {slot?.icon} {displayName}
+                              </span>
+                            </div>
+                            <span className="text-muted-foreground">
+                              {cat.prediction_value} ({Number(cat.odds).toFixed(2)}x)
+                            </span>
+                          </div>
+                        );
+                      })}
                     </div>
                     
                     {/* Dynamic Cash Out Section */}
