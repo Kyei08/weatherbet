@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, RefreshCw, Shield, TrendingUp, Zap } from 'lucide-react';
+import { ArrowLeft, RefreshCw, Shield, TrendingUp, Zap, Clock } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { getBets, updateBetResult, getUser, updateUserPoints, cashOutBet } from '@/lib/supabase-auth-storage';
 import { getParlays, updateParlayResult, ParlayWithLegs, cashOutParlay } from '@/lib/supabase-parlays';
@@ -17,6 +17,7 @@ import CashOutHistoryChart from './CashOutHistoryChart';
 import OddsHistoryChart from './OddsHistoryChart';
 import { formatRands } from '@/lib/currency';
 import { useCurrencyMode } from '@/contexts/CurrencyModeContext';
+import { getTimeSlot, BettingCategory } from '@/lib/betting-timing';
 
 interface MyBetsProps {
   onBack: () => void;
@@ -675,9 +676,20 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
                         <p className="text-muted-foreground">
                           {bet.prediction_type === 'rain' 
                             ? `Rain: ${bet.prediction_value}` 
-                            : `Temperature: ${bet.prediction_value}°C`
+                            : `${bet.prediction_type.charAt(0).toUpperCase() + bet.prediction_type.slice(1).replace('_', ' ')}: ${bet.prediction_value}${bet.prediction_type === 'temperature' ? '°C' : ''}`
                           }
                         </p>
+                        {bet.time_slot_id && (
+                          <div className="flex items-center gap-1.5 mt-1">
+                            <Clock className="h-3 w-3 text-primary" />
+                            <span className="text-sm text-primary font-medium">
+                              {(() => {
+                                const slot = getTimeSlot(bet.prediction_type as BettingCategory, bet.time_slot_id);
+                                return slot ? `${slot.icon} ${slot.label}` : bet.time_slot_id;
+                              })()}
+                            </span>
+                          </div>
+                        )}
                         <p className="text-sm text-muted-foreground">{formatDate(bet.created_at)}</p>
                       </div>
                       <div className="text-right space-y-1">
