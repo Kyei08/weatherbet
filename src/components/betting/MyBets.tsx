@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, RefreshCw, Shield, TrendingUp, Zap, Clock, CheckCircle2, Circle, XCircle } from 'lucide-react';
+import { ArrowLeft, RefreshCw, Shield, TrendingUp, Zap, Clock, CheckCircle2, Circle, XCircle, Timer } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { getBets, updateBetResult, getUser, updateUserPoints, cashOutBet } from '@/lib/supabase-auth-storage';
 import { getParlays, updateParlayResult, ParlayWithLegs, cashOutParlay } from '@/lib/supabase-parlays';
@@ -19,6 +19,7 @@ import { formatRands } from '@/lib/currency';
 import { useCurrencyMode } from '@/contexts/CurrencyModeContext';
 import { getTimeSlot, BettingCategory, CATEGORY_TIME_SLOTS } from '@/lib/betting-timing';
 import { Progress } from '@/components/ui/progress';
+import { TimeSlotCountdown, MultiSlotCountdown } from './TimeSlotCountdown';
 
 // Helper to parse prediction type that may include time slot
 function parsePredictionType(predictionType: string): { category: string; slotId?: string } {
@@ -714,14 +715,23 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
                           }
                         </p>
                         {bet.time_slot_id && (
-                          <div className="flex items-center gap-1.5 mt-1">
-                            <Clock className="h-3 w-3 text-primary" />
-                            <span className="text-sm text-primary font-medium">
-                              {(() => {
-                                const slot = getTimeSlot(bet.prediction_type as BettingCategory, bet.time_slot_id);
-                                return slot ? `${slot.icon} ${slot.label}` : bet.time_slot_id;
-                              })()}
-                            </span>
+                          <div className="flex flex-col gap-1 mt-1">
+                            <div className="flex items-center gap-1.5">
+                              <Clock className="h-3 w-3 text-primary" />
+                              <span className="text-sm text-primary font-medium">
+                                {(() => {
+                                  const slot = getTimeSlot(bet.prediction_type as BettingCategory, bet.time_slot_id);
+                                  return slot ? `${slot.icon} ${slot.label}` : bet.time_slot_id;
+                                })()}
+                              </span>
+                            </div>
+                            {bet.result === 'pending' && (
+                              <TimeSlotCountdown
+                                category={bet.prediction_type as BettingCategory}
+                                slotId={bet.time_slot_id}
+                                targetDate={bet.target_date || undefined}
+                              />
+                            )}
                           </div>
                         )}
                         <p className="text-sm text-muted-foreground">{formatDate(bet.created_at)}</p>
@@ -1112,14 +1122,26 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
                             return (
                               <div 
                                 key={cat.id}
-                                className={`flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium ${
+                                className={`flex flex-col gap-1 px-2 py-1.5 rounded-lg text-xs font-medium ${
                                   cat.result === 'win' ? 'bg-green-500/10 text-green-700 dark:text-green-400' :
                                   cat.result === 'loss' ? 'bg-red-500/10 text-red-700 dark:text-red-400' :
                                   'bg-muted text-muted-foreground'
                                 }`}
                               >
-                                {statusIcon}
-                                {slot ? `${slot.icon} ${slot.label}` : cat.prediction_type}
+                                <div className="flex items-center gap-1.5">
+                                  {statusIcon}
+                                  {slot ? `${slot.icon} ${slot.label}` : cat.prediction_type}
+                                </div>
+                                {cat.result === 'pending' && slotId && (
+                                  <TimeSlotCountdown
+                                    category={category as BettingCategory}
+                                    slotId={slotId}
+                                    targetDate={combinedBet.target_date}
+                                    compact
+                                    showIcon={false}
+                                    className="mt-0.5"
+                                  />
+                                )}
                               </div>
                             );
                           })}
