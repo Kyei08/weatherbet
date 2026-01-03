@@ -285,9 +285,24 @@ Deno.serve(async (req) => {
     const supabaseServiceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const openWeatherApiKey = Deno.env.get('OPENWEATHER_API_KEY')!;
     
-    const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
+    const supabase = createClient(supabaseUrl, supabaseServiceRoleKey, {
+      realtime: {
+        params: {
+          eventsPerSecond: 10
+        }
+      }
+    });
 
     console.log('Starting bet resolution process...');
+
+    // Broadcast that resolution has started
+    const channel = supabase.channel('bet-resolution-status');
+    await channel.subscribe();
+    await channel.send({
+      type: 'broadcast',
+      event: 'resolution_status',
+      payload: { status: 'resolving', message: 'Resolving bets...' }
+    });
 
     const now = new Date().toISOString();
 
@@ -747,6 +762,20 @@ Deno.serve(async (req) => {
     }
 
     console.log(`Resolved ${resolvedCombinedBets} combined bets`);
+
+    // Broadcast that resolution is complete
+    await channel.send({
+      type: 'broadcast',
+      event: 'resolution_status',
+      payload: { 
+        status: 'complete', 
+        message: `Resolved ${resolvedBets} bets, ${resolvedParlays} parlays, ${resolvedCombinedBets} combined bets`,
+        resolvedBets,
+        resolvedParlays,
+        resolvedCombinedBets
+      }
+    });
+    await supabase.removeChannel(channel);
 
     return new Response(JSON.stringify({ 
       message: `Resolved ${resolvedBets} bets, ${resolvedParlays} parlays, and ${resolvedCombinedBets} combined bets`,

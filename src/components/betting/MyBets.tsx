@@ -70,6 +70,8 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
   const [settlingBets, setSettlingBets] = useState<Set<string>>(new Set());
   const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'settled'>('all');
   const [resolvingBets, setResolvingBets] = useState(false);
+  const [globalResolving, setGlobalResolving] = useState(false);
+  const [resolvingMessage, setResolvingMessage] = useState('');
   const { toast } = useToast();
   const { checkAndUpdateChallenges } = useChallengeTracker();
   const { checkAchievements } = useAchievementTracker();
@@ -233,8 +235,27 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
       )
       .subscribe();
 
+    // Subscribe to resolution status broadcasts
+    const resolutionChannel = supabase
+      .channel('bet-resolution-status')
+      .on('broadcast', { event: 'resolution_status' }, (payload) => {
+        console.log('Resolution status:', payload);
+        const { status, message } = payload.payload;
+        if (status === 'resolving') {
+          setGlobalResolving(true);
+          setResolvingMessage(message || 'Resolving bets...');
+        } else if (status === 'complete') {
+          setGlobalResolving(false);
+          setResolvingMessage('');
+          // Refresh data after resolution completes
+          fetchData();
+        }
+      })
+      .subscribe();
+
     return () => {
       supabase.removeChannel(betsChannel);
+      supabase.removeChannel(resolutionChannel);
     };
   }, [mode, toast]);
 
@@ -710,6 +731,23 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
             </Button>
           </div>
         </div>
+
+        {/* Global Resolution Status Banner */}
+        {(globalResolving || resolvingBets) && (
+          <div className="bg-primary/10 border border-primary/30 rounded-lg p-4 flex items-center gap-3 animate-pulse">
+            <div className="relative">
+              <Zap className="h-5 w-5 text-primary animate-bounce" />
+              <div className="absolute inset-0 bg-primary/30 rounded-full blur-md animate-ping" />
+            </div>
+            <div className="flex-1">
+              <p className="font-medium text-primary">Resolving Bets...</p>
+              <p className="text-sm text-muted-foreground">
+                {resolvingMessage || 'Checking weather conditions and resolving pending bets'}
+              </p>
+            </div>
+            <Timer className="h-5 w-5 text-primary animate-spin" />
+          </div>
+        )}
 
         {/* Summary Statistics */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
