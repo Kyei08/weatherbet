@@ -124,28 +124,119 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
 
   const stats = calculateStats();
   
+  const fetchData = async () => {
+    try {
+      const [betsData, parlaysData, combinedBetsData] = await Promise.all([
+        getBets(undefined, mode),
+        getParlays(undefined, mode),
+        getCombinedBets(undefined, mode)
+      ]);
+      setBets(betsData);
+      setParlays(parlaysData);
+      setCombinedBets(combinedBetsData);
+      
+      // Calculate dynamic cash-outs for pending bets
+      await calculateAllCashOuts(betsData, parlaysData, combinedBetsData);
+    } catch (error) {
+      console.error('Error fetching data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Initial data fetch
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [betsData, parlaysData, combinedBetsData] = await Promise.all([
-          getBets(undefined, mode),
-          getParlays(undefined, mode),
-          getCombinedBets(undefined, mode)
-        ]);
-        setBets(betsData);
-        setParlays(parlaysData);
-        setCombinedBets(combinedBetsData);
-        
-        // Calculate dynamic cash-outs for pending bets
-        await calculateAllCashOuts(betsData, parlaysData, combinedBetsData);
-      } catch (error) {
-        console.error('Error fetching data:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchData();
   }, [mode]);
+
+  // Real-time subscriptions for bet updates
+  useEffect(() => {
+    const betsChannel = supabase
+      .channel('bets-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'bets'
+        },
+        (payload) => {
+          console.log('Bet updated:', payload);
+          // Update the specific bet in state
+          setBets(prevBets => 
+            prevBets.map(bet => 
+              bet.id === payload.new.id ? { ...bet, ...payload.new } : bet
+            )
+          );
+          // Show toast for resolved bets
+          if (payload.old.result === 'pending' && payload.new.result !== 'pending') {
+            const resultEmoji = payload.new.result === 'win' ? '🎉' : payload.new.result === 'cashed_out' ? '💰' : '😞';
+            toast({
+              title: `Bet ${payload.new.result === 'win' ? 'Won!' : payload.new.result === 'cashed_out' ? 'Cashed Out!' : 'Lost'} ${resultEmoji}`,
+              description: `Your bet on ${payload.new.city} has been resolved.`,
+            });
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'parlays'
+        },
+        (payload) => {
+          console.log('Parlay updated:', payload);
+          // Refresh parlays to get full data with legs
+          fetchData();
+          if (payload.old.result === 'pending' && payload.new.result !== 'pending') {
+            const resultEmoji = payload.new.result === 'win' ? '🎉' : payload.new.result === 'cashed_out' ? '💰' : '😞';
+            toast({
+              title: `Parlay ${payload.new.result === 'win' ? 'Won!' : payload.new.result === 'cashed_out' ? 'Cashed Out!' : 'Lost'} ${resultEmoji}`,
+              description: `Your parlay bet has been resolved.`,
+            });
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'combined_bets'
+        },
+        (payload) => {
+          console.log('Combined bet updated:', payload);
+          // Refresh combined bets to get full data with categories
+          fetchData();
+          if (payload.old.result === 'pending' && payload.new.result !== 'pending') {
+            const resultEmoji = payload.new.result === 'win' ? '🎉' : payload.new.result === 'cashed_out' ? '💰' : '😞';
+            toast({
+              title: `Combined Bet ${payload.new.result === 'win' ? 'Won!' : payload.new.result === 'cashed_out' ? 'Cashed Out!' : 'Lost'} ${resultEmoji}`,
+              description: `Your combined bet has been resolved.`,
+            });
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'combined_bet_categories'
+        },
+        (payload) => {
+          console.log('Combined bet category updated:', payload);
+          // Refresh to get updated category results for multi-time combos
+          fetchData();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(betsChannel);
+    };
+  }, [mode, toast]);
 
   const calculateAllCashOuts = async (betsData: Bet[], parlaysData: ParlayWithLegs[], combinedBetsData: any[]) => {
     setCalculatingCashOuts(true);
