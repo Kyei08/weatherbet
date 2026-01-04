@@ -298,10 +298,26 @@ Deno.serve(async (req) => {
     // Broadcast that resolution has started
     const channel = supabase.channel('bet-resolution-status');
     await channel.subscribe();
+    
+    // Helper to broadcast progress
+    async function broadcastProgress(current: number, total: number, phase: string) {
+      await channel.send({
+        type: 'broadcast',
+        event: 'resolution_status',
+        payload: { 
+          status: 'resolving', 
+          message: `${phase}: ${current}/${total}`,
+          current,
+          total,
+          phase
+        }
+      });
+    }
+
     await channel.send({
       type: 'broadcast',
       event: 'resolution_status',
-      payload: { status: 'resolving', message: 'Resolving bets...' }
+      payload: { status: 'resolving', message: 'Starting resolution...', phase: 'init' }
     });
 
     const now = new Date().toISOString();
@@ -346,7 +362,20 @@ Deno.serve(async (req) => {
       throw betsError;
     }
 
-    console.log(`Found ${pendingBets?.length || 0} pending bets to resolve`);
+    const totalBets = pendingBets?.length || 0;
+    console.log(`Found ${totalBets} pending bets to resolve`);
+    
+    // Broadcast initial counts
+    await channel.send({
+      type: 'broadcast',
+      event: 'resolution_status',
+      payload: { 
+        status: 'resolving', 
+        message: `Found ${totalBets} single bets to check...`,
+        phase: 'counting',
+        totalBets
+      }
+    });
 
     let resolvedBets = 0;
     const weatherCache: Record<string, WeatherData> = {};
@@ -480,6 +509,9 @@ Deno.serve(async (req) => {
         }
 
         resolvedBets++;
+        
+        // Broadcast progress for single bets
+        await broadcastProgress(resolvedBets, totalBets, 'Single bets');
       } catch (error) {
         console.error(`Error processing bet ${bet.id}:`, error);
       }
@@ -501,7 +533,8 @@ Deno.serve(async (req) => {
       console.error('Error fetching pending parlays:', parlaysError);
     }
 
-    console.log(`Found ${pendingParlays?.length || 0} pending parlays to resolve`);
+    const totalParlays = pendingParlays?.length || 0;
+    console.log(`Found ${totalParlays} pending parlays to resolve`);
 
     let resolvedParlays = 0;
 
@@ -587,6 +620,9 @@ Deno.serve(async (req) => {
         }
 
         resolvedParlays++;
+        
+        // Broadcast progress for parlays
+        await broadcastProgress(resolvedParlays, totalParlays, 'Parlays');
       } catch (error) {
         console.error(`Error processing parlay ${parlay.id}:`, error);
       }
@@ -608,7 +644,8 @@ Deno.serve(async (req) => {
       console.error('Error fetching pending combined bets:', combinedError);
     }
 
-    console.log(`Found ${pendingCombinedBets?.length || 0} pending combined bets to resolve`);
+    const totalCombinedBets = pendingCombinedBets?.length || 0;
+    console.log(`Found ${totalCombinedBets} pending combined bets to resolve`);
 
     let resolvedCombinedBets = 0;
 
@@ -756,6 +793,9 @@ Deno.serve(async (req) => {
         }
 
         resolvedCombinedBets++;
+        
+        // Broadcast progress for combined bets
+        await broadcastProgress(resolvedCombinedBets, totalCombinedBets, 'Combined bets');
       } catch (error) {
         console.error(`Error processing combined bet ${combinedBet.id}:`, error);
       }

@@ -71,6 +71,11 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
   const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'settled'>('all');
   const [resolvingBets, setResolvingBets] = useState(false);
   const [globalResolving, setGlobalResolving] = useState(false);
+  const [resolutionProgress, setResolutionProgress] = useState<{
+    current: number;
+    total: number;
+    phase: string;
+  } | null>(null);
   const [resolvingMessage, setResolvingMessage] = useState('');
   const { toast } = useToast();
   const { checkAndUpdateChallenges } = useChallengeTracker();
@@ -240,13 +245,17 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
       .channel('bet-resolution-status')
       .on('broadcast', { event: 'resolution_status' }, (payload) => {
         console.log('Resolution status:', payload);
-        const { status, message } = payload.payload;
+        const { status, message, current, total, phase } = payload.payload;
         if (status === 'resolving') {
           setGlobalResolving(true);
           setResolvingMessage(message || 'Resolving bets...');
+          if (current !== undefined && total !== undefined) {
+            setResolutionProgress({ current, total, phase: phase || '' });
+          }
         } else if (status === 'complete') {
           setGlobalResolving(false);
           setResolvingMessage('');
+          setResolutionProgress(null);
           // Refresh data after resolution completes
           fetchData();
         }
@@ -734,18 +743,34 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
 
         {/* Global Resolution Status Banner */}
         {(globalResolving || resolvingBets) && (
-          <div className="bg-primary/10 border border-primary/30 rounded-lg p-4 flex items-center gap-3 animate-pulse">
-            <div className="relative">
-              <Zap className="h-5 w-5 text-primary animate-bounce" />
-              <div className="absolute inset-0 bg-primary/30 rounded-full blur-md animate-ping" />
+          <div className="bg-primary/10 border border-primary/30 rounded-lg p-4 space-y-3">
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                <Zap className="h-5 w-5 text-primary animate-bounce" />
+                <div className="absolute inset-0 bg-primary/30 rounded-full blur-md animate-ping" />
+              </div>
+              <div className="flex-1">
+                <p className="font-medium text-primary">Resolving Bets...</p>
+                <p className="text-sm text-muted-foreground">
+                  {resolvingMessage || 'Checking weather conditions and resolving pending bets'}
+                </p>
+              </div>
+              <Timer className="h-5 w-5 text-primary animate-spin" />
             </div>
-            <div className="flex-1">
-              <p className="font-medium text-primary">Resolving Bets...</p>
-              <p className="text-sm text-muted-foreground">
-                {resolvingMessage || 'Checking weather conditions and resolving pending bets'}
-              </p>
-            </div>
-            <Timer className="h-5 w-5 text-primary animate-spin" />
+            {resolutionProgress && resolutionProgress.total > 0 && (
+              <div className="space-y-1">
+                <div className="flex justify-between text-xs text-muted-foreground">
+                  <span>{resolutionProgress.phase}</span>
+                  <span>{resolutionProgress.current} / {resolutionProgress.total}</span>
+                </div>
+                <div className="h-2 bg-muted rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-primary transition-all duration-300 ease-out"
+                    style={{ width: `${(resolutionProgress.current / resolutionProgress.total) * 100}%` }}
+                  />
+                </div>
+              </div>
+            )}
           </div>
         )}
 
