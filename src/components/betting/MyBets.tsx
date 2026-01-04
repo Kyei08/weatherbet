@@ -20,6 +20,7 @@ import { useCurrencyMode } from '@/contexts/CurrencyModeContext';
 import { getTimeSlot, BettingCategory, CATEGORY_TIME_SLOTS } from '@/lib/betting-timing';
 import { Progress } from '@/components/ui/progress';
 import { TimeSlotCountdown, MultiSlotCountdown } from './TimeSlotCountdown';
+import { BetTimeline } from './BetTimeline';
 
 // Helper to parse prediction type that may include time slot
 function parsePredictionType(predictionType: string): { category: string; slotId?: string } {
@@ -793,6 +794,14 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
             )}
           </div>
         )}
+
+        {/* Bet Timeline */}
+        <BetTimeline 
+          bets={bets} 
+          parlays={parlays} 
+          combinedBets={combinedBets}
+          mode={mode}
+        />
 
         {/* Summary Statistics */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
