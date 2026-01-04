@@ -77,6 +77,7 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
     phase: string;
   } | null>(null);
   const [resolvingMessage, setResolvingMessage] = useState('');
+  const [recentlyUpdated, setRecentlyUpdated] = useState<Set<string>>(new Set());
   const { toast } = useToast();
   const { checkAndUpdateChallenges } = useChallengeTracker();
   const { checkAchievements } = useAchievementTracker();
@@ -157,6 +158,19 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
   }, [mode]);
 
   // Real-time subscriptions for bet updates
+  // Helper to mark an item as recently updated (with auto-clear)
+  const markAsUpdated = (id: string) => {
+    setRecentlyUpdated(prev => new Set(prev).add(id));
+    // Clear the animation after 3 seconds
+    setTimeout(() => {
+      setRecentlyUpdated(prev => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+    }, 3000);
+  };
+
   useEffect(() => {
     const betsChannel = supabase
       .channel('bets-realtime')
@@ -169,6 +183,8 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
         },
         (payload) => {
           console.log('Bet updated:', payload);
+          // Mark as recently updated for animation
+          markAsUpdated(payload.new.id);
           // Update the specific bet in state
           setBets(prevBets => 
             prevBets.map(bet => 
@@ -194,6 +210,8 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
         },
         (payload) => {
           console.log('Parlay updated:', payload);
+          // Mark as recently updated for animation
+          markAsUpdated(payload.new.id);
           // Refresh parlays to get full data with legs
           fetchData();
           if (payload.old.result === 'pending' && payload.new.result !== 'pending') {
@@ -214,6 +232,8 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
         },
         (payload) => {
           console.log('Combined bet updated:', payload);
+          // Mark as recently updated for animation
+          markAsUpdated(payload.new.id);
           // Refresh combined bets to get full data with categories
           fetchData();
           if (payload.old.result === 'pending' && payload.new.result !== 'pending') {
@@ -858,7 +878,14 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
                                     bet.result === 'cashed_out' ? ((bet as any).cashout_amount - stake) : 0;
                   
                   return (
-                  <div key={bet.id} className="border rounded-lg p-4 space-y-3">
+                  <div 
+                    key={bet.id} 
+                    className={`border rounded-lg p-4 space-y-3 transition-all duration-300 ${
+                      recentlyUpdated.has(bet.id) 
+                        ? 'ring-2 ring-primary ring-offset-2 animate-pulse bg-primary/5' 
+                        : ''
+                    }`}
+                  >
                     <div className="flex justify-between items-start">
                       <div>
                         <h3 className="font-semibold text-lg">{bet.city}</h3>
@@ -1033,7 +1060,14 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
                                     parlay.result === 'cashed_out' ? ((parlay as any).cashout_amount - stake) : 0;
                   
                   return (
-                  <div key={parlay.id} className="border-2 border-primary/20 rounded-lg p-4 space-y-3 bg-gradient-primary/5">
+                  <div 
+                    key={parlay.id} 
+                    className={`border-2 border-primary/20 rounded-lg p-4 space-y-3 bg-gradient-primary/5 transition-all duration-300 ${
+                      recentlyUpdated.has(parlay.id) 
+                        ? 'ring-2 ring-primary ring-offset-2 animate-pulse' 
+                        : ''
+                    }`}
+                  >
                     <div className="flex justify-between items-start">
                       <div>
                         <h3 className="font-semibold text-lg flex items-center gap-2">
@@ -1201,7 +1235,14 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
                                     combinedBet.result === 'cashed_out' ? ((combinedBet as any).cashout_amount - stake) : 0;
                   
                   return (
-                  <div key={combinedBet.id} className="border-2 border-accent/20 rounded-lg p-4 space-y-3 bg-gradient-to-br from-accent/5 to-primary/5">
+                  <div 
+                    key={combinedBet.id} 
+                    className={`border-2 border-accent/20 rounded-lg p-4 space-y-3 bg-gradient-to-br from-accent/5 to-primary/5 transition-all duration-300 ${
+                      recentlyUpdated.has(combinedBet.id) 
+                        ? 'ring-2 ring-primary ring-offset-2 animate-pulse' 
+                        : ''
+                    }`}
+                  >
                     <div className="flex justify-between items-start">
                       <div>
                         <h3 className="font-semibold text-lg flex items-center gap-2">
