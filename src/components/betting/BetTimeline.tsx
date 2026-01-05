@@ -5,6 +5,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Clock, MapPin, Timer, TrendingUp, Zap, ChevronRight, ChevronDown, Calendar, Target, Coins, Filter } from 'lucide-react';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { Button } from '@/components/ui/button';
 import { format, formatDistanceToNow } from 'date-fns';
 import { BettingCategory, getTimeSlot, getDefaultTimeSlot } from '@/lib/betting-timing';
 import { formatCurrency } from '@/lib/currency';
@@ -409,6 +410,38 @@ export function BetTimeline({ bets, parlays, combinedBets, mode }: BetTimelinePr
               )}
             </ToggleGroupItem>
           </ToggleGroup>
+          
+          {/* Quick actions */}
+          <div className="flex items-center gap-1 ml-auto">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-xs h-7 px-2"
+              onClick={() => {
+                const allTypes: string[] = [];
+                if (typeCounts.single > 0) allTypes.push('single');
+                if (typeCounts.parlay > 0) allTypes.push('parlay');
+                if (typeCounts.combined > 0) allTypes.push('combined');
+                setTypeFilter(allTypes);
+              }}
+              disabled={typeFilter.length === ['single', 'parlay', 'combined'].filter(t => typeCounts[t as keyof typeof typeCounts] > 0).length}
+            >
+              All
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-xs h-7 px-2"
+              onClick={() => {
+                // Keep at least one filter - pick the first available
+                const firstAvailable = ['single', 'parlay', 'combined'].find(t => typeCounts[t as keyof typeof typeCounts] > 0);
+                if (firstAvailable) setTypeFilter([firstAvailable]);
+              }}
+              disabled={typeFilter.length === 1}
+            >
+              Clear
+            </Button>
+          </div>
         </div>
       </CardHeader>
       <CardContent>
