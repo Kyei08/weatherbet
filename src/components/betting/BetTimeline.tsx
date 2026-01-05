@@ -2,7 +2,8 @@ import { useMemo, useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Clock, MapPin, Timer, TrendingUp, Zap, ChevronRight } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Clock, MapPin, Timer, TrendingUp, Zap, ChevronRight, ChevronDown, Calendar, Target, Coins } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import { BettingCategory, getTimeSlot, getDefaultTimeSlot } from '@/lib/betting-timing';
 import { formatCurrency } from '@/lib/currency';
@@ -76,6 +77,10 @@ interface TimelineItem {
   // Additional info for display
   legCount?: number;
   categoryCount?: number;
+  createdAt: string;
+  targetDate?: string;
+  parlayLegs?: ParlayLeg[];
+  combinedCategories?: CombinedBetCategory[];
 }
 
 interface BetTimelineProps {
@@ -123,6 +128,19 @@ function getNextMeasurementTime(
 
 export function BetTimeline({ bets, parlays, combinedBets, mode }: BetTimelineProps) {
   const [now, setNow] = useState(new Date());
+  const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
+
+  const toggleExpanded = (id: string) => {
+    setExpandedItems(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
 
   // Update current time every minute
   useEffect(() => {
@@ -161,6 +179,8 @@ export function BetTimeline({ bets, parlays, combinedBets, mode }: BetTimelinePr
           timeSlotLabel: slot?.label || 'Default',
           timeSlotIcon: slot?.icon || '⏰',
           currencyType: bet.currency_type || 'virtual',
+          createdAt: bet.created_at,
+          targetDate: bet.target_date,
         });
       });
 
@@ -190,6 +210,8 @@ export function BetTimeline({ bets, parlays, combinedBets, mode }: BetTimelinePr
           timeSlotIcon: '💰',
           currencyType: parlay.currency_type || 'virtual',
           legCount: parlay.parlay_legs.length,
+          createdAt: parlay.created_at,
+          parlayLegs: parlay.parlay_legs,
         });
       });
 
@@ -231,6 +253,9 @@ export function BetTimeline({ bets, parlays, combinedBets, mode }: BetTimelinePr
           timeSlotIcon: '⚡',
           currencyType: cb.currency_type || 'virtual',
           categoryCount: cb.combined_bet_categories.length,
+          createdAt: cb.created_at,
+          targetDate: cb.target_date,
+          combinedCategories: cb.combined_bet_categories,
         });
       });
 
@@ -337,81 +362,191 @@ export function BetTimeline({ bets, parlays, combinedBets, mode }: BetTimelinePr
 
                   {/* Items in group */}
                   <div className="space-y-2 ml-8">
-                    {group.items.map((item, idx) => (
-                      <div
-                        key={item.id}
-                        className={`relative p-3 rounded-lg border transition-all hover:shadow-md ${
-                          item.type === 'parlay' 
-                            ? 'bg-gradient-to-r from-primary/5 to-transparent border-primary/20' 
-                            : item.type === 'combined'
-                            ? 'bg-gradient-to-r from-accent/5 to-transparent border-accent/20'
-                            : 'bg-card hover:bg-muted/50'
-                        }`}
-                      >
-                        {/* Connector dot */}
-                        <div className={`absolute -left-6 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full ${
-                          item.measurementTime <= now 
-                            ? 'bg-green-500' 
-                            : 'bg-muted-foreground'
-                        }`} />
+                    {group.items.map((item) => {
+                      const isExpanded = expandedItems.has(item.id);
+                      
+                      return (
+                        <Collapsible
+                          key={item.id}
+                          open={isExpanded}
+                          onOpenChange={() => toggleExpanded(item.id)}
+                        >
+                          <div
+                            className={`relative rounded-lg border transition-all ${
+                              item.type === 'parlay' 
+                                ? 'bg-gradient-to-r from-primary/5 to-transparent border-primary/20' 
+                                : item.type === 'combined'
+                                ? 'bg-gradient-to-r from-accent/5 to-transparent border-accent/20'
+                                : 'bg-card'
+                            } ${isExpanded ? 'shadow-md ring-1 ring-primary/20' : 'hover:shadow-md'}`}
+                          >
+                            {/* Connector dot */}
+                            <div className={`absolute -left-6 top-5 w-2 h-2 rounded-full ${
+                              item.measurementTime <= now 
+                                ? 'bg-green-500' 
+                                : 'bg-muted-foreground'
+                            }`} />
 
-                        <div className="flex items-start justify-between gap-4">
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-1">
-                              <span className="text-lg">{item.timeSlotIcon}</span>
-                              <span className="font-medium truncate">
-                                {item.type === 'parlay' ? (
-                                  <span className="flex items-center gap-1">
-                                    💰 {item.legCount}-Leg Parlay
-                                  </span>
-                                ) : item.type === 'combined' ? (
-                                  <span className="flex items-center gap-1">
-                                    <Zap className="h-4 w-4 text-primary" />
-                                    {item.categoryCount}-Category Combo
-                                  </span>
-                                ) : (
-                                  <span className="capitalize">
-                                    {item.predictionType.replace('_', ' ')}
-                                  </span>
-                                )}
-                              </span>
-                              <Badge variant="outline" className="text-xs">
-                                {item.timeSlotLabel}
-                              </Badge>
-                            </div>
+                            <CollapsibleTrigger className="w-full text-left p-3 cursor-pointer hover:bg-muted/30 rounded-t-lg transition-colors">
+                              <div className="flex items-start justify-between gap-4">
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <span className="text-lg">{item.timeSlotIcon}</span>
+                                    <span className="font-medium truncate">
+                                      {item.type === 'parlay' ? (
+                                        <span className="flex items-center gap-1">
+                                          💰 {item.legCount}-Leg Parlay
+                                        </span>
+                                      ) : item.type === 'combined' ? (
+                                        <span className="flex items-center gap-1">
+                                          <Zap className="h-4 w-4 text-primary" />
+                                          {item.categoryCount}-Category Combo
+                                        </span>
+                                      ) : (
+                                        <span className="capitalize">
+                                          {item.predictionType.replace('_', ' ')}
+                                        </span>
+                                      )}
+                                    </span>
+                                    <Badge variant="outline" className="text-xs">
+                                      {item.timeSlotLabel}
+                                    </Badge>
+                                    <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                                  </div>
 
-                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                              <MapPin className="h-3 w-3" />
-                              <span className="truncate">{item.city}</span>
-                              <ChevronRight className="h-3 w-3" />
-                              <span className="font-medium text-foreground">
-                                {item.type === 'single' ? item.predictionValue : item.predictionValue}
-                              </span>
-                            </div>
+                                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                    <MapPin className="h-3 w-3" />
+                                    <span className="truncate">{item.city}</span>
+                                    <ChevronRight className="h-3 w-3" />
+                                    <span className="font-medium text-foreground">
+                                      {item.predictionValue}
+                                    </span>
+                                  </div>
+                                </div>
+
+                                <div className="text-right shrink-0">
+                                  <div className="flex items-center gap-1 text-sm font-medium">
+                                    <Clock className="h-3 w-3 text-muted-foreground" />
+                                    {item.measurementTime <= now ? (
+                                      <span className="text-green-600">Now</span>
+                                    ) : (
+                                      <span>{format(item.measurementTime, 'HH:mm')}</span>
+                                    )}
+                                  </div>
+                                  <div className="text-xs text-muted-foreground">
+                                    {item.measurementTime > now && formatDistanceToNow(item.measurementTime, { addSuffix: true })}
+                                  </div>
+                                  <div className="flex items-center gap-1 mt-1 text-xs">
+                                    <TrendingUp className="h-3 w-3 text-primary" />
+                                    <span className="text-primary font-medium">
+                                      {formatCurrency(item.potentialWin, item.currencyType === 'real' ? 'real' : 'virtual')}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                            </CollapsibleTrigger>
+
+                            <CollapsibleContent>
+                              <div className="px-3 pb-3 pt-0 border-t border-border/50 mt-0">
+                                <div className="pt-3 space-y-3">
+                                  {/* Bet Details Grid */}
+                                  <div className="grid grid-cols-2 gap-3 text-sm">
+                                    <div className="flex items-center gap-2">
+                                      <Coins className="h-4 w-4 text-muted-foreground" />
+                                      <div>
+                                        <p className="text-muted-foreground text-xs">Stake</p>
+                                        <p className="font-medium">
+                                          {formatCurrency(item.stake, item.currencyType === 'real' ? 'real' : 'virtual')}
+                                        </p>
+                                      </div>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      <Target className="h-4 w-4 text-muted-foreground" />
+                                      <div>
+                                        <p className="text-muted-foreground text-xs">Odds</p>
+                                        <p className="font-medium">{item.odds.toFixed(2)}x</p>
+                                      </div>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      <Calendar className="h-4 w-4 text-muted-foreground" />
+                                      <div>
+                                        <p className="text-muted-foreground text-xs">Placed</p>
+                                        <p className="font-medium">{format(new Date(item.createdAt), 'MMM d, HH:mm')}</p>
+                                      </div>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      <Clock className="h-4 w-4 text-muted-foreground" />
+                                      <div>
+                                        <p className="text-muted-foreground text-xs">Resolves</p>
+                                        <p className="font-medium">{format(item.measurementTime, 'MMM d, HH:mm')}</p>
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  {/* Parlay Legs */}
+                                  {item.type === 'parlay' && item.parlayLegs && (
+                                    <div className="space-y-2">
+                                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Parlay Legs</p>
+                                      <div className="space-y-1.5">
+                                        {item.parlayLegs.map((leg, idx) => (
+                                          <div key={leg.id} className="flex items-center justify-between text-sm bg-muted/30 rounded px-2 py-1.5">
+                                            <div className="flex items-center gap-2">
+                                              <span className="text-muted-foreground">{idx + 1}.</span>
+                                              <MapPin className="h-3 w-3 text-muted-foreground" />
+                                              <span>{leg.city}</span>
+                                              <ChevronRight className="h-3 w-3 text-muted-foreground" />
+                                              <span className="capitalize">{leg.prediction_type.replace('_', ' ')}</span>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                              <Badge variant="secondary" className="text-xs">{leg.prediction_value}</Badge>
+                                              <span className="text-primary font-medium">{leg.odds.toFixed(2)}x</span>
+                                            </div>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {/* Combined Bet Categories */}
+                                  {item.type === 'combined' && item.combinedCategories && (
+                                    <div className="space-y-2">
+                                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Categories</p>
+                                      <div className="space-y-1.5">
+                                        {item.combinedCategories.map((cat, idx) => (
+                                          <div key={cat.id} className="flex items-center justify-between text-sm bg-muted/30 rounded px-2 py-1.5">
+                                            <div className="flex items-center gap-2">
+                                              <span className="text-muted-foreground">{idx + 1}.</span>
+                                              <span className="capitalize">{cat.prediction_type.replace('_', ' ')}</span>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                              <Badge 
+                                                variant={cat.result === 'pending' ? 'secondary' : cat.result === 'won' ? 'default' : 'destructive'}
+                                                className="text-xs"
+                                              >
+                                                {cat.prediction_value}
+                                              </Badge>
+                                              <span className="text-primary font-medium">{cat.odds.toFixed(2)}x</span>
+                                            </div>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {/* Target Date for single/combined bets */}
+                                  {item.targetDate && (
+                                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                      <Calendar className="h-4 w-4" />
+                                      <span>Target Date: {format(new Date(item.targetDate), 'EEEE, MMM d, yyyy')}</span>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </CollapsibleContent>
                           </div>
-
-                          <div className="text-right shrink-0">
-                            <div className="flex items-center gap-1 text-sm font-medium">
-                              <Clock className="h-3 w-3 text-muted-foreground" />
-                              {item.measurementTime <= now ? (
-                                <span className="text-green-600">Now</span>
-                              ) : (
-                                <span>{format(item.measurementTime, 'HH:mm')}</span>
-                              )}
-                            </div>
-                            <div className="text-xs text-muted-foreground">
-                              {item.measurementTime > now && formatDistanceToNow(item.measurementTime, { addSuffix: true })}
-                            </div>
-                            <div className="flex items-center gap-1 mt-1 text-xs">
-                              <TrendingUp className="h-3 w-3 text-primary" />
-                              <span className="text-primary font-medium">
-                                {formatCurrency(item.potentialWin, item.currencyType === 'real' ? 'real' : 'virtual')}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
+                        </Collapsible>
+                      );
+                    })}
                   </div>
                 </div>
               ))}
