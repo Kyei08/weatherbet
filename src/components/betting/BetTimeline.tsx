@@ -3,7 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Clock, MapPin, Timer, TrendingUp, Zap, ChevronRight, ChevronDown, Calendar, Target, Coins } from 'lucide-react';
+import { Clock, MapPin, Timer, TrendingUp, Zap, ChevronRight, ChevronDown, Calendar, Target, Coins, Filter } from 'lucide-react';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { format, formatDistanceToNow } from 'date-fns';
 import { BettingCategory, getTimeSlot, getDefaultTimeSlot } from '@/lib/betting-timing';
 import { formatCurrency } from '@/lib/currency';
@@ -129,6 +130,7 @@ function getNextMeasurementTime(
 export function BetTimeline({ bets, parlays, combinedBets, mode }: BetTimelineProps) {
   const [now, setNow] = useState(new Date());
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
+  const [typeFilter, setTypeFilter] = useState<string[]>(['single', 'parlay', 'combined']);
 
   const toggleExpanded = (id: string) => {
     setExpandedItems(prev => {
@@ -140,6 +142,13 @@ export function BetTimeline({ bets, parlays, combinedBets, mode }: BetTimelinePr
       }
       return next;
     });
+  };
+
+  const handleFilterChange = (value: string[]) => {
+    // Ensure at least one filter is always selected
+    if (value.length > 0) {
+      setTypeFilter(value);
+    }
   };
 
   // Update current time every minute
@@ -263,10 +272,26 @@ export function BetTimeline({ bets, parlays, combinedBets, mode }: BetTimelinePr
     return items.sort((a, b) => a.measurementTime.getTime() - b.measurementTime.getTime());
   }, [bets, parlays, combinedBets]);
 
-  // Filter to only show items for current mode
-  const filteredItems = timelineItems.filter(item => 
-    mode === 'real' ? item.currencyType === 'real' : item.currencyType === 'virtual'
-  );
+  // Filter to only show items for current mode and selected types
+  const filteredItems = useMemo(() => {
+    return timelineItems.filter(item => {
+      const modeMatch = mode === 'real' ? item.currencyType === 'real' : item.currencyType === 'virtual';
+      const typeMatch = typeFilter.includes(item.type);
+      return modeMatch && typeMatch;
+    });
+  }, [timelineItems, mode, typeFilter]);
+
+  // Count items by type for filter badges
+  const typeCounts = useMemo(() => {
+    const modeFiltered = timelineItems.filter(item => 
+      mode === 'real' ? item.currencyType === 'real' : item.currencyType === 'virtual'
+    );
+    return {
+      single: modeFiltered.filter(i => i.type === 'single').length,
+      parlay: modeFiltered.filter(i => i.type === 'parlay').length,
+      combined: modeFiltered.filter(i => i.type === 'combined').length,
+    };
+  }, [timelineItems, mode]);
 
   // Group items by time proximity
   const groupedItems = useMemo(() => {
@@ -304,7 +329,9 @@ export function BetTimeline({ bets, parlays, combinedBets, mode }: BetTimelinePr
     return groups;
   }, [filteredItems, now]);
 
-  if (filteredItems.length === 0) {
+  const allTypesEmpty = typeCounts.single === 0 && typeCounts.parlay === 0 && typeCounts.combined === 0;
+
+  if (allTypesEmpty) {
     return (
       <Card>
         <CardHeader>
@@ -324,7 +351,7 @@ export function BetTimeline({ bets, parlays, combinedBets, mode }: BetTimelinePr
 
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2">
           <Timer className="h-5 w-5 text-primary" />
           Bet Resolution Timeline
@@ -332,8 +359,64 @@ export function BetTimeline({ bets, parlays, combinedBets, mode }: BetTimelinePr
             {filteredItems.length} pending
           </Badge>
         </CardTitle>
+        
+        {/* Type Filter */}
+        <div className="flex items-center gap-2 mt-3">
+          <Filter className="h-4 w-4 text-muted-foreground" />
+          <ToggleGroup 
+            type="multiple" 
+            value={typeFilter} 
+            onValueChange={handleFilterChange}
+            className="justify-start"
+          >
+            <ToggleGroupItem 
+              value="single" 
+              aria-label="Toggle single bets"
+              className="text-xs px-2 py-1 h-7 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
+              disabled={typeCounts.single === 0}
+            >
+              Single
+              {typeCounts.single > 0 && (
+                <Badge variant="outline" className="ml-1 h-4 px-1 text-[10px]">
+                  {typeCounts.single}
+                </Badge>
+              )}
+            </ToggleGroupItem>
+            <ToggleGroupItem 
+              value="parlay" 
+              aria-label="Toggle parlays"
+              className="text-xs px-2 py-1 h-7 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
+              disabled={typeCounts.parlay === 0}
+            >
+              Parlay
+              {typeCounts.parlay > 0 && (
+                <Badge variant="outline" className="ml-1 h-4 px-1 text-[10px]">
+                  {typeCounts.parlay}
+                </Badge>
+              )}
+            </ToggleGroupItem>
+            <ToggleGroupItem 
+              value="combined" 
+              aria-label="Toggle combined bets"
+              className="text-xs px-2 py-1 h-7 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
+              disabled={typeCounts.combined === 0}
+            >
+              Combined
+              {typeCounts.combined > 0 && (
+                <Badge variant="outline" className="ml-1 h-4 px-1 text-[10px]">
+                  {typeCounts.combined}
+                </Badge>
+              )}
+            </ToggleGroupItem>
+          </ToggleGroup>
+        </div>
       </CardHeader>
       <CardContent>
+        {filteredItems.length === 0 ? (
+          <p className="text-muted-foreground text-center py-8">
+            No bets match the selected filters.
+          </p>
+        ) : (
         <ScrollArea className="h-[400px] pr-4">
           <div className="relative">
             {/* Timeline line */}
@@ -553,6 +636,7 @@ export function BetTimeline({ bets, parlays, combinedBets, mode }: BetTimelinePr
             </div>
           </div>
         </ScrollArea>
+        )}
       </CardContent>
     </Card>
   );
