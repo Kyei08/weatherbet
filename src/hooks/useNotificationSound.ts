@@ -1,10 +1,17 @@
 import { useCallback, useRef } from 'react';
+import { useUserPreferences } from '@/contexts/UserPreferencesContext';
 
 // Web Audio API notification sound generator
 export function useNotificationSound() {
   const audioContextRef = useRef<AudioContext | null>(null);
+  const { preferences } = useUserPreferences();
 
   const playSound = useCallback((type: 'success' | 'error' | 'info' = 'success') => {
+    // Check if sound is enabled in user preferences
+    if (!preferences.soundEnabled) {
+      return;
+    }
+
     try {
       // Create audio context on demand (required for user interaction policy)
       if (!audioContextRef.current) {
@@ -50,7 +57,7 @@ export function useNotificationSound() {
     } catch (error) {
       console.warn('Failed to play notification sound:', error);
     }
-  }, []);
+  }, [preferences.soundEnabled]);
 
   return { playSound };
 }
