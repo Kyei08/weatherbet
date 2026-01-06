@@ -21,6 +21,7 @@ import { getTimeSlot, BettingCategory, CATEGORY_TIME_SLOTS } from '@/lib/betting
 import { Progress } from '@/components/ui/progress';
 import { TimeSlotCountdown, MultiSlotCountdown } from './TimeSlotCountdown';
 import { BetTimeline } from './BetTimeline';
+import { useNotificationSound } from '@/hooks/useNotificationSound';
 
 // Helper to parse prediction type that may include time slot
 function parsePredictionType(predictionType: string): { category: string; slotId?: string } {
@@ -83,6 +84,7 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
   const { checkAndUpdateChallenges } = useChallengeTracker();
   const { checkAchievements } = useAchievementTracker();
   const { awardXPForAction } = useLevelSystem();
+  const { playSound } = useNotificationSound();
 
   // Calculate comprehensive statistics
   const calculateStats = () => {
@@ -277,6 +279,8 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
           setGlobalResolving(false);
           setResolvingMessage('');
           setResolutionProgress(null);
+          // Play notification sound when resolution completes
+          playSound('success');
           // Refresh data after resolution completes
           fetchData();
         }
@@ -379,6 +383,9 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
       if (error) {
         throw error;
       }
+      
+      // Play notification sound for successful resolution
+      playSound('success');
       
       toast({
         title: "Bets Resolved",
