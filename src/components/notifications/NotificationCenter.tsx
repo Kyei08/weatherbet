@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Bell, Check, CheckCheck, Trash2, X, Trophy, TrendingUp, TrendingDown, Gift } from 'lucide-react';
+import { Bell, Check, CheckCheck, Trash2, X, Trophy, TrendingUp, TrendingDown, Gift, Volume2, VolumeX } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -16,6 +16,7 @@ import {
   unsubscribeFromPushNotifications,
   isPushNotificationsEnabled 
 } from '@/lib/push-notifications';
+import { useUserPreferences } from '@/contexts/UserPreferencesContext';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 
@@ -46,6 +47,7 @@ export function NotificationCenter() {
     clearAll 
   } = useNotifications();
   
+  const { preferences, setSoundEnabled } = useUserPreferences();
   const [pushEnabled, setPushEnabled] = useState(false);
   const [pushLoading, setPushLoading] = useState(false);
   const [open, setOpen] = useState(false);
@@ -179,7 +181,27 @@ export function NotificationCenter() {
 
         <Separator />
         
-        <div className="p-3">
+        <div className="p-3 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              {preferences.soundEnabled ? (
+                <Volume2 className="h-4 w-4 text-muted-foreground" />
+              ) : (
+                <VolumeX className="h-4 w-4 text-muted-foreground" />
+              )}
+              <div className="space-y-0.5">
+                <p className="text-sm font-medium">Sound Effects</p>
+                <p className="text-xs text-muted-foreground">
+                  Play sounds for bet outcomes
+                </p>
+              </div>
+            </div>
+            <Switch 
+              checked={preferences.soundEnabled} 
+              onCheckedChange={setSoundEnabled}
+            />
+          </div>
+          
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
               <p className="text-sm font-medium">Push Notifications</p>
