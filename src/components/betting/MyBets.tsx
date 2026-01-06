@@ -428,6 +428,9 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
         // Award XP based on result
         await awardXPForAction('BET_WON');
         
+        // Play win sound
+        playSound('success');
+        
         toast({
           title: "Bet Won! 🎉",
           description: `You won ${winnings} points!`,
@@ -439,11 +442,17 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
           const insurancePayout = Math.floor(bet.stake * betData.insurance_payout_percentage);
           await updateUserPoints(user.points + insurancePayout);
           
+          // Play info sound for insured loss
+          playSound('info');
+          
           toast({
             title: "Bet Lost (Insured) 🛡️",
             description: `Insurance returned ${insurancePayout} points!`,
           });
         } else {
+          // Play loss sound
+          playSound('error');
+          
           toast({
             title: "Bet Lost 😞",
             description: `Better luck next time!`,
@@ -484,6 +493,9 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
 
       await cashOutBet(bet.id, calculation.amount);
       
+      // Play cash-out sound
+      playSound('info');
+      
       toast({
         title: "Bet Cashed Out! 💰",
         description: `You received ${calculation.amount} points (${calculation.percentage}% of potential win)`,
@@ -513,6 +525,9 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
       }
 
       await cashOutParlay(parlay.id, calculation.amount);
+      
+      // Play cash-out sound
+      playSound('info');
       
       toast({
         title: "Parlay Cashed Out! 💰",
@@ -547,6 +562,9 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
         await checkAchievements();
         await awardXPForAction('BET_WON');
         
+        // Play win sound
+        playSound('success');
+        
         toast({
           title: "Parlay Won! 🎉",
           description: `You won ${winnings} points!`,
@@ -557,11 +575,17 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
           const insurancePayout = Math.floor(parlay.total_stake * parlay.insurance_payout_percentage);
           await updateUserPoints(user.points + insurancePayout);
           
+          // Play info sound for insured loss
+          playSound('info');
+          
           toast({
             title: "Parlay Lost (Insured) 🛡️",
             description: `Insurance returned ${insurancePayout} points!`,
           });
         } else {
+          // Play loss sound
+          playSound('error');
+          
           toast({
             title: "Parlay Lost 😞",
             description: `Better luck next time!`,
@@ -602,6 +626,9 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
 
       await cashOutCombinedBet(combinedBet.id, calculation.amount);
       
+      // Play cash-out sound
+      playSound('info');
+      
       toast({
         title: "Combined Bet Cashed Out! 💰",
         description: `You received ${calculation.amount} points (${calculation.percentage}% of potential win)`,
@@ -635,6 +662,9 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
         await checkAchievements();
         await awardXPForAction('BET_WON');
         
+        // Play win sound
+        playSound('success');
+        
         toast({
           title: "Combined Bet Won! 🎉",
           description: `You won ${winnings} points!`,
@@ -645,11 +675,17 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
           const insurancePayout = Math.floor(combinedBet.total_stake * combinedBet.insurance_payout_percentage);
           await updateUserPoints(user.points + insurancePayout);
           
+          // Play info sound for insured loss
+          playSound('info');
+          
           toast({
             title: "Combined Bet Lost (Insured) 🛡️",
             description: `Insurance returned ${insurancePayout} points!`,
           });
         } else {
+          // Play loss sound
+          playSound('error');
+          
           toast({
             title: "Combined Bet Lost 😞",
             description: `Better luck next time!`,
