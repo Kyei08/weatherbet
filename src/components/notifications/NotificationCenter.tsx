@@ -47,7 +47,7 @@ export function NotificationCenter() {
     clearAll 
   } = useNotifications();
   
-  const { preferences, setSoundEnabled, setHapticsEnabled } = useUserPreferences();
+  const { preferences, setSoundEnabled, setHapticsEnabled, setNotifyOnWins, setNotifyOnLosses, setNotifyOnCashouts } = useUserPreferences();
   const [pushEnabled, setPushEnabled] = useState(false);
   const [pushLoading, setPushLoading] = useState(false);
   const [open, setOpen] = useState(false);
@@ -217,6 +217,47 @@ export function NotificationCenter() {
               onCheckedChange={setHapticsEnabled}
             />
           </div>
+          
+          <Separator />
+          
+          <div className="space-y-2">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Alert on</p>
+            
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Trophy className="h-4 w-4 text-green-500" />
+                <span className="text-sm">Wins</span>
+              </div>
+              <Switch 
+                checked={preferences.notifyOnWins} 
+                onCheckedChange={setNotifyOnWins}
+              />
+            </div>
+            
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <TrendingDown className="h-4 w-4 text-red-500" />
+                <span className="text-sm">Losses</span>
+              </div>
+              <Switch 
+                checked={preferences.notifyOnLosses} 
+                onCheckedChange={setNotifyOnLosses}
+              />
+            </div>
+            
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <TrendingUp className="h-4 w-4 text-amber-500" />
+                <span className="text-sm">Cash-outs</span>
+              </div>
+              <Switch 
+                checked={preferences.notifyOnCashouts} 
+                onCheckedChange={setNotifyOnCashouts}
+              />
+            </div>
+          </div>
+          
+          <Separator />
           
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">

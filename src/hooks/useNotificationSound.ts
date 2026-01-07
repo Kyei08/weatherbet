@@ -1,14 +1,19 @@
 import { useCallback, useRef } from 'react';
-import { useUserPreferences } from '@/contexts/UserPreferencesContext';
+import { useUserPreferences, NotificationEventType } from '@/contexts/UserPreferencesContext';
 
 // Web Audio API notification sound generator
 export function useNotificationSound() {
   const audioContextRef = useRef<AudioContext | null>(null);
-  const { preferences } = useUserPreferences();
+  const { preferences, shouldNotify } = useUserPreferences();
 
-  const playSound = useCallback((type: 'success' | 'error' | 'info' = 'success') => {
+  const playSound = useCallback((type: 'success' | 'error' | 'info' = 'success', eventType?: NotificationEventType) => {
     // Check if sound is enabled in user preferences
     if (!preferences.soundEnabled) {
+      return;
+    }
+
+    // Check if this specific event type should notify
+    if (eventType && !shouldNotify(eventType)) {
       return;
     }
 
@@ -57,7 +62,7 @@ export function useNotificationSound() {
     } catch (error) {
       console.warn('Failed to play notification sound:', error);
     }
-  }, [preferences.soundEnabled]);
+  }, [preferences.soundEnabled, shouldNotify]);
 
   return { playSound };
 }
