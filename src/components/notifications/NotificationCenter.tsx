@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Bell, Check, CheckCheck, Trash2, X, Trophy, TrendingUp, TrendingDown, Gift, Volume2, VolumeX } from 'lucide-react';
+import { Bell, Check, CheckCheck, Trash2, X, Trophy, TrendingUp, TrendingDown, Gift, Volume2, VolumeX, Vibrate } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -47,7 +47,7 @@ export function NotificationCenter() {
     clearAll 
   } = useNotifications();
   
-  const { preferences, setSoundEnabled } = useUserPreferences();
+  const { preferences, setSoundEnabled, setHapticsEnabled } = useUserPreferences();
   const [pushEnabled, setPushEnabled] = useState(false);
   const [pushLoading, setPushLoading] = useState(false);
   const [open, setOpen] = useState(false);
@@ -199,6 +199,22 @@ export function NotificationCenter() {
             <Switch 
               checked={preferences.soundEnabled} 
               onCheckedChange={setSoundEnabled}
+            />
+          </div>
+          
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Vibrate className="h-4 w-4 text-muted-foreground" />
+              <div className="space-y-0.5">
+                <p className="text-sm font-medium">Haptic Feedback</p>
+                <p className="text-xs text-muted-foreground">
+                  Vibrate on bet outcomes (mobile)
+                </p>
+              </div>
+            </div>
+            <Switch 
+              checked={preferences.hapticsEnabled} 
+              onCheckedChange={setHapticsEnabled}
             />
           </div>
           

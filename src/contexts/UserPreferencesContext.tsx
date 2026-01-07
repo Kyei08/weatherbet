@@ -2,17 +2,20 @@ import { createContext, useContext, useState, useEffect, ReactNode } from 'react
 
 interface UserPreferences {
   soundEnabled: boolean;
+  hapticsEnabled: boolean;
 }
 
 interface UserPreferencesContextType {
   preferences: UserPreferences;
   setSoundEnabled: (enabled: boolean) => void;
+  setHapticsEnabled: (enabled: boolean) => void;
 }
 
 const STORAGE_KEY = 'weather-betting-preferences';
 
 const defaultPreferences: UserPreferences = {
   soundEnabled: true,
+  hapticsEnabled: true,
 };
 
 const UserPreferencesContext = createContext<UserPreferencesContextType | undefined>(undefined);
@@ -42,8 +45,12 @@ export const UserPreferencesProvider = ({ children }: { children: ReactNode }) =
     setPreferences(prev => ({ ...prev, soundEnabled: enabled }));
   };
 
+  const setHapticsEnabled = (enabled: boolean) => {
+    setPreferences(prev => ({ ...prev, hapticsEnabled: enabled }));
+  };
+
   return (
-    <UserPreferencesContext.Provider value={{ preferences, setSoundEnabled }}>
+    <UserPreferencesContext.Provider value={{ preferences, setSoundEnabled, setHapticsEnabled }}>
       {children}
     </UserPreferencesContext.Provider>
   );
