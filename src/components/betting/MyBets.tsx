@@ -22,7 +22,7 @@ import { Progress } from '@/components/ui/progress';
 import { TimeSlotCountdown, MultiSlotCountdown } from './TimeSlotCountdown';
 import { BetTimeline } from './BetTimeline';
 import { useNotificationSound } from '@/hooks/useNotificationSound';
-
+import { useHapticFeedback } from '@/hooks/useHapticFeedback';
 // Helper to parse prediction type that may include time slot
 function parsePredictionType(predictionType: string): { category: string; slotId?: string } {
   const knownCategories = ['temperature', 'rain', 'rainfall', 'wind', 'snow', 'cloud_coverage', 'pressure', 'dew_point', 'humidity'];
@@ -85,6 +85,7 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
   const { checkAchievements } = useAchievementTracker();
   const { awardXPForAction } = useLevelSystem();
   const { playSound } = useNotificationSound();
+  const { vibrateSuccess, vibrateError, vibrateInfo } = useHapticFeedback();
 
   // Calculate comprehensive statistics
   const calculateStats = () => {
@@ -279,8 +280,9 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
           setGlobalResolving(false);
           setResolvingMessage('');
           setResolutionProgress(null);
-          // Play notification sound when resolution completes
+          // Play notification sound and haptic when resolution completes
           playSound('success');
+          vibrateSuccess();
           // Refresh data after resolution completes
           fetchData();
         }
@@ -384,8 +386,9 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
         throw error;
       }
       
-      // Play notification sound for successful resolution
+      // Play notification sound and haptic for successful resolution
       playSound('success');
+      vibrateSuccess();
       
       toast({
         title: "Bets Resolved",
@@ -428,8 +431,9 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
         // Award XP based on result
         await awardXPForAction('BET_WON');
         
-        // Play win sound
+        // Play win sound and haptic
         playSound('success');
+        vibrateSuccess();
         
         toast({
           title: "Bet Won! 🎉",
@@ -442,16 +446,18 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
           const insurancePayout = Math.floor(bet.stake * betData.insurance_payout_percentage);
           await updateUserPoints(user.points + insurancePayout);
           
-          // Play info sound for insured loss
+          // Play info sound and haptic for insured loss
           playSound('info');
+          vibrateInfo();
           
           toast({
             title: "Bet Lost (Insured) 🛡️",
             description: `Insurance returned ${insurancePayout} points!`,
           });
         } else {
-          // Play loss sound
+          // Play loss sound and haptic
           playSound('error');
+          vibrateError();
           
           toast({
             title: "Bet Lost 😞",
@@ -493,8 +499,9 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
 
       await cashOutBet(bet.id, calculation.amount);
       
-      // Play cash-out sound
+      // Play cash-out sound and haptic
       playSound('info');
+      vibrateInfo();
       
       toast({
         title: "Bet Cashed Out! 💰",
@@ -526,8 +533,9 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
 
       await cashOutParlay(parlay.id, calculation.amount);
       
-      // Play cash-out sound
+      // Play cash-out sound and haptic
       playSound('info');
+      vibrateInfo();
       
       toast({
         title: "Parlay Cashed Out! 💰",
@@ -562,8 +570,9 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
         await checkAchievements();
         await awardXPForAction('BET_WON');
         
-        // Play win sound
+        // Play win sound and haptic
         playSound('success');
+        vibrateSuccess();
         
         toast({
           title: "Parlay Won! 🎉",
@@ -575,16 +584,18 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
           const insurancePayout = Math.floor(parlay.total_stake * parlay.insurance_payout_percentage);
           await updateUserPoints(user.points + insurancePayout);
           
-          // Play info sound for insured loss
+          // Play info sound and haptic for insured loss
           playSound('info');
+          vibrateInfo();
           
           toast({
             title: "Parlay Lost (Insured) 🛡️",
             description: `Insurance returned ${insurancePayout} points!`,
           });
         } else {
-          // Play loss sound
+          // Play loss sound and haptic
           playSound('error');
+          vibrateError();
           
           toast({
             title: "Parlay Lost 😞",
@@ -626,8 +637,9 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
 
       await cashOutCombinedBet(combinedBet.id, calculation.amount);
       
-      // Play cash-out sound
+      // Play cash-out sound and haptic
       playSound('info');
+      vibrateInfo();
       
       toast({
         title: "Combined Bet Cashed Out! 💰",
@@ -662,8 +674,9 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
         await checkAchievements();
         await awardXPForAction('BET_WON');
         
-        // Play win sound
+        // Play win sound and haptic
         playSound('success');
+        vibrateSuccess();
         
         toast({
           title: "Combined Bet Won! 🎉",
@@ -675,16 +688,18 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
           const insurancePayout = Math.floor(combinedBet.total_stake * combinedBet.insurance_payout_percentage);
           await updateUserPoints(user.points + insurancePayout);
           
-          // Play info sound for insured loss
+          // Play info sound and haptic for insured loss
           playSound('info');
+          vibrateInfo();
           
           toast({
             title: "Combined Bet Lost (Insured) 🛡️",
             description: `Insurance returned ${insurancePayout} points!`,
           });
         } else {
-          // Play loss sound
+          // Play loss sound and haptic
           playSound('error');
+          vibrateError();
           
           toast({
             title: "Combined Bet Lost 😞",
