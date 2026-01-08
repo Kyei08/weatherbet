@@ -19,6 +19,7 @@ import { useChallengeTracker } from '@/hooks/useChallengeTracker';
 import { useAchievementTracker } from '@/hooks/useAchievementTracker';
 import { useLevelSystem } from '@/hooks/useLevelSystem';
 import { calculateDynamicOdds, formatLiveOdds, getProbabilityPercentage } from '@/lib/dynamic-odds';
+import { getTimeDecayInfo } from '@/lib/betting-config';
 import { supabase } from '@/integrations/supabase/client';
 import { getActivePurchases, getActiveMultipliers, getMaxStakeBoost, PurchaseWithItem, useItem } from '@/lib/supabase-shop';
 import { recordBonusEarning } from '@/lib/supabase-bonus-tracker';
@@ -1112,6 +1113,30 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
                         {weatherForecast.length > 0 && (
                           <span className="text-xs text-primary">LIVE</span>
                         )}
+                        {(() => {
+                          const daysAhead = Math.ceil((selectedDay.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+                          const timeDecay = getTimeDecayInfo(daysAhead);
+                          return timeDecay.isActive ? (
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Badge variant="secondary" className="text-xs bg-amber-500/20 text-amber-600 border-amber-500/30">
+                                    +{timeDecay.bonusPercentage}% 🕐
+                                  </Badge>
+                                </TooltipTrigger>
+                                <TooltipContent side="top" className="max-w-xs">
+                                  <div className="space-y-1">
+                                    <p className="font-semibold">{timeDecay.label}</p>
+                                    <p className="text-xs text-muted-foreground">
+                                      Betting {daysAhead} day{daysAhead > 1 ? 's' : ''} in advance gives you {timeDecay.bonusPercentage}% better odds!
+                                      Early bets are rewarded because forecasts are less certain.
+                                    </p>
+                                  </div>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          ) : null;
+                        })()}
                       </span>
                     </div>
                     {getCurrentProbability() !== null && (

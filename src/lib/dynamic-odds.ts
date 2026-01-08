@@ -1,4 +1,4 @@
-import { BETTING_CONFIG, CATEGORY_MULTIPLIERS, getAdjustedOdds } from './betting-config';
+import { BETTING_CONFIG, CATEGORY_MULTIPLIERS, getAdjustedOdds, calculateTimeDecayMultiplier } from './betting-config';
 
 interface WeatherForecast {
   date: string;
@@ -18,8 +18,8 @@ interface DynamicOddsParams {
 
 /**
  * Calculate dynamic odds based on actual weather probabilities with house edge
- * Formula: odds = (100 / probability) * house_edge
- * This ensures fair, transparent odds that reflect real weather data
+ * Now includes time decay - betting earlier = better odds
+ * Formula: odds = (100 / probability) * house_edge * time_decay_multiplier
  */
 export const calculateDynamicOdds = ({
   predictionType,
@@ -31,9 +31,14 @@ export const calculateDynamicOdds = ({
   const targetForecast = forecast[Math.min(daysAhead - 1, forecast.length - 1)];
   if (!targetForecast) return 2.0; // Default if no forecast available
 
-  // Handle new categories with static odds for now
+  // Calculate time decay multiplier (early bird bonus)
+  const timeDecayMultiplier = calculateTimeDecayMultiplier(daysAhead);
+
+  // Handle new categories with static odds
   if (['rainfall', 'snow', 'wind', 'dew_point', 'pressure', 'cloud_coverage'].includes(predictionType)) {
-    return calculateCategoryOdds(predictionType as any, predictionValue);
+    const baseOdds = calculateCategoryOdds(predictionType as any, predictionValue);
+    const oddsWithDecay = baseOdds * timeDecayMultiplier;
+    return Math.min(Math.max(oddsWithDecay, BETTING_CONFIG.minOdds), BETTING_CONFIG.maxOdds);
   }
 
   // Use configurable house edge
@@ -45,14 +50,14 @@ export const calculateDynamicOdds = ({
     if (predictionValue === 'yes') {
       // Predicting rain - use actual rain probability
       const probability = Math.max(rainProb, 1);
-      const odds = (100 / probability) * houseEdge;
+      const odds = (100 / probability) * houseEdge * timeDecayMultiplier;
       const adjustedOdds = getAdjustedOdds(odds, 'rain');
       return Math.min(Math.max(adjustedOdds, BETTING_CONFIG.minOdds), BETTING_CONFIG.maxOdds);
     } else {
       // Predicting no rain - use inverse probability
       const noRainProb = 100 - rainProb;
       const probability = Math.max(noRainProb, 1);
-      const odds = (100 / probability) * houseEdge;
+      const odds = (100 / probability) * houseEdge * timeDecayMultiplier;
       const adjustedOdds = getAdjustedOdds(odds, 'rain');
       return Math.min(Math.max(adjustedOdds, BETTING_CONFIG.minOdds), BETTING_CONFIG.maxOdds);
     }
@@ -91,11 +96,12 @@ export const calculateDynamicOdds = ({
       baseOdds = baseOdds * 2.0;
     }
 
-    // Apply configuration multipliers
-    return getAdjustedOdds(baseOdds, 'temperature');
+    // Apply time decay multiplier and configuration multipliers
+    const oddsWithDecay = baseOdds * timeDecayMultiplier;
+    return getAdjustedOdds(oddsWithDecay, 'temperature');
   }
 
-  return 2.0; // Default fallback
+  return 2.0 * timeDecayMultiplier; // Default fallback with time decay
 };
 
 /**

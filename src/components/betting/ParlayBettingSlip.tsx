@@ -15,6 +15,7 @@ import { useChallengeTracker } from '@/hooks/useChallengeTracker';
 import { useAchievementTracker } from '@/hooks/useAchievementTracker';
 import { useLevelSystem } from '@/hooks/useLevelSystem';
 import { calculateDynamicOdds, formatLiveOdds, getProbabilityPercentage } from '@/lib/dynamic-odds';
+import { getTimeDecayInfo } from '@/lib/betting-config';
 import { supabase } from '@/integrations/supabase/client';
 import { z } from 'zod';
 import { format, addDays, startOfDay, endOfDay, setHours, setMinutes, setSeconds } from 'date-fns';
@@ -925,6 +926,15 @@ const ParlayBettingSlip = ({ onBack, onBetPlaced }: ParlayBettingSlipProps) => {
                 {predictions.some(p => p.city && weatherForecasts[p.city]) && (
                   <span className="text-xs text-primary">LIVE</span>
                 )}
+                {(() => {
+                  const daysAhead = Math.ceil((selectedDay.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+                  const timeDecay = getTimeDecayInfo(daysAhead);
+                  return timeDecay.isActive ? (
+                    <Badge variant="secondary" className="text-xs bg-amber-500/20 text-amber-600 border-amber-500/30">
+                      +{timeDecay.bonusPercentage}% 🕐
+                    </Badge>
+                  ) : null;
+                })()}
               </span>
             </div>
             <div className="flex justify-between">

@@ -27,6 +27,19 @@ export const BETTING_CONFIG = {
   minOdds: 1.1,
   maxOdds: 10.0,
   
+  // Time decay settings - odds decrease as target date approaches
+  timeDecay: {
+    enabled: true,
+    // Maximum bonus for betting far in advance (e.g., 0.3 = 30% better odds)
+    maxEarlyBirdBonus: 0.30,
+    // Days ahead for maximum bonus (betting 7+ days ahead = full bonus)
+    maxBonusDays: 7,
+    // Minimum days ahead to get any bonus (same day = no bonus)
+    minBonusDays: 1,
+    // Decay curve: 'linear' | 'exponential' | 'logarithmic'
+    decayCurve: 'exponential' as 'linear' | 'exponential' | 'logarithmic',
+  },
+  
   // Insurance settings
   insurance: {
     costPercentage: 10, // Cost as % of stake (10 = 10% of stake)
@@ -168,4 +181,79 @@ export function canCashOut(expiresAt: Date): boolean {
 export function calculateCashOutAmount(potentialWinnings: number): number {
   const penaltyAmount = (potentialWinnings * BETTING_CONFIG.cashOut.penaltyPercentage) / 100;
   return Math.floor(potentialWinnings - penaltyAmount);
+}
+
+/**
+ * Calculate time decay multiplier based on days ahead
+ * Returns a multiplier between 1.0 (no bonus) and 1.0 + maxEarlyBirdBonus
+ * 
+ * Example with defaults:
+ * - 7+ days ahead: 1.30x odds (30% bonus)
+ * - 3 days ahead: ~1.18x odds
+ * - 1 day ahead: ~1.05x odds  
+ * - Same day: 1.00x odds (no bonus)
+ */
+export function calculateTimeDecayMultiplier(daysAhead: number): number {
+  const { enabled, maxEarlyBirdBonus, maxBonusDays, minBonusDays, decayCurve } = BETTING_CONFIG.timeDecay;
+  
+  if (!enabled || daysAhead < minBonusDays) {
+    return 1.0;
+  }
+  
+  // Clamp days ahead to max bonus days
+  const effectiveDays = Math.min(daysAhead, maxBonusDays);
+  
+  // Calculate progress (0 to 1) where 1 = maximum days ahead
+  const progress = (effectiveDays - minBonusDays) / (maxBonusDays - minBonusDays);
+  
+  let bonusMultiplier: number;
+  
+  switch (decayCurve) {
+    case 'exponential':
+      // Exponential curve - rewards betting very far ahead more
+      bonusMultiplier = Math.pow(progress, 0.5) * maxEarlyBirdBonus;
+      break;
+    case 'logarithmic':
+      // Logarithmic curve - quick initial bonus, then diminishing returns
+      bonusMultiplier = Math.log(1 + progress * (Math.E - 1)) * maxEarlyBirdBonus;
+      break;
+    case 'linear':
+    default:
+      // Linear curve - steady increase
+      bonusMultiplier = progress * maxEarlyBirdBonus;
+      break;
+  }
+  
+  return 1.0 + bonusMultiplier;
+}
+
+/**
+ * Get time decay info for display purposes
+ */
+export function getTimeDecayInfo(daysAhead: number): {
+  multiplier: number;
+  bonusPercentage: number;
+  label: string;
+  isActive: boolean;
+} {
+  const multiplier = calculateTimeDecayMultiplier(daysAhead);
+  const bonusPercentage = Math.round((multiplier - 1) * 100);
+  
+  let label: string;
+  if (bonusPercentage >= 25) {
+    label = 'Early Bird Bonus!';
+  } else if (bonusPercentage >= 15) {
+    label = 'Good timing bonus';
+  } else if (bonusPercentage >= 5) {
+    label = 'Small time bonus';
+  } else {
+    label = 'Standard odds';
+  }
+  
+  return {
+    multiplier,
+    bonusPercentage,
+    label,
+    isActive: bonusPercentage > 0,
+  };
 }
