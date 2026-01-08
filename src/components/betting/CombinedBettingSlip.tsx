@@ -17,6 +17,7 @@ import { User } from '@/types/supabase-betting';
 import { z } from 'zod';
 import { createCombinedBet } from '@/lib/supabase-combined-bets';
 import { calculateDynamicOdds, calculateCategoryOdds } from '@/lib/dynamic-odds';
+import { getTimeDecayInfo } from '@/lib/betting-config';
 import WeatherDisplay from './WeatherDisplay';
 import CategoryTimingInfo from './CategoryTimingInfo';
 import TimeSlotSelector from './TimeSlotSelector';
@@ -375,6 +376,15 @@ export function CombinedBettingSlip({ onBack, onBetPlaced }: CombinedBettingSlip
           <div className="flex items-center gap-2 p-3 bg-primary/10 rounded-lg border border-primary/20">
             <TrendingUp className="h-4 w-4 text-primary" />
             <span className="text-sm font-medium">Live Odds Active</span>
+            {(() => {
+              const daysAhead = Math.ceil((selectedDay.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+              const timeDecay = getTimeDecayInfo(daysAhead);
+              return timeDecay.isActive ? (
+                <Badge variant="secondary" className="text-xs bg-amber-500/20 text-amber-600 border-amber-500/30 ml-auto">
+                  +{timeDecay.bonusPercentage}% Early Bird 🕐
+                </Badge>
+              ) : null;
+            })()}
           </div>
         )}
 
