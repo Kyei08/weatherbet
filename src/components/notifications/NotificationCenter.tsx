@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Bell, Check, CheckCheck, Trash2, X, Trophy, TrendingUp, TrendingDown, Gift, Volume2, VolumeX, Vibrate } from 'lucide-react';
+import { Bell, Check, CheckCheck, Trash2, X, Trophy, TrendingUp, TrendingDown, Gift, Volume2, VolumeX, Vibrate, Play } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -17,6 +17,8 @@ import {
   isPushNotificationsEnabled 
 } from '@/lib/push-notifications';
 import { useUserPreferences } from '@/contexts/UserPreferencesContext';
+import { useNotificationSound } from '@/hooks/useNotificationSound';
+import { useHapticFeedback } from '@/hooks/useHapticFeedback';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 
@@ -48,9 +50,40 @@ export function NotificationCenter() {
   } = useNotifications();
   
   const { preferences, setSoundEnabled, setHapticsEnabled, setNotifyOnWins, setNotifyOnLosses, setNotifyOnCashouts } = useUserPreferences();
+  const { playSound } = useNotificationSound();
+  const { vibrateSuccess } = useHapticFeedback();
   const [pushEnabled, setPushEnabled] = useState(false);
   const [pushLoading, setPushLoading] = useState(false);
   const [open, setOpen] = useState(false);
+
+  const testSound = () => {
+    // Temporarily override preferences check by playing directly
+    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const frequencies = [523.25, 659.25, 783.99];
+    const duration = 0.15;
+    const now = ctx.currentTime;
+    
+    frequencies.forEach((freq, index) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, now + index * duration);
+      gain.gain.setValueAtTime(0, now + index * duration);
+      gain.gain.linearRampToValueAtTime(0.3, now + index * duration + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + index * duration + duration);
+      osc.start(now + index * duration);
+      osc.stop(now + index * duration + duration);
+    });
+  };
+
+  const testHaptic = () => {
+    // Test haptic directly regardless of preference
+    if (navigator.vibrate) {
+      navigator.vibrate([50, 50, 50]);
+    }
+  };
 
   useEffect(() => {
     isPushNotificationsEnabled().then(setPushEnabled);
@@ -196,10 +229,21 @@ export function NotificationCenter() {
                 </p>
               </div>
             </div>
-            <Switch 
-              checked={preferences.soundEnabled} 
-              onCheckedChange={setSoundEnabled}
-            />
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 px-2 text-xs"
+                onClick={testSound}
+              >
+                <Play className="h-3 w-3 mr-1" />
+                Test
+              </Button>
+              <Switch 
+                checked={preferences.soundEnabled} 
+                onCheckedChange={setSoundEnabled}
+              />
+            </div>
           </div>
           
           <div className="flex items-center justify-between">
@@ -212,10 +256,21 @@ export function NotificationCenter() {
                 </p>
               </div>
             </div>
-            <Switch 
-              checked={preferences.hapticsEnabled} 
-              onCheckedChange={setHapticsEnabled}
-            />
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 px-2 text-xs"
+                onClick={testHaptic}
+              >
+                <Play className="h-3 w-3 mr-1" />
+                Test
+              </Button>
+              <Switch 
+                checked={preferences.hapticsEnabled} 
+                onCheckedChange={setHapticsEnabled}
+              />
+            </div>
           </div>
           
           <Separator />
