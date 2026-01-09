@@ -19,7 +19,8 @@ import { useChallengeTracker } from '@/hooks/useChallengeTracker';
 import { useAchievementTracker } from '@/hooks/useAchievementTracker';
 import { useLevelSystem } from '@/hooks/useLevelSystem';
 import { calculateDynamicOdds, formatLiveOdds, getProbabilityPercentage } from '@/lib/dynamic-odds';
-import { getTimeDecayInfo } from '@/lib/betting-config';
+import { getTimeDecayInfo, BETTING_CONFIG } from '@/lib/betting-config';
+import TimeDecayChart from './TimeDecayChart';
 import { supabase } from '@/integrations/supabase/client';
 import { getActivePurchases, getActiveMultipliers, getMaxStakeBoost, PurchaseWithItem, useItem } from '@/lib/supabase-shop';
 import { recordBonusEarning } from '@/lib/supabase-bonus-tracker';
@@ -987,6 +988,14 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
                 placeholder={mode === 'real' ? 'Enter stake (R1-R100)' : 'Enter stake amount'}
               />
             </div>
+
+            {/* Time Decay Bonus Chart */}
+            {BETTING_CONFIG.timeDecay.enabled && predictionType && (
+              <TimeDecayChart
+                currentDaysAhead={getDaysAhead()}
+                baseOdds={getCurrentOdds() > 0 ? getCurrentOdds() / getTimeDecayInfo(getDaysAhead()).multiplier : 2.0}
+              />
+            )}
 
             {/* Low Balance Warning */}
             {stake && isLowBalanceWarning() && (
