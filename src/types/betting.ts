@@ -13,7 +13,7 @@ export interface Bet {
   predictionValue: string; // 'yes'/'no' for rain/snow, ranges for others
   stake: number;
   odds: number;
-  result: 'pending' | 'win' | 'loss';
+  result: 'pending' | 'win' | 'partial' | 'loss';
   createdAt: string;
 }
 
