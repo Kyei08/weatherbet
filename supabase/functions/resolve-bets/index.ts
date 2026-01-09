@@ -191,33 +191,81 @@ function isInRange(actual: number, rangeStr: string): boolean {
   return false;
 }
 
+// Partial win configuration - how close a prediction needs to be for partial win
+const PARTIAL_WIN_CONFIG = {
+  enabled: true,
+  payoutPercentage: 50, // 50% of full win
+  tolerances: {
+    temperature: 3,      // Within 3°C of range edge
+    rainfall: 2,         // Within 2mm of range edge
+    wind: 5,             // Within 5 km/h of range edge
+    dew_point: 3,        // Within 3°C of range edge
+    pressure: 10,        // Within 10 hPa of range edge
+    cloud_coverage: 10,  // Within 10% of range edge
+    humidity: 10,        // Within 10% of range edge
+  } as Record<string, number>,
+};
+
+// Check if prediction is close enough for partial win
+function isPartialWin(predictionType: string, actual: number, rangeStr: string): boolean {
+  if (!PARTIAL_WIN_CONFIG.enabled) return false;
+  
+  const tolerance = PARTIAL_WIN_CONFIG.tolerances[predictionType] || 0;
+  if (tolerance === 0) return false;
+  
+  // Clean up the string and extract numbers
+  const cleaned = rangeStr.replace(/[°C%hPakm\/hmm]/gi, '').trim();
+  const parts = cleaned.split(/[-–]/);
+  
+  if (parts.length === 2) {
+    const min = parseFloat(parts[0].trim());
+    const max = parseFloat(parts[1].trim());
+    if (!isNaN(min) && !isNaN(max)) {
+      // Check if actual is within tolerance of either edge
+      const distanceToMin = Math.abs(actual - min);
+      const distanceToMax = Math.abs(actual - max);
+      
+      // If outside range but within tolerance of either edge
+      if (actual < min && distanceToMin <= tolerance) return true;
+      if (actual > max && distanceToMax <= tolerance) return true;
+    }
+  }
+  
+  return false;
+}
+
 // Evaluate a prediction against actual weather using smart timing logic
-function evaluatePrediction(predictionType: string, predictionValue: string, weather: WeatherData): boolean {
+// Returns: 'win' | 'partial' | 'loss'
+function evaluatePrediction(predictionType: string, predictionValue: string, weather: WeatherData): 'win' | 'partial' | 'loss' {
   const type = predictionType.toLowerCase();
   const value = predictionValue.toLowerCase();
 
   switch (type) {
     case 'rain': {
-      // Binary: Did it rain anytime today?
+      // Binary: Did it rain anytime today? (no partial wins for binary)
       const isRaining = weather.weather.some(w => 
         w.main.toLowerCase() === 'rain' || 
         w.description.toLowerCase().includes('rain')
       );
       const rainAmount = (weather.rain?.['1h'] || 0) + (weather.rain?.['3h'] || 0);
-      return (value === 'yes') === (isRaining || rainAmount > 0);
+      return (value === 'yes') === (isRaining || rainAmount > 0) ? 'win' : 'loss';
     }
     
     case 'rainfall': {
       // Daily total rainfall accumulation
       const rainAmount = (weather.rain?.['1h'] || 0) + (weather.rain?.['3h'] || 0);
-      return isInRange(rainAmount, predictionValue);
+      if (isInRange(rainAmount, predictionValue)) return 'win';
+      if (isPartialWin('rainfall', rainAmount, predictionValue)) return 'partial';
+      return 'loss';
     }
     
     case 'temperature': {
       // Temperature at 2:00 PM (peak daily temp)
       const actualTemp = Math.round(weather.main.temp);
       console.log(`Temperature check: actual=${actualTemp}°C, prediction=${predictionValue}`);
-      return isInRange(actualTemp, predictionValue);
+      if (isInRange(actualTemp, predictionValue)) return 'win';
+      if (isPartialWin('temperature', actualTemp, predictionValue)) return 'partial';
+      return 'loss';
     }
     
     case 'wind':
@@ -227,29 +275,35 @@ function evaluatePrediction(predictionType: string, predictionValue: string, wea
       const windGust = weather.wind?.gust || windSpeed;
       const maxWindKmh = Math.max(windSpeed, windGust) * 3.6;
       console.log(`Wind check: max gust=${maxWindKmh.toFixed(1)} km/h, prediction=${predictionValue}`);
-      return isInRange(maxWindKmh, predictionValue);
+      if (isInRange(maxWindKmh, predictionValue)) return 'win';
+      if (isPartialWin('wind', maxWindKmh, predictionValue)) return 'partial';
+      return 'loss';
     }
     
     case 'snow': {
-      // Binary: Did it snow anytime today?
+      // Binary: Did it snow anytime today? (no partial wins for binary)
       const isSnowing = weather.weather.some(w => 
         w.main.toLowerCase() === 'snow' || 
         w.description.toLowerCase().includes('snow')
       );
       const snowAmount = (weather.snow?.['1h'] || 0) + (weather.snow?.['3h'] || 0);
-      return (value === 'yes') === (isSnowing || snowAmount > 0);
+      return (value === 'yes') === (isSnowing || snowAmount > 0) ? 'win' : 'loss';
     }
     
     case 'humidity': {
       const humidity = weather.main.humidity;
-      return isInRange(humidity, predictionValue);
+      if (isInRange(humidity, predictionValue)) return 'win';
+      if (isPartialWin('humidity', humidity, predictionValue)) return 'partial';
+      return 'loss';
     }
     
     case 'pressure': {
       // Pressure at 9:00 AM
       const pressure = weather.main.pressure;
       console.log(`Pressure check: actual=${pressure} hPa, prediction=${predictionValue}`);
-      return isInRange(pressure, predictionValue);
+      if (isInRange(pressure, predictionValue)) return 'win';
+      if (isPartialWin('pressure', pressure, predictionValue)) return 'partial';
+      return 'loss';
     }
     
     case 'cloud_coverage':
@@ -257,7 +311,9 @@ function evaluatePrediction(predictionType: string, predictionValue: string, wea
       // Cloud coverage at solar noon
       const clouds = weather.clouds?.all || 0;
       console.log(`Cloud coverage check: actual=${clouds}%, prediction=${predictionValue}`);
-      return isInRange(clouds, predictionValue);
+      if (isInRange(clouds, predictionValue)) return 'win';
+      if (isPartialWin('cloud_coverage', clouds, predictionValue)) return 'partial';
+      return 'loss';
     }
     
     case 'dew_point': {
@@ -266,12 +322,14 @@ function evaluatePrediction(predictionType: string, predictionValue: string, wea
       const humidity = weather.main.humidity;
       const dewPoint = temp - ((100 - humidity) / 5);
       console.log(`Dew point check: actual=${dewPoint.toFixed(1)}°C, prediction=${predictionValue}`);
-      return isInRange(dewPoint, predictionValue);
+      if (isInRange(dewPoint, predictionValue)) return 'win';
+      if (isPartialWin('dew_point', dewPoint, predictionValue)) return 'partial';
+      return 'loss';
     }
     
     default:
       console.log(`Unknown prediction type: ${type}`);
-      return false;
+      return 'loss';
   }
 }
 
@@ -417,8 +475,8 @@ Deno.serve(async (req) => {
         const weather = await getWeather(bet.city);
         if (!weather) continue;
 
-        const isWin = evaluatePrediction(bet.prediction_type, bet.prediction_value, weather);
-        const result = isWin ? 'win' : 'loss';
+        const predictionResult = evaluatePrediction(bet.prediction_type, bet.prediction_value, weather);
+        const result = predictionResult; // 'win' | 'partial' | 'loss'
 
         // Log accuracy
         try {
@@ -427,14 +485,14 @@ Deno.serve(async (req) => {
           
           if (bet.prediction_type === 'temperature') {
             actualValue = `${Math.round(weather.main.temp)}°C`;
-            accuracyScore = isWin ? 100 : Math.max(0, 100 - Math.abs(weather.main.temp - parseFloat(bet.prediction_value)) * 10);
+            accuracyScore = result === 'win' ? 100 : result === 'partial' ? 75 : Math.max(0, 100 - Math.abs(weather.main.temp - parseFloat(bet.prediction_value)) * 10);
           } else if (bet.prediction_type === 'rain' || bet.prediction_type === 'rainfall') {
             const isRaining = weather.weather.some(w => w.main.toLowerCase() === 'rain');
             actualValue = isRaining ? 'yes' : 'no';
-            accuracyScore = isWin ? 100 : 0;
+            accuracyScore = result === 'win' ? 100 : result === 'partial' ? 75 : 0;
           } else {
             actualValue = 'N/A';
-            accuracyScore = isWin ? 100 : 0;
+            accuracyScore = result === 'win' ? 100 : result === 'partial' ? 75 : 0;
           }
 
           await supabase.from('weather_accuracy_log').insert({
@@ -448,6 +506,7 @@ Deno.serve(async (req) => {
             metadata: { 
               bet_id: bet.id, 
               time_slot_id: bet.time_slot_id,
+              result_type: result,
               weather 
             }
           });
@@ -455,12 +514,21 @@ Deno.serve(async (req) => {
           console.error(`Accuracy logging failed for bet ${bet.id}:`, accError);
         }
 
-        // Calculate payout
+        // Calculate payout based on result type
         let pointsChange = 0;
-        if (isWin) {
+        let transactionType = 'bet_loss';
+        
+        if (result === 'win') {
           pointsChange = Math.round(bet.stake * bet.odds);
+          transactionType = 'bet_win';
+        } else if (result === 'partial') {
+          // Partial win: 50% of full payout
+          pointsChange = Math.round(bet.stake * bet.odds * (PARTIAL_WIN_CONFIG.payoutPercentage / 100));
+          transactionType = 'bet_partial_win';
+          console.log(`Bet ${bet.id} partial win - awarding ${pointsChange} (${PARTIAL_WIN_CONFIG.payoutPercentage}% of full payout)`);
         } else if (bet.has_insurance && bet.insurance_payout_percentage) {
           pointsChange = Math.floor(bet.stake * bet.insurance_payout_percentage);
+          transactionType = 'insurance_payout';
           console.log(`Bet ${bet.id} insured - returning ${pointsChange}`);
         }
 
@@ -474,7 +542,7 @@ Deno.serve(async (req) => {
           await supabase.rpc('update_user_points_safe', {
             user_uuid: bet.user_id,
             points_change: pointsChange,
-            transaction_type: result === 'win' ? 'bet_win' : 'insurance_payout',
+            transaction_type: transactionType,
             reference_id: bet.id,
             reference_type: 'bet',
             currency_type: bet.currency_type || 'virtual'
@@ -485,12 +553,21 @@ Deno.serve(async (req) => {
         const currencyLabel = bet.currency_type === 'real' ? 'R' : '';
         const currencySuffix = bet.currency_type === 'virtual' ? ' points' : '';
         
-        if (isWin) {
+        if (result === 'win') {
           await createNotification(
             bet.user_id,
             '🎉 Bet Won!',
             `Your ${bet.prediction_type} bet for ${bet.city} won! You earned ${currencyLabel}${pointsChange}${currencySuffix}.`,
             'bet_won',
+            bet.id,
+            'bet'
+          );
+        } else if (result === 'partial') {
+          await createNotification(
+            bet.user_id,
+            '🎯 Partial Win!',
+            `Your ${bet.prediction_type} bet for ${bet.city} was close! You earned ${currencyLabel}${pointsChange}${currencySuffix} (${PARTIAL_WIN_CONFIG.payoutPercentage}% payout).`,
+            'bet_partial',
             bet.id,
             'bet'
           );
@@ -542,37 +619,57 @@ Deno.serve(async (req) => {
       try {
         console.log(`Processing parlay ${parlay.id} with ${parlay.parlay_legs?.length || 0} legs`);
         
-        let allLegsWin = true;
+        let hasLoss = false;
+        let hasPartial = false;
 
         for (const leg of parlay.parlay_legs || []) {
           const weather = await getWeather(leg.city);
           if (!weather) {
-            allLegsWin = false;
+            hasLoss = true;
             break;
           }
 
-          const legWins = evaluatePrediction(leg.prediction_type, leg.prediction_value, weather);
+          const legResult = evaluatePrediction(leg.prediction_type, leg.prediction_value, weather);
           
           // Update leg result
           await supabase.from('parlay_legs').update({ 
-            result: legWins ? 'win' : 'loss' 
+            result: legResult 
           }).eq('id', leg.id);
 
-          console.log(`Parlay leg ${leg.id} (${leg.city} - ${leg.prediction_type}): ${legWins ? 'WIN' : 'LOSS'}`);
+          console.log(`Parlay leg ${leg.id} (${leg.city} - ${leg.prediction_type}): ${legResult.toUpperCase()}`);
 
-          if (!legWins) {
-            allLegsWin = false;
+          if (legResult === 'loss') {
+            hasLoss = true;
             break;
+          } else if (legResult === 'partial') {
+            hasPartial = true;
           }
         }
 
-        const parlayResult = allLegsWin ? 'win' : 'loss';
+        // Parlays: all must win, but partial legs = partial parlay payout
+        let parlayResult: 'win' | 'partial' | 'loss';
+        if (hasLoss) {
+          parlayResult = 'loss';
+        } else if (hasPartial) {
+          parlayResult = 'partial';
+        } else {
+          parlayResult = 'win';
+        }
 
         let pointsChange = 0;
-        if (allLegsWin) {
+        let transactionType = 'bet_loss';
+        
+        if (parlayResult === 'win') {
           pointsChange = Math.round(parlay.total_stake * parlay.combined_odds);
+          transactionType = 'bet_win';
+        } else if (parlayResult === 'partial') {
+          // Partial parlay: 50% of full payout
+          pointsChange = Math.round(parlay.total_stake * parlay.combined_odds * (PARTIAL_WIN_CONFIG.payoutPercentage / 100));
+          transactionType = 'bet_partial_win';
+          console.log(`Parlay ${parlay.id} partial win - awarding ${pointsChange}`);
         } else if (parlay.has_insurance && parlay.insurance_payout_percentage) {
           pointsChange = Math.floor(parlay.total_stake * parlay.insurance_payout_percentage);
+          transactionType = 'insurance_payout';
           console.log(`Parlay ${parlay.id} insured - returning ${pointsChange}`);
         }
 
@@ -584,7 +681,7 @@ Deno.serve(async (req) => {
           await supabase.rpc('update_user_points_safe', {
             user_uuid: parlay.user_id,
             points_change: pointsChange,
-            transaction_type: parlayResult === 'win' ? 'bet_win' : 'insurance_payout',
+            transaction_type: transactionType,
             reference_id: parlay.id,
             reference_type: 'parlay',
             currency_type: parlay.currency_type || 'virtual'
@@ -596,12 +693,21 @@ Deno.serve(async (req) => {
         const currencySuffix = parlay.currency_type === 'virtual' ? ' points' : '';
         const legCount = parlay.parlay_legs?.length || 0;
         
-        if (allLegsWin) {
+        if (parlayResult === 'win') {
           await createNotification(
             parlay.user_id,
             '🎉 Parlay Won!',
             `Your ${legCount}-leg parlay won! You earned ${currencyLabel}${pointsChange}${currencySuffix}.`,
             'bet_won',
+            parlay.id,
+            'parlay'
+          );
+        } else if (parlayResult === 'partial') {
+          await createNotification(
+            parlay.user_id,
+            '🎯 Parlay Partial Win!',
+            `Your ${legCount}-leg parlay was close! You earned ${currencyLabel}${pointsChange}${currencySuffix} (${PARTIAL_WIN_CONFIG.payoutPercentage}% payout).`,
+            'bet_partial',
             parlay.id,
             'parlay'
           );
@@ -679,7 +785,8 @@ Deno.serve(async (req) => {
         const weather = await getWeather(combinedBet.city);
         if (!weather) continue;
 
-        let allCategoriesWin = true;
+        let hasLoss = false;
+        let hasPartial = false;
         let allCategoriesResolvable = true;
         let resolvedCategoryCount = 0;
 
@@ -699,27 +806,31 @@ Deno.serve(async (req) => {
           if (category.result !== 'pending') {
             console.log(`Category ${category.id} already resolved: ${category.result}`);
             if (category.result === 'loss') {
-              allCategoriesWin = false;
+              hasLoss = true;
+            } else if (category.result === 'partial') {
+              hasPartial = true;
             }
             resolvedCategoryCount++;
             continue;
           }
 
           // Evaluate this category using the base category (not the full prediction_type with slot)
-          const categoryWins = evaluatePrediction(baseCategory, category.prediction_value, weather);
+          const categoryResult = evaluatePrediction(baseCategory, category.prediction_value, weather);
           
           // Update category result
           await supabase.from('combined_bet_categories').update({ 
-            result: categoryWins ? 'win' : 'loss' 
+            result: categoryResult 
           }).eq('id', category.id);
 
           const slotInfo = slotId ? ` at ${slotId}` : '';
-          console.log(`Category ${category.id} (${baseCategory}${slotInfo}): ${categoryWins ? 'WIN' : 'LOSS'}`);
+          console.log(`Category ${category.id} (${baseCategory}${slotInfo}): ${categoryResult.toUpperCase()}`);
 
           resolvedCategoryCount++;
 
-          if (!categoryWins) {
-            allCategoriesWin = false;
+          if (categoryResult === 'loss') {
+            hasLoss = true;
+          } else if (categoryResult === 'partial') {
+            hasPartial = true;
           }
         }
 
@@ -730,13 +841,30 @@ Deno.serve(async (req) => {
           continue;
         }
 
-        const combinedResult = allCategoriesWin ? 'win' : 'loss';
+        // Combined bets: all must win, but partial categories = partial payout
+        let combinedResult: 'win' | 'partial' | 'loss';
+        if (hasLoss) {
+          combinedResult = 'loss';
+        } else if (hasPartial) {
+          combinedResult = 'partial';
+        } else {
+          combinedResult = 'win';
+        }
 
         let pointsChange = 0;
-        if (allCategoriesWin) {
+        let transactionType = 'bet_loss';
+        
+        if (combinedResult === 'win') {
           pointsChange = Math.round(combinedBet.total_stake * combinedBet.combined_odds);
+          transactionType = 'bet_win';
+        } else if (combinedResult === 'partial') {
+          // Partial combined bet: 50% of full payout
+          pointsChange = Math.round(combinedBet.total_stake * combinedBet.combined_odds * (PARTIAL_WIN_CONFIG.payoutPercentage / 100));
+          transactionType = 'bet_partial_win';
+          console.log(`Combined bet ${combinedBet.id} partial win - awarding ${pointsChange}`);
         } else if (combinedBet.has_insurance && combinedBet.insurance_payout_percentage) {
           pointsChange = Math.floor(combinedBet.total_stake * combinedBet.insurance_payout_percentage);
+          transactionType = 'insurance_payout';
           console.log(`Combined bet ${combinedBet.id} insured - returning ${pointsChange}`);
         }
 
@@ -748,7 +876,7 @@ Deno.serve(async (req) => {
           await supabase.rpc('update_user_points_safe', {
             user_uuid: combinedBet.user_id,
             points_change: pointsChange,
-            transaction_type: combinedResult === 'win' ? 'bet_win' : 'insurance_payout',
+            transaction_type: transactionType,
             reference_id: combinedBet.id,
             reference_type: 'combined_bet',
             currency_type: combinedBet.currency_type || 'virtual'
@@ -769,12 +897,21 @@ Deno.serve(async (req) => {
 
         const betTypeLabel = isMultiTimeCombo ? 'multi-time combo' : `${categoryCount}-category bet`;
         
-        if (allCategoriesWin) {
+        if (combinedResult === 'win') {
           await createNotification(
             combinedBet.user_id,
             '🎉 Combined Bet Won!',
             `Your ${betTypeLabel} on ${combinedBet.city} won! You earned ${currencyLabel}${pointsChange}${currencySuffix}.`,
             'bet_won',
+            combinedBet.id,
+            'combined_bet'
+          );
+        } else if (combinedResult === 'partial') {
+          await createNotification(
+            combinedBet.user_id,
+            '🎯 Combined Bet Partial Win!',
+            `Your ${betTypeLabel} on ${combinedBet.city} was close! You earned ${currencyLabel}${pointsChange}${currencySuffix} (${PARTIAL_WIN_CONFIG.payoutPercentage}% payout).`,
+            'bet_partial',
             combinedBet.id,
             'combined_bet'
           );

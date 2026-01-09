@@ -52,6 +52,23 @@ export const BETTING_CONFIG = {
     minTimeBeforeExpiry: 1, // Minimum hours before expiry to allow cash out
     penaltyPercentage: 15, // Penalty for cashing out (15 = lose 15% of potential winnings)
   },
+  
+  // Partial win settings - awards reduced payouts for close predictions
+  partialWin: {
+    enabled: true,
+    // Payout percentage for partial wins (50 = 50% of full win)
+    payoutPercentage: 50,
+    // Tolerance thresholds per category (how close to be considered "partial win")
+    tolerances: {
+      temperature: 3,      // Within 3°C of range edge
+      rainfall: 2,         // Within 2mm of range edge
+      wind: 5,             // Within 5 km/h of range edge
+      dew_point: 3,        // Within 3°C of range edge
+      pressure: 10,        // Within 10 hPa of range edge
+      cloud_coverage: 10,  // Within 10% of range edge
+      humidity: 10,        // Within 10% of range edge
+    } as Record<string, number>,
+  },
 } as const;
 
 // ============================================
@@ -255,5 +272,55 @@ export function getTimeDecayInfo(daysAhead: number): {
     bonusPercentage,
     label,
     isActive: bonusPercentage > 0,
+  };
+}
+
+/**
+ * Get partial win tolerance for a category
+ */
+export function getPartialWinTolerance(category: string): number {
+  if (!BETTING_CONFIG.partialWin.enabled) return 0;
+  return BETTING_CONFIG.partialWin.tolerances[category] || 0;
+}
+
+/**
+ * Calculate partial win payout
+ */
+export function calculatePartialWinPayout(fullPayout: number): number {
+  return Math.floor((fullPayout * BETTING_CONFIG.partialWin.payoutPercentage) / 100);
+}
+
+/**
+ * Get partial win info for display
+ */
+export function getPartialWinInfo(category: string): {
+  enabled: boolean;
+  tolerance: number;
+  payoutPercentage: number;
+  description: string;
+} {
+  const tolerance = getPartialWinTolerance(category);
+  const enabled = BETTING_CONFIG.partialWin.enabled && tolerance > 0;
+  
+  const unitMap: Record<string, string> = {
+    temperature: '°C',
+    rainfall: 'mm',
+    wind: 'km/h',
+    dew_point: '°C',
+    pressure: 'hPa',
+    cloud_coverage: '%',
+    humidity: '%',
+  };
+  
+  const unit = unitMap[category] || '';
+  const description = enabled 
+    ? `Within ${tolerance}${unit} of range = ${BETTING_CONFIG.partialWin.payoutPercentage}% payout`
+    : 'Partial wins not available';
+  
+  return {
+    enabled,
+    tolerance,
+    payoutPercentage: BETTING_CONFIG.partialWin.payoutPercentage,
+    description,
   };
 }

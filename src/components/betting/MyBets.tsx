@@ -90,8 +90,9 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
   // Calculate comprehensive statistics
   const calculateStats = () => {
     const allBets = [...bets, ...parlays, ...combinedBets];
-    const settledBets = allBets.filter(bet => bet.result === 'win' || bet.result === 'loss' || bet.result === 'cashed_out');
+    const settledBets = allBets.filter(bet => bet.result === 'win' || bet.result === 'partial' || bet.result === 'loss' || bet.result === 'cashed_out');
     const wonBets = allBets.filter(bet => bet.result === 'win');
+    const partialBets = allBets.filter(bet => bet.result === 'partial');
     const lostBets = allBets.filter(bet => bet.result === 'loss');
     const cashedOutBets = allBets.filter(bet => bet.result === 'cashed_out');
     
@@ -197,9 +198,10 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
           );
           // Show toast for resolved bets
           if (payload.old.result === 'pending' && payload.new.result !== 'pending') {
-            const resultEmoji = payload.new.result === 'win' ? '🎉' : payload.new.result === 'cashed_out' ? '💰' : '😞';
+            const resultEmoji = payload.new.result === 'win' ? '🎉' : payload.new.result === 'partial' ? '🎯' : payload.new.result === 'cashed_out' ? '💰' : '😞';
+            const resultText = payload.new.result === 'win' ? 'Won!' : payload.new.result === 'partial' ? 'Partial Win!' : payload.new.result === 'cashed_out' ? 'Cashed Out!' : 'Lost';
             toast({
-              title: `Bet ${payload.new.result === 'win' ? 'Won!' : payload.new.result === 'cashed_out' ? 'Cashed Out!' : 'Lost'} ${resultEmoji}`,
+              title: `Bet ${resultText} ${resultEmoji}`,
               description: `Your bet on ${payload.new.city} has been resolved.`,
             });
           }
