@@ -20,6 +20,9 @@ import { useAchievementTracker } from '@/hooks/useAchievementTracker';
 import { useLevelSystem } from '@/hooks/useLevelSystem';
 import { calculateDynamicOdds, formatLiveOdds, getProbabilityPercentage } from '@/lib/dynamic-odds';
 import { getTimeDecayInfo, BETTING_CONFIG } from '@/lib/betting-config';
+import { useVolatilityOdds } from '@/hooks/useVolatilityOdds';
+import { getVolatilityInfo, VOLATILITY_CONFIG, preloadVolatilityData } from '@/lib/volatility-odds';
+import { VolatilityBadge } from './VolatilityBadge';
 import TimeDecayChart from './TimeDecayChart';
 import { supabase } from '@/integrations/supabase/client';
 import { getActivePurchases, getActiveMultipliers, getMaxStakeBoost, PurchaseWithItem, useItem } from '@/lib/supabase-shop';
@@ -94,6 +97,21 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
   const { checkAndUpdateChallenges } = useChallengeTracker();
   const { checkAchievements } = useAchievementTracker();
   const { awardXPForAction } = useLevelSystem();
+
+  // Fetch volatility data for current city/category
+  const { volatilityData } = useVolatilityOdds({
+    city: city || '',
+    category: predictionType || 'temperature',
+    enabled: VOLATILITY_CONFIG.enabled && !!city && !!predictionType,
+  });
+
+  // Preload volatility data when city changes
+  useEffect(() => {
+    if (city && VOLATILITY_CONFIG.enabled) {
+      const categories = ['rain', 'temperature', 'rainfall', 'snow', 'wind', 'dew_point', 'pressure', 'cloud_coverage'];
+      preloadVolatilityData([city], categories);
+    }
+  }, [city]);
 
   // Update selected time slot when prediction type changes
   useEffect(() => {
@@ -202,6 +220,7 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
         predictionValue,
         forecast: weatherForecast,
         daysAhead: getDaysAhead(),
+        city: city || undefined, // Pass city for volatility calculation
       });
       return parseFloat((baseOdds * timeSlotMultiplier).toFixed(2));
     }
@@ -714,9 +733,12 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
 
             {/* Live Odds Indicator */}
             {city && weatherForecast.length > 0 && (
-              <div className="flex items-center gap-2 p-3 bg-primary/10 rounded-lg">
+              <div className="flex items-center gap-2 p-3 bg-primary/10 rounded-lg flex-wrap">
                 <Activity className="h-4 w-4 text-primary animate-pulse" />
                 <span className="text-sm font-medium">Live Odds Active</span>
+                {predictionType && volatilityData && volatilityData.volatilityMultiplier > 1 && (
+                  <VolatilityBadge city={city} category={predictionType} showDetails />
+                )}
                 <span className="text-xs text-muted-foreground ml-auto">
                   Based on current forecast
                 </span>
@@ -1146,6 +1168,10 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
                             </TooltipProvider>
                           ) : null;
                         })()}
+                        {/* Volatility Badge */}
+                        {city && predictionType && VOLATILITY_CONFIG.enabled && (
+                          <VolatilityBadge city={city} category={predictionType} />
+                        )}
                       </span>
                     </div>
                     {getCurrentProbability() !== null && (
