@@ -23,6 +23,7 @@ import { getTimeDecayInfo, BETTING_CONFIG } from '@/lib/betting-config';
 import { useVolatilityOdds } from '@/hooks/useVolatilityOdds';
 import { getVolatilityInfo, VOLATILITY_CONFIG, preloadVolatilityData } from '@/lib/volatility-odds';
 import { VolatilityBadge } from './VolatilityBadge';
+import { DifficultyRating } from './DifficultyRating';
 import TimeDecayChart from './TimeDecayChart';
 import { supabase } from '@/integrations/supabase/client';
 import { getActivePurchases, getActiveMultipliers, getMaxStakeBoost, PurchaseWithItem, useItem } from '@/lib/supabase-shop';
@@ -1019,6 +1020,30 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
               />
             )}
 
+            {/* Difficulty Rating */}
+            {city && predictionType && weatherForecast.length > 0 && (() => {
+              let predictionValue = '';
+              if (predictionType === 'rain') predictionValue = rainPrediction;
+              else if (predictionType === 'temperature') predictionValue = tempRange;
+              else if (predictionType === 'rainfall') predictionValue = rainfallRange;
+              else if (predictionType === 'snow') predictionValue = snowPrediction;
+              else if (predictionType === 'wind') predictionValue = windRange;
+              else if (predictionType === 'dew_point') predictionValue = dewPointRange;
+              else if (predictionType === 'pressure') predictionValue = pressureRange;
+              else if (predictionType === 'cloud_coverage') predictionValue = cloudCoverageRange;
+              
+              return predictionValue ? (
+                <DifficultyRating
+                  city={city}
+                  predictionType={predictionType}
+                  predictionValue={predictionValue}
+                  forecast={weatherForecast}
+                  daysAhead={getDaysAhead()}
+                  showDetails
+                />
+              ) : null;
+            })()}
+
             {/* Low Balance Warning */}
             {stake && isLowBalanceWarning() && (
               <Card className="border-2 border-yellow-500/50 bg-yellow-500/10">
@@ -1087,6 +1112,16 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
                           : `Temperature: ${TEMPERATURE_RANGES.find(r => r.value === tempRange)?.label}`
                         }
                       </span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span>Difficulty:</span>
+                      <DifficultyRating
+                        city={city}
+                        predictionType={predictionType}
+                        predictionValue={predictionType === 'rain' ? rainPrediction : predictionType === 'temperature' ? tempRange : predictionType === 'rainfall' ? rainfallRange : predictionType === 'snow' ? snowPrediction : predictionType === 'wind' ? windRange : predictionType === 'dew_point' ? dewPointRange : predictionType === 'pressure' ? pressureRange : cloudCoverageRange}
+                        forecast={weatherForecast}
+                        daysAhead={getDaysAhead()}
+                      />
                     </div>
                     <div className="flex justify-between">
                       <span>Betting On:</span>
