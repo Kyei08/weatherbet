@@ -25,6 +25,8 @@ import { Badge } from '@/components/ui/badge';
 import { formatCurrency } from '@/lib/currency';
 import { useCurrencyMode } from '@/contexts/CurrencyModeContext';
 import { DuplicateBetDialog } from './DuplicateBetDialog';
+import { DifficultyRating } from './DifficultyRating';
+import { VolatilityBadge } from './VolatilityBadge';
 
 // Get user's timezone
 const getUserTimezone = () => {
@@ -469,12 +471,23 @@ const ParlayBettingSlip = ({ onBack, onBetPlaced }: ParlayBettingSlipProps) => {
 
         {/* Live Odds Indicator */}
         {predictions.some(p => p.city && weatherForecasts[p.city]) && (
-          <div className="flex items-center gap-2 p-3 bg-primary/10 rounded-lg">
+          <div className="flex items-center gap-2 p-3 bg-primary/10 rounded-lg border border-primary/20">
             <Activity className="h-4 w-4 text-primary animate-pulse" />
             <span className="text-sm font-medium">Live Odds Active</span>
-            <span className="text-xs text-muted-foreground ml-auto">
-              Based on current forecasts
-            </span>
+            <div className="flex items-center gap-2 ml-auto">
+              {(() => {
+                const daysAhead = getDaysAhead();
+                const timeDecay = getTimeDecayInfo(daysAhead);
+                return timeDecay.isActive ? (
+                  <Badge variant="secondary" className="text-xs bg-amber-500/20 text-amber-600 border-amber-500/30">
+                    +{timeDecay.bonusPercentage}% Early Bird 🕐
+                  </Badge>
+                ) : null;
+              })()}
+              {predictions[0]?.city && (
+                <VolatilityBadge city={predictions[0].city} category={predictions[0].predictionType} />
+              )}
+            </div>
           </div>
         )}
 
@@ -915,6 +928,25 @@ const ParlayBettingSlip = ({ onBack, onBetPlaced }: ParlayBettingSlipProps) => {
           </Card>
         )}
 
+        {/* Difficulty Rating */}
+        {predictions[0]?.city && weatherForecasts[predictions[0].city] && (
+          <DifficultyRating
+            city={predictions[0].city}
+            predictionType={predictions[0].predictionType}
+            predictionValue={predictions[0].predictionType === 'rain' ? predictions[0].rainPrediction : 
+                           predictions[0].predictionType === 'snow' ? predictions[0].snowPrediction :
+                           predictions[0].predictionType === 'temperature' ? predictions[0].temperatureRange :
+                           predictions[0].predictionType === 'rainfall' ? predictions[0].rainfallRange :
+                           predictions[0].predictionType === 'wind' ? predictions[0].windRange :
+                           predictions[0].predictionType === 'dew_point' ? predictions[0].dewPointRange :
+                           predictions[0].predictionType === 'pressure' ? predictions[0].pressureRange :
+                           predictions[0].cloudCoverageRange}
+            daysAhead={getDaysAhead()}
+            forecast={weatherForecasts[predictions[0].city]}
+            showDetails
+          />
+        )}
+
         {/* Summary */}
         {predictions.every(p => p.city) && stake && (
           <div className="bg-gradient-primary/10 p-4 rounded-lg space-y-2">
@@ -926,15 +958,22 @@ const ParlayBettingSlip = ({ onBack, onBetPlaced }: ParlayBettingSlipProps) => {
                 {predictions.some(p => p.city && weatherForecasts[p.city]) && (
                   <span className="text-xs text-primary">LIVE</span>
                 )}
-                {(() => {
-                  const daysAhead = Math.ceil((selectedDay.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
-                  const timeDecay = getTimeDecayInfo(daysAhead);
-                  return timeDecay.isActive ? (
-                    <Badge variant="secondary" className="text-xs bg-amber-500/20 text-amber-600 border-amber-500/30">
-                      +{timeDecay.bonusPercentage}% 🕐
-                    </Badge>
-                  ) : null;
-                })()}
+                {predictions[0]?.city && weatherForecasts[predictions[0].city] && (
+                  <DifficultyRating
+                    city={predictions[0].city}
+                    predictionType={predictions[0].predictionType}
+                    predictionValue={predictions[0].predictionType === 'rain' ? predictions[0].rainPrediction : 
+                                   predictions[0].predictionType === 'snow' ? predictions[0].snowPrediction :
+                                   predictions[0].predictionType === 'temperature' ? predictions[0].temperatureRange :
+                                   predictions[0].predictionType === 'rainfall' ? predictions[0].rainfallRange :
+                                   predictions[0].predictionType === 'wind' ? predictions[0].windRange :
+                                   predictions[0].predictionType === 'dew_point' ? predictions[0].dewPointRange :
+                                   predictions[0].predictionType === 'pressure' ? predictions[0].pressureRange :
+                                   predictions[0].cloudCoverageRange}
+                    daysAhead={getDaysAhead()}
+                    forecast={weatherForecasts[predictions[0].city]}
+                  />
+                )}
               </span>
             </div>
             <div className="flex justify-between">

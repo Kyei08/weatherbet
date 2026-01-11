@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, TrendingUp, AlertTriangle, Cloud, Droplets, Thermometer, Snowflake, Wind, Droplet, Gauge, CloudFog, Loader2, Clock } from 'lucide-react';
+import { ArrowLeft, TrendingUp, AlertTriangle, Cloud, Droplets, Thermometer, Snowflake, Wind, Droplet, Gauge, CloudFog, Loader2, Clock, Activity } from 'lucide-react';
 import { useDuplicateBetPrevention } from '@/hooks/useDuplicateBetPrevention';
 import { CITIES, City, TEMPERATURE_RANGES, RAINFALL_RANGES, WIND_RANGES, DEW_POINT_RANGES, PRESSURE_RANGES, CLOUD_COVERAGE_RANGES } from '@/types/supabase-betting';
 import { useToast } from '@/hooks/use-toast';
@@ -26,6 +26,9 @@ import { useCurrencyMode } from '@/contexts/CurrencyModeContext';
 import { DuplicateBetDialog } from './DuplicateBetDialog';
 import { format } from 'date-fns';
 import { BettingCategory, getCategoryTiming, getDefaultTimeSlot, getTimeSlot, hasMultipleTimeSlots } from '@/lib/betting-timing';
+import { DifficultyRating } from './DifficultyRating';
+import { VolatilityBadge } from './VolatilityBadge';
+import { useMultiCategoryVolatility } from '@/hooks/useVolatilityOdds';
 
 const getUserTimezone = () => Intl.DateTimeFormat().resolvedOptions().timeZone;
 
@@ -374,17 +377,22 @@ export function CombinedBettingSlip({ onBack, onBetPlaced }: CombinedBettingSlip
         {/* Live Odds Indicator */}
         {weatherForecast && (
           <div className="flex items-center gap-2 p-3 bg-primary/10 rounded-lg border border-primary/20">
-            <TrendingUp className="h-4 w-4 text-primary" />
+            <Activity className="h-4 w-4 text-primary animate-pulse" />
             <span className="text-sm font-medium">Live Odds Active</span>
-            {(() => {
-              const daysAhead = Math.ceil((selectedDay.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
-              const timeDecay = getTimeDecayInfo(daysAhead);
-              return timeDecay.isActive ? (
-                <Badge variant="secondary" className="text-xs bg-amber-500/20 text-amber-600 border-amber-500/30 ml-auto">
-                  +{timeDecay.bonusPercentage}% Early Bird 🕐
-                </Badge>
-              ) : null;
-            })()}
+            <div className="flex items-center gap-2 ml-auto">
+              {(() => {
+                const daysAhead = Math.ceil((selectedDay.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+                const timeDecay = getTimeDecayInfo(daysAhead);
+                return timeDecay.isActive ? (
+                  <Badge variant="secondary" className="text-xs bg-amber-500/20 text-amber-600 border-amber-500/30">
+                    +{timeDecay.bonusPercentage}% Early Bird 🕐
+                  </Badge>
+                ) : null;
+              })()}
+              {selectedCategories.length > 0 && (
+                <VolatilityBadge city={city} category={selectedCategories[0]} />
+              )}
+            </div>
           </div>
         )}
 
@@ -867,6 +875,18 @@ export function CombinedBettingSlip({ onBack, onBetPlaced }: CombinedBettingSlip
           </div>
         )}
 
+        {/* Difficulty Rating */}
+        {selectedCategories.length > 0 && weatherForecast && categoryValues[selectedCategories[0]] && (
+          <DifficultyRating
+            city={city}
+            predictionType={selectedCategories[0]}
+            predictionValue={categoryValues[selectedCategories[0]]?.value || ''}
+            daysAhead={getDaysAhead()}
+            forecast={weatherForecast.forecast || weatherForecast}
+            showDetails
+          />
+        )}
+
         {/* Bet Summary */}
         <div className="space-y-2 p-4 bg-primary/5 rounded-lg border border-primary/20">
           <div className="flex justify-between text-sm">
@@ -883,9 +903,20 @@ export function CombinedBettingSlip({ onBack, onBetPlaced }: CombinedBettingSlip
             <span>Total Cost:</span>
             <span className="font-mono">{formatCurrency(getTotalCost(), mode)}</span>
           </div>
-          <div className="flex justify-between text-sm">
+          <div className="flex justify-between text-sm items-center">
             <span>Combined Odds:</span>
-            <span className="font-mono text-primary">{combinedOdds.toFixed(2)}x</span>
+            <div className="flex items-center gap-2">
+              <span className="font-mono text-primary">{combinedOdds.toFixed(2)}x</span>
+              {selectedCategories.length > 0 && weatherForecast && categoryValues[selectedCategories[0]] && (
+                <DifficultyRating
+                  city={city}
+                  predictionType={selectedCategories[0]}
+                  predictionValue={categoryValues[selectedCategories[0]]?.value || ''}
+                  daysAhead={getDaysAhead()}
+                  forecast={weatherForecast.forecast || weatherForecast}
+                />
+              )}
+            </div>
           </div>
           <div className="flex justify-between font-bold text-lg border-t border-border pt-2">
             <span>Potential Win:</span>
