@@ -234,6 +234,87 @@ function isPartialWin(predictionType: string, actual: number, rangeStr: string):
   return false;
 }
 
+// Streak bonus configuration
+const STREAK_CONFIG = {
+  minStreakForBonus: 3,
+  maxMultiplier: 2.0,
+  thresholds: [
+    { minStreak: 3, multiplier: 1.1 },
+    { minStreak: 5, multiplier: 1.2 },
+    { minStreak: 7, multiplier: 1.35 },
+    { minStreak: 10, multiplier: 1.5 },
+    { minStreak: 15, multiplier: 1.75 },
+    { minStreak: 20, multiplier: 2.0 },
+  ],
+};
+
+// Calculate streak multiplier
+function calculateStreakMultiplier(streak: number): number {
+  if (streak < STREAK_CONFIG.minStreakForBonus) return 1.0;
+  
+  let multiplier = 1.0;
+  for (const threshold of STREAK_CONFIG.thresholds) {
+    if (streak >= threshold.minStreak) {
+      multiplier = threshold.multiplier;
+    }
+  }
+  return Math.min(multiplier, STREAK_CONFIG.maxMultiplier);
+}
+
+// Get current winning streak for a user
+async function getUserStreak(supabase: any, userId: string, currencyType: string): Promise<number> {
+  try {
+    // Get all settled bets ordered by updated_at descending
+    const { data: bets } = await supabase
+      .from('bets')
+      .select('result, updated_at')
+      .eq('user_id', userId)
+      .eq('currency_type', currencyType)
+      .in('result', ['win', 'loss', 'partial'])
+      .order('updated_at', { ascending: false })
+      .limit(50);
+
+    const { data: parlays } = await supabase
+      .from('parlays')
+      .select('result, updated_at')
+      .eq('user_id', userId)
+      .eq('currency_type', currencyType)
+      .in('result', ['win', 'loss', 'partial'])
+      .order('updated_at', { ascending: false })
+      .limit(50);
+
+    const { data: combinedBets } = await supabase
+      .from('combined_bets')
+      .select('result, updated_at')
+      .eq('user_id', userId)
+      .eq('currency_type', currencyType)
+      .in('result', ['win', 'loss', 'partial'])
+      .order('updated_at', { ascending: false })
+      .limit(50);
+
+    // Combine and sort by time
+    const allResults = [
+      ...(bets || []).map((b: any) => ({ result: b.result, time: b.updated_at })),
+      ...(parlays || []).map((p: any) => ({ result: p.result, time: p.updated_at })),
+      ...(combinedBets || []).map((c: any) => ({ result: c.result, time: c.updated_at })),
+    ].sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
+
+    // Count consecutive wins from most recent
+    let streak = 0;
+    for (const bet of allResults) {
+      if (bet.result === 'win' || bet.result === 'partial') {
+        streak++;
+      } else {
+        break;
+      }
+    }
+    return streak;
+  } catch (error) {
+    console.error('Error getting user streak:', error);
+    return 0;
+  }
+}
+
 // Evaluate a prediction against actual weather using smart timing logic
 // Returns: 'win' | 'partial' | 'loss'
 function evaluatePrediction(predictionType: string, predictionValue: string, weather: WeatherData): 'win' | 'partial' | 'loss' {
@@ -515,24 +596,45 @@ Deno.serve(async (req) => {
         }
 
         // Calculate payout based on result type
+        let basePointsChange = 0;
+        let streakBonus = 0;
         let pointsChange = 0;
         let transactionType = 'bet_loss';
         
         if (result === 'win') {
-          pointsChange = Math.round(bet.stake * bet.odds);
+          basePointsChange = Math.round(bet.stake * bet.odds);
           transactionType = 'bet_win';
+          
+          // Apply streak bonus
+          const currentStreak = await getUserStreak(supabase, bet.user_id, bet.currency_type || 'virtual');
+          const streakMultiplier = calculateStreakMultiplier(currentStreak);
+          if (streakMultiplier > 1.0) {
+            streakBonus = Math.round(basePointsChange * (streakMultiplier - 1));
+            console.log(`Bet ${bet.id} streak bonus: ${currentStreak} streak = ${streakMultiplier}x = +${streakBonus} bonus`);
+          }
+          pointsChange = basePointsChange + streakBonus;
         } else if (result === 'partial') {
-          // Partial win: 50% of full payout
-          pointsChange = Math.round(bet.stake * bet.odds * (PARTIAL_WIN_CONFIG.payoutPercentage / 100));
+          // Partial win: 50% of full payout (streak bonus also applies)
+          basePointsChange = Math.round(bet.stake * bet.odds * (PARTIAL_WIN_CONFIG.payoutPercentage / 100));
           transactionType = 'bet_partial_win';
+          
+          // Apply streak bonus to partial wins too
+          const currentStreak = await getUserStreak(supabase, bet.user_id, bet.currency_type || 'virtual');
+          const streakMultiplier = calculateStreakMultiplier(currentStreak);
+          if (streakMultiplier > 1.0) {
+            streakBonus = Math.round(basePointsChange * (streakMultiplier - 1));
+            console.log(`Bet ${bet.id} partial streak bonus: ${currentStreak} streak = ${streakMultiplier}x = +${streakBonus} bonus`);
+          }
+          pointsChange = basePointsChange + streakBonus;
           console.log(`Bet ${bet.id} partial win - awarding ${pointsChange} (${PARTIAL_WIN_CONFIG.payoutPercentage}% of full payout)`);
         } else if (bet.has_insurance && bet.insurance_payout_percentage) {
-          pointsChange = Math.floor(bet.stake * bet.insurance_payout_percentage);
+          basePointsChange = Math.floor(bet.stake * bet.insurance_payout_percentage);
+          pointsChange = basePointsChange;
           transactionType = 'insurance_payout';
           console.log(`Bet ${bet.id} insured - returning ${pointsChange}`);
         }
 
-        console.log(`Bet ${bet.id}: ${result} (${pointsChange} ${bet.currency_type})`);
+        console.log(`Bet ${bet.id}: ${result} (${pointsChange} ${bet.currency_type}${streakBonus > 0 ? ` including ${streakBonus} streak bonus` : ''})`);
 
         // Update bet result
         await supabase.from('bets').update({ result }).eq('id', bet.id);
@@ -547,17 +649,29 @@ Deno.serve(async (req) => {
             reference_type: 'bet',
             currency_type: bet.currency_type || 'virtual'
           });
+          
+          // Record streak bonus if applicable
+          if (streakBonus > 0) {
+            await supabase.from('bonus_earnings').insert({
+              user_id: bet.user_id,
+              bonus_type: 'multiplier',
+              bonus_amount: streakBonus,
+              base_amount: basePointsChange,
+              bet_id: bet.id,
+            });
+          }
         }
 
         // Create notification for user
         const currencyLabel = bet.currency_type === 'real' ? 'R' : '';
         const currencySuffix = bet.currency_type === 'virtual' ? ' points' : '';
+        const streakBonusMsg = streakBonus > 0 ? ` (includes +${currencyLabel}${streakBonus}${currencySuffix} streak bonus 🔥)` : '';
         
         if (result === 'win') {
           await createNotification(
             bet.user_id,
             '🎉 Bet Won!',
-            `Your ${bet.prediction_type} bet for ${bet.city} won! You earned ${currencyLabel}${pointsChange}${currencySuffix}.`,
+            `Your ${bet.prediction_type} bet for ${bet.city} won! You earned ${currencyLabel}${pointsChange}${currencySuffix}.${streakBonusMsg}`,
             'bet_won',
             bet.id,
             'bet'
@@ -566,7 +680,7 @@ Deno.serve(async (req) => {
           await createNotification(
             bet.user_id,
             '🎯 Partial Win!',
-            `Your ${bet.prediction_type} bet for ${bet.city} was close! You earned ${currencyLabel}${pointsChange}${currencySuffix} (${PARTIAL_WIN_CONFIG.payoutPercentage}% payout).`,
+            `Your ${bet.prediction_type} bet for ${bet.city} was close! You earned ${currencyLabel}${pointsChange}${currencySuffix}.${streakBonusMsg}`,
             'bet_partial',
             bet.id,
             'bet'
@@ -656,24 +770,43 @@ Deno.serve(async (req) => {
           parlayResult = 'win';
         }
 
+        let basePointsChange = 0;
+        let streakBonus = 0;
         let pointsChange = 0;
         let transactionType = 'bet_loss';
         
         if (parlayResult === 'win') {
-          pointsChange = Math.round(parlay.total_stake * parlay.combined_odds);
+          basePointsChange = Math.round(parlay.total_stake * parlay.combined_odds);
           transactionType = 'bet_win';
+          
+          // Apply streak bonus
+          const currentStreak = await getUserStreak(supabase, parlay.user_id, parlay.currency_type || 'virtual');
+          const streakMultiplier = calculateStreakMultiplier(currentStreak);
+          if (streakMultiplier > 1.0) {
+            streakBonus = Math.round(basePointsChange * (streakMultiplier - 1));
+            console.log(`Parlay ${parlay.id} streak bonus: ${currentStreak} streak = ${streakMultiplier}x = +${streakBonus} bonus`);
+          }
+          pointsChange = basePointsChange + streakBonus;
         } else if (parlayResult === 'partial') {
           // Partial parlay: 50% of full payout
-          pointsChange = Math.round(parlay.total_stake * parlay.combined_odds * (PARTIAL_WIN_CONFIG.payoutPercentage / 100));
+          basePointsChange = Math.round(parlay.total_stake * parlay.combined_odds * (PARTIAL_WIN_CONFIG.payoutPercentage / 100));
           transactionType = 'bet_partial_win';
+          
+          const currentStreak = await getUserStreak(supabase, parlay.user_id, parlay.currency_type || 'virtual');
+          const streakMultiplier = calculateStreakMultiplier(currentStreak);
+          if (streakMultiplier > 1.0) {
+            streakBonus = Math.round(basePointsChange * (streakMultiplier - 1));
+          }
+          pointsChange = basePointsChange + streakBonus;
           console.log(`Parlay ${parlay.id} partial win - awarding ${pointsChange}`);
         } else if (parlay.has_insurance && parlay.insurance_payout_percentage) {
-          pointsChange = Math.floor(parlay.total_stake * parlay.insurance_payout_percentage);
+          basePointsChange = Math.floor(parlay.total_stake * parlay.insurance_payout_percentage);
+          pointsChange = basePointsChange;
           transactionType = 'insurance_payout';
           console.log(`Parlay ${parlay.id} insured - returning ${pointsChange}`);
         }
 
-        console.log(`Parlay ${parlay.id}: ${parlayResult} (${pointsChange} ${parlay.currency_type})`);
+        console.log(`Parlay ${parlay.id}: ${parlayResult} (${pointsChange} ${parlay.currency_type}${streakBonus > 0 ? ` including ${streakBonus} streak bonus` : ''})`);
 
         await supabase.from('parlays').update({ result: parlayResult }).eq('id', parlay.id);
 
@@ -686,18 +819,29 @@ Deno.serve(async (req) => {
             reference_type: 'parlay',
             currency_type: parlay.currency_type || 'virtual'
           });
+          
+          if (streakBonus > 0) {
+            await supabase.from('bonus_earnings').insert({
+              user_id: parlay.user_id,
+              bonus_type: 'multiplier',
+              bonus_amount: streakBonus,
+              base_amount: basePointsChange,
+              parlay_id: parlay.id,
+            });
+          }
         }
 
         // Create notification for parlay
         const currencyLabel = parlay.currency_type === 'real' ? 'R' : '';
         const currencySuffix = parlay.currency_type === 'virtual' ? ' points' : '';
         const legCount = parlay.parlay_legs?.length || 0;
+        const streakBonusMsg = streakBonus > 0 ? ` (includes +${currencyLabel}${streakBonus}${currencySuffix} streak bonus 🔥)` : '';
         
         if (parlayResult === 'win') {
           await createNotification(
             parlay.user_id,
             '🎉 Parlay Won!',
-            `Your ${legCount}-leg parlay won! You earned ${currencyLabel}${pointsChange}${currencySuffix}.`,
+            `Your ${legCount}-leg parlay won! You earned ${currencyLabel}${pointsChange}${currencySuffix}.${streakBonusMsg}`,
             'bet_won',
             parlay.id,
             'parlay'
@@ -706,7 +850,7 @@ Deno.serve(async (req) => {
           await createNotification(
             parlay.user_id,
             '🎯 Parlay Partial Win!',
-            `Your ${legCount}-leg parlay was close! You earned ${currencyLabel}${pointsChange}${currencySuffix} (${PARTIAL_WIN_CONFIG.payoutPercentage}% payout).`,
+            `Your ${legCount}-leg parlay was close! You earned ${currencyLabel}${pointsChange}${currencySuffix}.${streakBonusMsg}`,
             'bet_partial',
             parlay.id,
             'parlay'
@@ -851,24 +995,43 @@ Deno.serve(async (req) => {
           combinedResult = 'win';
         }
 
+        let basePointsChange = 0;
+        let streakBonus = 0;
         let pointsChange = 0;
         let transactionType = 'bet_loss';
         
         if (combinedResult === 'win') {
-          pointsChange = Math.round(combinedBet.total_stake * combinedBet.combined_odds);
+          basePointsChange = Math.round(combinedBet.total_stake * combinedBet.combined_odds);
           transactionType = 'bet_win';
+          
+          // Apply streak bonus
+          const currentStreak = await getUserStreak(supabase, combinedBet.user_id, combinedBet.currency_type || 'virtual');
+          const streakMultiplier = calculateStreakMultiplier(currentStreak);
+          if (streakMultiplier > 1.0) {
+            streakBonus = Math.round(basePointsChange * (streakMultiplier - 1));
+            console.log(`Combined bet ${combinedBet.id} streak bonus: ${currentStreak} streak = ${streakMultiplier}x = +${streakBonus} bonus`);
+          }
+          pointsChange = basePointsChange + streakBonus;
         } else if (combinedResult === 'partial') {
           // Partial combined bet: 50% of full payout
-          pointsChange = Math.round(combinedBet.total_stake * combinedBet.combined_odds * (PARTIAL_WIN_CONFIG.payoutPercentage / 100));
+          basePointsChange = Math.round(combinedBet.total_stake * combinedBet.combined_odds * (PARTIAL_WIN_CONFIG.payoutPercentage / 100));
           transactionType = 'bet_partial_win';
+          
+          const currentStreak = await getUserStreak(supabase, combinedBet.user_id, combinedBet.currency_type || 'virtual');
+          const streakMultiplier = calculateStreakMultiplier(currentStreak);
+          if (streakMultiplier > 1.0) {
+            streakBonus = Math.round(basePointsChange * (streakMultiplier - 1));
+          }
+          pointsChange = basePointsChange + streakBonus;
           console.log(`Combined bet ${combinedBet.id} partial win - awarding ${pointsChange}`);
         } else if (combinedBet.has_insurance && combinedBet.insurance_payout_percentage) {
-          pointsChange = Math.floor(combinedBet.total_stake * combinedBet.insurance_payout_percentage);
+          basePointsChange = Math.floor(combinedBet.total_stake * combinedBet.insurance_payout_percentage);
+          pointsChange = basePointsChange;
           transactionType = 'insurance_payout';
           console.log(`Combined bet ${combinedBet.id} insured - returning ${pointsChange}`);
         }
 
-        console.log(`Combined bet ${combinedBet.id}: ${combinedResult} (${pointsChange} ${combinedBet.currency_type})`);
+        console.log(`Combined bet ${combinedBet.id}: ${combinedResult} (${pointsChange} ${combinedBet.currency_type}${streakBonus > 0 ? ` including ${streakBonus} streak bonus` : ''})`);
 
         await supabase.from('combined_bets').update({ result: combinedResult }).eq('id', combinedBet.id);
 
@@ -881,12 +1044,23 @@ Deno.serve(async (req) => {
             reference_type: 'combined_bet',
             currency_type: combinedBet.currency_type || 'virtual'
           });
+          
+          if (streakBonus > 0) {
+            await supabase.from('bonus_earnings').insert({
+              user_id: combinedBet.user_id,
+              bonus_type: 'multiplier',
+              bonus_amount: streakBonus,
+              base_amount: basePointsChange,
+              bet_id: combinedBet.id,
+            });
+          }
         }
 
         // Create notification for combined bet
         const currencyLabel = combinedBet.currency_type === 'real' ? 'R' : '';
         const currencySuffix = combinedBet.currency_type === 'virtual' ? ' points' : '';
         const categoryCount = combinedBet.combined_bet_categories?.length || 0;
+        const streakBonusMsg = streakBonus > 0 ? ` (includes +${currencyLabel}${streakBonus}${currencySuffix} streak bonus 🔥)` : '';
         
         // Detect if this is a multi-time combo (same category at different times)
         const isMultiTimeCombo = combinedBet.combined_bet_categories?.every((c: any) => {
@@ -901,7 +1075,7 @@ Deno.serve(async (req) => {
           await createNotification(
             combinedBet.user_id,
             '🎉 Combined Bet Won!',
-            `Your ${betTypeLabel} on ${combinedBet.city} won! You earned ${currencyLabel}${pointsChange}${currencySuffix}.`,
+            `Your ${betTypeLabel} on ${combinedBet.city} won! You earned ${currencyLabel}${pointsChange}${currencySuffix}.${streakBonusMsg}`,
             'bet_won',
             combinedBet.id,
             'combined_bet'
@@ -910,7 +1084,7 @@ Deno.serve(async (req) => {
           await createNotification(
             combinedBet.user_id,
             '🎯 Combined Bet Partial Win!',
-            `Your ${betTypeLabel} on ${combinedBet.city} was close! You earned ${currencyLabel}${pointsChange}${currencySuffix} (${PARTIAL_WIN_CONFIG.payoutPercentage}% payout).`,
+            `Your ${betTypeLabel} on ${combinedBet.city} was close! You earned ${currencyLabel}${pointsChange}${currencySuffix}.${streakBonusMsg}`,
             'bet_partial',
             combinedBet.id,
             'combined_bet'
