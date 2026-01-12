@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { getUser, getRecentBets } from '@/lib/supabase-auth-storage';
 import { User, Bet } from '@/types/supabase-betting';
-import { Coins, TrendingUp, Activity, Trophy, ShoppingCart, Layers, History, MapPin, Shield, Zap } from 'lucide-react';
+import { Coins, TrendingUp, Activity, Trophy, ShoppingCart, Layers, History, MapPin, Shield, Zap, Scale } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAdminCheck } from '@/hooks/useAdminCheck';
 import BettingSlip from './BettingSlip';
@@ -241,7 +241,7 @@ const Dashboard = () => {
         </div>
 
         {/* Action Buttons */}
-        <div className={`grid grid-cols-2 gap-4 ${isAdminUser ? 'md:grid-cols-6' : 'md:grid-cols-5'}`}>
+        <div className={`grid grid-cols-2 gap-4 ${isAdminUser ? 'md:grid-cols-7' : 'md:grid-cols-6'}`}>
           <Button 
             variant="outline" 
             size="lg" 
@@ -277,6 +277,15 @@ const Dashboard = () => {
           >
             <MapPin className="mr-2 h-5 w-5" />
             🏙️ Cities
+          </Button>
+          <Button 
+            variant="outline" 
+            size="lg" 
+            className="h-16 text-lg"
+            onClick={() => navigate('/city-comparison')}
+          >
+            <Scale className="mr-2 h-5 w-5" />
+            ⚖️ Compare
           </Button>
           <Button 
             variant="outline" 

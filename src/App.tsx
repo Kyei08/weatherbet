@@ -10,6 +10,7 @@ import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import PurchaseHistory from "./pages/PurchaseHistory";
 import CityAnalytics from "./pages/CityAnalytics";
+import CityComparisonPage from "./pages/CityComparisonPage";
 import Admin from "./pages/Admin";
 import Transactions from "./pages/Transactions";
 import ModeComparison from "./pages/ModeComparison";
@@ -31,6 +32,7 @@ const App = () => (
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/purchase-history" element={<PurchaseHistory />} />
                 <Route path="/city-analytics" element={<CityAnalytics />} />
+                <Route path="/city-comparison" element={<CityComparisonPage />} />
                 <Route path="/admin" element={<Admin />} />
                 <Route path="/transactions" element={<Transactions />} />
                 <Route path="/mode-comparison" element={<ModeComparison />} />

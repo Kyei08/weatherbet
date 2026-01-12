@@ -79,6 +79,10 @@ const CityAnalytics = () => {
               <h1 className="text-3xl font-bold">🏙️ City Deep Dive</h1>
               <p className="text-muted-foreground">Detailed analytics for optimal betting strategy</p>
             </div>
+            <Button variant="outline" onClick={() => navigate('/city-comparison')}>
+              <BarChart3 className="h-4 w-4 mr-2" />
+              Compare Cities
+            </Button>
           </div>
 
           {/* City Selector */}
