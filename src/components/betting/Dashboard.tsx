@@ -20,6 +20,7 @@ import { Perks } from './Perks';
 import { Shop } from './Shop';
 import { BonusTracker } from './BonusTracker';
 import Analytics from './Analytics';
+import { VolatilityChart } from './VolatilityChart';
 import { TransactionHistory } from './TransactionHistory';
 import { CurrencyModeSwitcher } from './CurrencyModeSwitcher';
 import { formatCurrency } from '@/lib/currency';
@@ -192,6 +193,9 @@ const Dashboard = () => {
 
         {/* Unlockable Perks */}
         <Perks />
+
+        {/* Volatility & Accuracy Chart */}
+        <VolatilityChart />
 
         {/* Quick Actions */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
