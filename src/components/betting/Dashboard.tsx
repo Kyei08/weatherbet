@@ -21,6 +21,7 @@ import { Shop } from './Shop';
 import { BonusTracker } from './BonusTracker';
 import Analytics from './Analytics';
 import { VolatilityChart } from './VolatilityChart';
+import { StreakDisplay } from './StreakDisplay';
 import { TransactionHistory } from './TransactionHistory';
 import { CurrencyModeSwitcher } from './CurrencyModeSwitcher';
 import { formatCurrency } from '@/lib/currency';
@@ -178,6 +179,9 @@ const Dashboard = () => {
             </CardContent>
           </Card>
         </div>
+
+        {/* Streak Display */}
+        <StreakDisplay />
 
         {/* Daily Challenges */}
         <DailyChallenges />
