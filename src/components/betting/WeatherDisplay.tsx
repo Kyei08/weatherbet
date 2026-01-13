@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Cloud, Sun, CloudRain, Thermometer, Droplets, Wind, Gauge } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import WeatherForecast from './WeatherForecast';
-
+import WeatherVerification from './WeatherVerification';
 interface WeatherDisplayProps {
   city: string;
 }
@@ -116,6 +116,8 @@ const WeatherDisplay = ({ city }: WeatherDisplayProps) => {
       {weather.forecast && weather.forecast.length > 0 && (
         <WeatherForecast city={weather.city} forecast={weather.forecast} />
       )}
+
+      <WeatherVerification city={city} showDetails={true} />
     </div>
   );
 };

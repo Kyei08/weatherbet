@@ -14,3 +14,18 @@ verify_jwt = false
 
 [functions.verify-yoco-signature]
 verify_jwt = false
+
+[functions.verify-weather]
+verify_jwt = false
+
+[functions.get-weather]
+verify_jwt = false
+
+[functions.create-deposit-payment]
+verify_jwt = false
+
+[functions.create-withdrawal]
+verify_jwt = false
+
+[functions.create-yoco-deposit]
+verify_jwt = false

@@ -913,6 +913,57 @@ export type Database = {
         }
         Relationships: []
       }
+      weather_verification_log: {
+        Row: {
+          category: string
+          city: string
+          created_at: string
+          deviation_percentage: number | null
+          final_value: string | null
+          id: string
+          is_disputed: boolean
+          metadata: Json | null
+          primary_source: string
+          primary_value: string
+          resolution_method: string | null
+          secondary_source: string
+          secondary_value: string
+          verification_time: string
+        }
+        Insert: {
+          category: string
+          city: string
+          created_at?: string
+          deviation_percentage?: number | null
+          final_value?: string | null
+          id?: string
+          is_disputed?: boolean
+          metadata?: Json | null
+          primary_source?: string
+          primary_value: string
+          resolution_method?: string | null
+          secondary_source?: string
+          secondary_value: string
+          verification_time?: string
+        }
+        Update: {
+          category?: string
+          city?: string
+          created_at?: string
+          deviation_percentage?: number | null
+          final_value?: string | null
+          id?: string
+          is_disputed?: boolean
+          metadata?: Json | null
+          primary_source?: string
+          primary_value?: string
+          resolution_method?: string | null
+          secondary_source?: string
+          secondary_value?: string
+          verification_time?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       weather_accuracy_summary: {
@@ -924,6 +975,16 @@ export type Database = {
           min_accuracy: number | null
           month: string | null
           total_predictions: number | null
+        }
+        Relationships: []
+      }
+      weather_verification_summary: {
+        Row: {
+          avg_deviation: number | null
+          city: string | null
+          disputed_count: number | null
+          last_verification: string | null
+          total_verifications: number | null
         }
         Relationships: []
       }
