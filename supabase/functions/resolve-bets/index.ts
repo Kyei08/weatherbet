@@ -518,25 +518,145 @@ Deno.serve(async (req) => {
 
     let resolvedBets = 0;
     const weatherCache: Record<string, WeatherData> = {};
+    const verifiedWeatherCache: Record<string, any> = {};
 
-    // Helper to get weather with caching
-    async function getWeather(city: string): Promise<WeatherData | null> {
+    // Helper to get verified weather with caching
+    async function getVerifiedWeather(city: string): Promise<{ weather: WeatherData | null; verified: boolean; verificationData?: any }> {
       if (weatherCache[city]) {
-        return weatherCache[city];
+        return { weather: weatherCache[city], verified: !!verifiedWeatherCache[city], verificationData: verifiedWeatherCache[city] };
       }
       
-      const response = await fetch(
+      // Get primary weather from OpenWeatherMap
+      const primaryResponse = await fetch(
         `https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(city)}&appid=${openWeatherApiKey}&units=metric`
       );
       
-      if (!response.ok) {
-        console.error(`Failed to fetch weather for ${city}: ${response.status}`);
-        return null;
+      if (!primaryResponse.ok) {
+        console.error(`Failed to fetch weather for ${city}: ${primaryResponse.status}`);
+        return { weather: null, verified: false };
       }
       
-      const data = await response.json();
-      weatherCache[city] = data;
-      return data;
+      const primaryData = await primaryResponse.json();
+      
+      // Try to get secondary weather from WeatherAPI for verification
+      let verificationData = null;
+      const weatherApiKey = Deno.env.get('WEATHERAPI_KEY');
+      
+      if (weatherApiKey) {
+        try {
+          const secondaryResponse = await fetch(
+            `https://api.weatherapi.com/v1/current.json?key=${weatherApiKey}&q=${encodeURIComponent(city)}`
+          );
+          
+          if (secondaryResponse.ok) {
+            const secondaryData = await secondaryResponse.json();
+            
+            // Compare and verify
+            verificationData = verifyWeatherSources(city, primaryData, secondaryData);
+            verifiedWeatherCache[city] = verificationData;
+            
+            // If there are disputes, use resolved values
+            if (verificationData.hasDisputes) {
+              console.log(`Weather verification for ${city}: ${verificationData.disputedCategories.length} disputes detected, using resolved values`);
+              
+              // Log verification to database
+              for (const result of verificationData.results) {
+                if (result.is_disputed) {
+                  await supabase.from('weather_verification_log').insert({
+                    city,
+                    category: result.category,
+                    primary_value: result.primary_value,
+                    secondary_value: result.secondary_value,
+                    deviation_percentage: result.deviation_percentage,
+                    is_disputed: true,
+                    resolution_method: result.resolution_method,
+                    final_value: result.final_value,
+                    metadata: {
+                      primary_source: 'openweathermap',
+                      secondary_source: 'weatherapi',
+                      resolution_context: 'bet_resolution',
+                    },
+                  });
+                }
+              }
+            }
+          }
+        } catch (verifyError) {
+          console.error(`Weather verification failed for ${city}:`, verifyError);
+        }
+      }
+      
+      weatherCache[city] = primaryData;
+      return { weather: primaryData, verified: !!verificationData, verificationData };
+    }
+
+    // Verify weather sources and detect disputes
+    function verifyWeatherSources(city: string, primary: any, secondary: any): any {
+      const results: any[] = [];
+      const current = secondary.current;
+      
+      // Temperature verification
+      const primaryTemp = primary.main?.temp ?? 0;
+      const secondaryTemp = current?.temp_c ?? 0;
+      const tempDeviation = Math.abs(primaryTemp - secondaryTemp);
+      const tempDisputed = tempDeviation > 3;
+      results.push({
+        category: 'temperature',
+        primary_value: primaryTemp.toFixed(1),
+        secondary_value: secondaryTemp.toFixed(1),
+        deviation_percentage: tempDeviation,
+        is_disputed: tempDisputed,
+        resolution_method: tempDisputed ? 'average' : null,
+        final_value: tempDisputed ? ((primaryTemp + secondaryTemp) / 2).toFixed(1) : primaryTemp.toFixed(1),
+      });
+      
+      // Rain verification
+      const primaryRaining = primary.weather?.some((w: any) => 
+        w.main?.toLowerCase() === 'rain' || w.description?.toLowerCase().includes('rain')
+      ) || (primary.rain?.['1h'] || 0) > 0;
+      const secondaryRaining = (current?.precip_mm || 0) > 0 || 
+        current?.condition?.text?.toLowerCase().includes('rain');
+      const rainDisputed = primaryRaining !== secondaryRaining;
+      results.push({
+        category: 'rain',
+        primary_value: primaryRaining ? 'yes' : 'no',
+        secondary_value: secondaryRaining ? 'yes' : 'no',
+        deviation_percentage: rainDisputed ? 100 : 0,
+        is_disputed: rainDisputed,
+        resolution_method: rainDisputed ? 'conservative_or' : null,
+        final_value: (primaryRaining || secondaryRaining) ? 'yes' : 'no',
+      });
+      
+      // Wind verification (convert to km/h)
+      const primaryWind = (primary.wind?.speed ?? 0) * 3.6;
+      const secondaryWind = current?.wind_kph ?? 0;
+      const windDeviation = Math.abs(primaryWind - secondaryWind);
+      const windDisputed = windDeviation > 10;
+      results.push({
+        category: 'wind',
+        primary_value: primaryWind.toFixed(1),
+        secondary_value: secondaryWind.toFixed(1),
+        deviation_percentage: windDeviation,
+        is_disputed: windDisputed,
+        resolution_method: windDisputed ? 'average' : null,
+        final_value: windDisputed ? ((primaryWind + secondaryWind) / 2).toFixed(1) : primaryWind.toFixed(1),
+      });
+      
+      const disputedCategories = results.filter(r => r.is_disputed).map(r => r.category);
+      
+      return {
+        city,
+        results,
+        hasDisputes: disputedCategories.length > 0,
+        disputedCategories,
+        verifiedValues: Object.fromEntries(results.map(r => [r.category, r.final_value])),
+      };
+    }
+
+    // Legacy helper for backward compatibility
+    async function getWeather(city: string): Promise<WeatherData | null> {
+      const { weather } = await getVerifiedWeather(city);
+      return weather;
     }
 
     // Process single bets
