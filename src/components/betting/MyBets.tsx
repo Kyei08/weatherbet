@@ -12,7 +12,6 @@ import { useToast } from '@/hooks/use-toast';
 import { useChallengeTracker } from '@/hooks/useChallengeTracker';
 import { useAchievementTracker } from '@/hooks/useAchievementTracker';
 import { useLevelSystem } from '@/hooks/useLevelSystem';
-import { calculateDynamicCashOut, calculateDynamicParlayCashOut } from '@/lib/dynamic-cashout';
 import CashOutHistoryChart from './CashOutHistoryChart';
 import OddsHistoryChart from './OddsHistoryChart';
 import { formatRands } from '@/lib/currency';
@@ -23,6 +22,9 @@ import { TimeSlotCountdown, MultiSlotCountdown } from './TimeSlotCountdown';
 import { BetTimeline } from './BetTimeline';
 import { useNotificationSound } from '@/hooks/useNotificationSound';
 import { useHapticFeedback } from '@/hooks/useHapticFeedback';
+import { useRealtimeCashout } from '@/hooks/useRealtimeCashout';
+import { LiveCashoutValue } from './LiveCashoutValue';
+
 // Helper to parse prediction type that may include time slot
 function parsePredictionType(predictionType: string): { category: string; slotId?: string } {
   const knownCategories = ['temperature', 'rain', 'rainfall', 'wind', 'snow', 'cloud_coverage', 'pressure', 'dew_point', 'humidity'];
@@ -67,8 +69,6 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
   const [parlays, setParlays] = useState<ParlayWithLegs[]>([]);
   const [combinedBets, setCombinedBets] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [cashOutCalculations, setCashOutCalculations] = useState<Record<string, any>>({});
-  const [calculatingCashOuts, setCalculatingCashOuts] = useState(false);
   const [settlingBets, setSettlingBets] = useState<Set<string>>(new Set());
   const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'settled'>('all');
   const [resolvingBets, setResolvingBets] = useState(false);
@@ -86,6 +86,16 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
   const { awardXPForAction } = useLevelSystem();
   const { playSound } = useNotificationSound();
   const { vibrateSuccess, vibrateError, vibrateInfo } = useHapticFeedback();
+  
+  // Real-time cashout calculations with 30-second polling
+  const { 
+    calculations: cashOutCalculations, 
+    isUpdating: calculatingCashOuts,
+    updateAllCashouts 
+  } = useRealtimeCashout(bets, parlays, combinedBets, {
+    pollingInterval: 30000,
+    enabled: !loading,
+  });
 
   // Calculate comprehensive statistics
   const calculateStats = () => {
@@ -147,9 +157,6 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
       setBets(betsData);
       setParlays(parlaysData);
       setCombinedBets(combinedBetsData);
-      
-      // Calculate dynamic cash-outs for pending bets
-      await calculateAllCashOuts(betsData, parlaysData, combinedBetsData);
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
@@ -297,71 +304,6 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
     };
   }, [mode, toast]);
 
-  const calculateAllCashOuts = async (betsData: Bet[], parlaysData: ParlayWithLegs[], combinedBetsData: any[]) => {
-    setCalculatingCashOuts(true);
-    const calculations: Record<string, any> = {};
-    
-    try {
-      // Calculate for pending single bets
-      const pendingBets = betsData.filter(bet => bet.result === 'pending');
-      for (const bet of pendingBets) {
-        try {
-          const calc = await calculateDynamicCashOut(
-            bet.stake,
-            Number(bet.odds),
-            bet.city,
-            bet.prediction_type,
-            bet.prediction_value,
-            bet.created_at,
-            bet.expires_at
-          );
-          calculations[bet.id] = calc;
-        } catch (error) {
-          console.error(`Error calculating cash-out for bet ${bet.id}:`, error);
-        }
-      }
-      
-      // Calculate for pending parlays
-      const pendingParlays = parlaysData.filter(p => p.result === 'pending');
-      for (const parlay of pendingParlays) {
-        try {
-          const calc = await calculateDynamicParlayCashOut(
-            parlay.total_stake,
-            Number(parlay.combined_odds),
-            parlay.parlay_legs,
-            parlay.created_at,
-            parlay.expires_at
-          );
-          calculations[parlay.id] = calc;
-        } catch (error) {
-          console.error(`Error calculating cash-out for parlay ${parlay.id}:`, error);
-        }
-      }
-      
-      // Calculate for pending combined bets
-      const pendingCombinedBets = combinedBetsData.filter(cb => cb.result === 'pending');
-      for (const combinedBet of pendingCombinedBets) {
-        try {
-          const calc = await calculateDynamicParlayCashOut(
-            combinedBet.total_stake,
-            Number(combinedBet.combined_odds),
-            combinedBet.combined_bet_categories,
-            combinedBet.created_at,
-            combinedBet.expires_at
-          );
-          calculations[combinedBet.id] = calc;
-        } catch (error) {
-          console.error(`Error calculating cash-out for combined bet ${combinedBet.id}:`, error);
-        }
-      }
-    } catch (error) {
-      console.error('Error calculating cash-outs:', error);
-    } finally {
-      setCashOutCalculations(calculations);
-      setCalculatingCashOuts(false);
-    }
-  };
-
   const refreshBets = async () => {
     try {
       const [betsData, parlaysData, combinedBetsData] = await Promise.all([
@@ -372,7 +314,8 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
       setBets(betsData);
       setParlays(parlaysData);
       setCombinedBets(combinedBetsData);
-      await calculateAllCashOuts(betsData, parlaysData, combinedBetsData);
+      // Trigger real-time cashout recalculation
+      await updateAllCashouts();
       onRefresh();
     } catch (error) {
       console.error('Error refreshing bets:', error);
