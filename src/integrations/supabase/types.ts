@@ -80,6 +80,48 @@ export type Database = {
         }
         Relationships: []
       }
+      auto_cashout_rules: {
+        Row: {
+          bet_id: string
+          bet_type: string
+          cashout_amount: number | null
+          created_at: string
+          id: string
+          is_active: boolean
+          rule_type: string
+          threshold_value: number
+          triggered_at: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          bet_id: string
+          bet_type: string
+          cashout_amount?: number | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          rule_type: string
+          threshold_value: number
+          triggered_at?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          bet_id?: string
+          bet_type?: string
+          cashout_amount?: number | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          rule_type?: string
+          threshold_value?: number
+          triggered_at?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       bets: {
         Row: {
           bet_duration_days: number | null

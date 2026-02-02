@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -22,8 +22,10 @@ import { TimeSlotCountdown, MultiSlotCountdown } from './TimeSlotCountdown';
 import { BetTimeline } from './BetTimeline';
 import { useNotificationSound } from '@/hooks/useNotificationSound';
 import { useHapticFeedback } from '@/hooks/useHapticFeedback';
-import { useRealtimeCashout } from '@/hooks/useRealtimeCashout';
+import { useRealtimeCashout, CashOutCalculation } from '@/hooks/useRealtimeCashout';
 import { LiveCashoutValue } from './LiveCashoutValue';
+import { useAutoCashout, RuleType, BetType } from '@/hooks/useAutoCashout';
+import { AutoCashoutBadge } from './AutoCashoutBadge';
 
 // Helper to parse prediction type that may include time slot
 function parsePredictionType(predictionType: string): { category: string; slotId?: string } {
@@ -87,6 +89,24 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
   const { playSound } = useNotificationSound();
   const { vibrateSuccess, vibrateError, vibrateInfo } = useHapticFeedback();
   
+  // Auto-cashout rules
+  const { 
+    rules: autoCashoutRules, 
+    createRule, 
+    deleteRule, 
+    updateRule,
+    checkRules, 
+    getRulesForBet 
+  } = useAutoCashout();
+  
+  // Callback to check auto-cashout rules when calculations update
+  const handleCalculationsUpdated = useCallback(
+    (calculations: Record<string, CashOutCalculation>) => {
+      checkRules(calculations);
+    },
+    [checkRules]
+  );
+  
   // Real-time cashout calculations with 30-second polling
   const { 
     calculations: cashOutCalculations, 
@@ -95,6 +115,7 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
   } = useRealtimeCashout(bets, parlays, combinedBets, {
     pollingInterval: 30000,
     enabled: !loading,
+    onCalculationsUpdated: handleCalculationsUpdated,
   });
 
   // Calculate comprehensive statistics
@@ -987,15 +1008,31 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
                               )}
                             </div>
                           </div>
-                          <Button 
-                            size="sm" 
-                            onClick={() => handleCashOut(bet)}
-                            className="bg-gradient-primary ml-4"
-                            disabled={calculatingCashOuts}
-                          >
-                            Cash Out
-                            <span className="ml-2 font-bold">{formatCurrency(cashOutCalculations[bet.id].amount)}</span>
-                          </Button>
+                          <div className="flex items-center gap-2 ml-4">
+                            <AutoCashoutBadge
+                              betId={bet.id}
+                              betType="bet"
+                              rules={getRulesForBet(bet.id)}
+                              currentPercentage={cashOutCalculations[bet.id].percentage}
+                              currentWeatherBonus={cashOutCalculations[bet.id].weatherBonus}
+                              currentTimeBonus={cashOutCalculations[bet.id].timeBonus}
+                              currentAmount={cashOutCalculations[bet.id].amount}
+                              onCreateRule={async (ruleType, threshold) => {
+                                await createRule('bet', bet.id, ruleType, threshold);
+                              }}
+                              onDeleteRule={deleteRule}
+                              onToggleRule={(ruleId, isActive) => updateRule(ruleId, { is_active: isActive })}
+                            />
+                            <Button 
+                              size="sm" 
+                              onClick={() => handleCashOut(bet)}
+                              className="bg-gradient-primary"
+                              disabled={calculatingCashOuts}
+                            >
+                              Cash Out
+                              <span className="ml-2 font-bold">{formatCurrency(cashOutCalculations[bet.id].amount)}</span>
+                            </Button>
+                          </div>
                         </div>
                         
                         {/* Cash-Out History Chart */}
@@ -1160,15 +1197,31 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
                               )}
                             </div>
                           </div>
-                          <Button 
-                            size="sm" 
-                            onClick={() => handleParlayCashOut(parlay)}
-                            className="bg-gradient-primary ml-4"
-                            disabled={calculatingCashOuts}
-                          >
-                            Cash Out
-                            <span className="ml-2 font-bold">{formatCurrency(cashOutCalculations[parlay.id].amount)}</span>
-                          </Button>
+                          <div className="flex items-center gap-2 ml-4">
+                            <AutoCashoutBadge
+                              betId={parlay.id}
+                              betType="parlay"
+                              rules={getRulesForBet(parlay.id)}
+                              currentPercentage={cashOutCalculations[parlay.id].percentage}
+                              currentWeatherBonus={cashOutCalculations[parlay.id].weatherBonus}
+                              currentTimeBonus={cashOutCalculations[parlay.id].timeBonus}
+                              currentAmount={cashOutCalculations[parlay.id].amount}
+                              onCreateRule={async (ruleType, threshold) => {
+                                await createRule('parlay', parlay.id, ruleType, threshold);
+                              }}
+                              onDeleteRule={deleteRule}
+                              onToggleRule={(ruleId, isActive) => updateRule(ruleId, { is_active: isActive })}
+                            />
+                            <Button 
+                              size="sm" 
+                              onClick={() => handleParlayCashOut(parlay)}
+                              className="bg-gradient-primary"
+                              disabled={calculatingCashOuts}
+                            >
+                              Cash Out
+                              <span className="ml-2 font-bold">{formatCurrency(cashOutCalculations[parlay.id].amount)}</span>
+                            </Button>
+                          </div>
                         </div>
                         
                         {/* Cash-Out History Chart */}
@@ -1399,15 +1452,31 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
                               {cashOutCalculations[combinedBet.id].reasoning}
                             </p>
                           </div>
-                          <Button 
-                            size="sm" 
-                            onClick={() => handleCombinedBetCashOut(combinedBet)}
-                            className="bg-gradient-primary ml-4"
-                            disabled={calculatingCashOuts}
-                          >
-                            Cash Out
-                            <span className="ml-2 font-bold">{formatCurrency(cashOutCalculations[combinedBet.id].amount)}</span>
-                          </Button>
+                          <div className="flex items-center gap-2 ml-4">
+                            <AutoCashoutBadge
+                              betId={combinedBet.id}
+                              betType="combined_bet"
+                              rules={getRulesForBet(combinedBet.id)}
+                              currentPercentage={cashOutCalculations[combinedBet.id].percentage}
+                              currentWeatherBonus={cashOutCalculations[combinedBet.id].weatherBonus}
+                              currentTimeBonus={cashOutCalculations[combinedBet.id].timeBonus}
+                              currentAmount={cashOutCalculations[combinedBet.id].amount}
+                              onCreateRule={async (ruleType, threshold) => {
+                                await createRule('combined_bet', combinedBet.id, ruleType, threshold);
+                              }}
+                              onDeleteRule={deleteRule}
+                              onToggleRule={(ruleId, isActive) => updateRule(ruleId, { is_active: isActive })}
+                            />
+                            <Button 
+                              size="sm" 
+                              onClick={() => handleCombinedBetCashOut(combinedBet)}
+                              className="bg-gradient-primary"
+                              disabled={calculatingCashOuts}
+                            >
+                              Cash Out
+                              <span className="ml-2 font-bold">{formatCurrency(cashOutCalculations[combinedBet.id].amount)}</span>
+                            </Button>
+                          </div>
                         </div>
                       </div>
                     )}

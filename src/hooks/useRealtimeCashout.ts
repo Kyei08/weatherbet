@@ -4,7 +4,7 @@ import { calculateDynamicCashOut, calculateDynamicParlayCashOut } from '@/lib/dy
 import { Bet } from '@/types/supabase-betting';
 import { ParlayWithLegs } from '@/lib/supabase-parlays';
 
-interface CashOutCalculation {
+export interface CashOutCalculation {
   amount: number;
   percentage: number;
   timeBonus: number;
@@ -24,6 +24,7 @@ interface RealtimeCashoutState {
 interface UseRealtimeCashoutOptions {
   pollingInterval?: number; // in milliseconds, default 30 seconds
   enabled?: boolean;
+  onCalculationsUpdated?: (calculations: Record<string, CashOutCalculation>) => void;
 }
 
 export const useRealtimeCashout = (
@@ -32,7 +33,7 @@ export const useRealtimeCashout = (
   combinedBets: any[],
   options: UseRealtimeCashoutOptions = {}
 ) => {
-  const { pollingInterval = 30000, enabled = true } = options;
+  const { pollingInterval = 30000, enabled = true, onCalculationsUpdated } = options;
   
   const [state, setState] = useState<RealtimeCashoutState>({
     calculations: {},
@@ -180,6 +181,11 @@ export const useRealtimeCashout = (
       lastGlobalUpdate: Date.now(),
     });
     
+    // Notify callback for auto-cashout checking
+    if (onCalculationsUpdated) {
+      onCalculationsUpdated(newCalculations);
+    }
+    
     // Broadcast update via Supabase Realtime
     if (channelRef.current) {
       channelRef.current.send({
@@ -191,7 +197,7 @@ export const useRealtimeCashout = (
         },
       });
     }
-  }, [bets, parlays, combinedBets, enabled, calculateSingleBetCashout, calculateParlayCashout, calculateCombinedBetCashout]);
+  }, [bets, parlays, combinedBets, enabled, calculateSingleBetCashout, calculateParlayCashout, calculateCombinedBetCashout, onCalculationsUpdated]);
 
   // Update a single bet's cashout value
   const updateSingleCashout = useCallback(async (betId: string) => {
