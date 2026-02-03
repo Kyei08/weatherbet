@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
-import { TrendingUp, TrendingDown, Minus, RefreshCw } from 'lucide-react';
+import { TrendingUp, TrendingDown, Minus, RefreshCw, ChevronDown, ChevronUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useCurrencyMode } from '@/contexts/CurrencyModeContext';
 import { formatRands } from '@/lib/currency';
+import { PartialCashoutSlider } from './PartialCashoutSlider';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
 interface LiveCashoutValueProps {
   amount: number;
@@ -15,7 +17,9 @@ interface LiveCashoutValueProps {
   lastUpdated: number;
   isUpdating?: boolean;
   compact?: boolean;
+  currentStake: number;
   onCashout?: () => void;
+  onPartialCashout?: (percentage: number, amount: number) => Promise<void>;
 }
 
 export const LiveCashoutValue = ({
@@ -29,8 +33,11 @@ export const LiveCashoutValue = ({
   lastUpdated,
   isUpdating = false,
   compact = false,
+  currentStake,
   onCashout,
+  onPartialCashout,
 }: LiveCashoutValueProps) => {
+  const [showPartialCashout, setShowPartialCashout] = useState(false);
   const { mode } = useCurrencyMode();
   const [showChange, setShowChange] = useState(false);
   const [animating, setAnimating] = useState(false);
@@ -170,18 +177,57 @@ export const LiveCashoutValue = ({
         {reasoning}
       </p>
       
-      {/* Cash-out button */}
+      {/* Cash-out buttons */}
       {onCashout && (
-        <button
-          onClick={onCashout}
-          className={cn(
-            "w-full py-2 px-3 rounded-md text-sm font-medium transition-all",
-            "bg-primary text-primary-foreground hover:bg-primary/90",
-            animating && trend === 'up' && "ring-2 ring-green-500 ring-offset-2 ring-offset-background"
+        <div className="space-y-2">
+          <div className="flex gap-2">
+            <button
+              onClick={onCashout}
+              className={cn(
+                "flex-1 py-2 px-3 rounded-md text-sm font-medium transition-all",
+                "bg-primary text-primary-foreground hover:bg-primary/90",
+                animating && trend === 'up' && "ring-2 ring-green-500 ring-offset-2 ring-offset-background"
+              )}
+            >
+              Cash Out All
+            </button>
+            {onPartialCashout && (
+              <Collapsible open={showPartialCashout} onOpenChange={setShowPartialCashout}>
+                <CollapsibleTrigger asChild>
+                  <button
+                    className={cn(
+                      "py-2 px-3 rounded-md text-sm font-medium transition-all",
+                      "border border-primary text-primary hover:bg-primary/10",
+                      "flex items-center gap-1"
+                    )}
+                  >
+                    Partial
+                    {showPartialCashout ? (
+                      <ChevronUp className="h-4 w-4" />
+                    ) : (
+                      <ChevronDown className="h-4 w-4" />
+                    )}
+                  </button>
+                </CollapsibleTrigger>
+              </Collapsible>
+            )}
+          </div>
+          
+          {/* Partial cashout slider */}
+          {onPartialCashout && (
+            <Collapsible open={showPartialCashout} onOpenChange={setShowPartialCashout}>
+              <CollapsibleContent className="animate-in slide-in-from-top-2">
+                <PartialCashoutSlider
+                  totalCashoutAmount={amount}
+                  currentStake={currentStake}
+                  onPartialCashout={onPartialCashout}
+                  onFullCashout={onCashout}
+                  disabled={isUpdating}
+                />
+              </CollapsibleContent>
+            </Collapsible>
           )}
-        >
-          Cash Out Now
-        </button>
+        </div>
       )}
     </div>
   );

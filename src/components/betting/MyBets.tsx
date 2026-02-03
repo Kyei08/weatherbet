@@ -2,11 +2,12 @@ import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, RefreshCw, Shield, TrendingUp, Zap, Clock, CheckCircle2, Circle, XCircle, Timer } from 'lucide-react';
+import { ArrowLeft, RefreshCw, Shield, TrendingUp, Zap, Clock, CheckCircle2, Circle, XCircle, Timer, ChevronDown, ChevronUp } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { getBets, updateBetResult, getUser, updateUserPoints, cashOutBet } from '@/lib/supabase-auth-storage';
 import { getParlays, updateParlayResult, ParlayWithLegs, cashOutParlay } from '@/lib/supabase-parlays';
 import { getCombinedBets, updateCombinedBetResult, cashOutCombinedBet } from '@/lib/supabase-combined-bets';
+import { partialCashOutBet, partialCashOutParlay, partialCashOutCombinedBet } from '@/lib/partial-cashout';
 import { Bet } from '@/types/supabase-betting';
 import { useToast } from '@/hooks/use-toast';
 import { useChallengeTracker } from '@/hooks/useChallengeTracker';
@@ -26,6 +27,8 @@ import { useRealtimeCashout, CashOutCalculation } from '@/hooks/useRealtimeCasho
 import { LiveCashoutValue } from './LiveCashoutValue';
 import { useAutoCashout, RuleType, BetType } from '@/hooks/useAutoCashout';
 import { AutoCashoutBadge } from './AutoCashoutBadge';
+import { PartialCashoutSlider } from './PartialCashoutSlider';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
 // Helper to parse prediction type that may include time slot
 function parsePredictionType(predictionType: string): { category: string; slotId?: string } {
@@ -82,6 +85,7 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
   } | null>(null);
   const [resolvingMessage, setResolvingMessage] = useState('');
   const [recentlyUpdated, setRecentlyUpdated] = useState<Set<string>>(new Set());
+  const [showPartialCashout, setShowPartialCashout] = useState<Record<string, boolean>>({});
   const { toast } = useToast();
   const { checkAndUpdateChallenges } = useChallengeTracker();
   const { checkAchievements } = useAchievementTracker();
@@ -463,7 +467,7 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
         return;
       }
 
-      await cashOutBet(bet.id, calculation.amount);
+      await cashOutBet(bet.id, calculation.amount, mode);
       
       // Play cash-out sound and haptic
       playSound('info', 'cashouts');
@@ -471,7 +475,7 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
       
       toast({
         title: "Bet Cashed Out! 💰",
-        description: `You received ${calculation.amount} points (${calculation.percentage}% of potential win)`,
+        description: `You received ${formatCurrency(calculation.amount)} (${calculation.percentage}% of potential win)`,
       });
       
       await refreshBets();
@@ -480,6 +484,30 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
       toast({
         title: "Error",
         description: "Failed to cash out bet. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handlePartialCashOut = async (bet: Bet, percentage: number, amount: number) => {
+    try {
+      await partialCashOutBet(bet.id, amount, percentage, mode);
+      
+      playSound('info', 'cashouts');
+      vibrateInfo('cashouts');
+      
+      toast({
+        title: "Partial Cash-Out! 💰",
+        description: `You received ${formatCurrency(amount)} (${percentage}%). Remaining stake: ${formatCurrency(Math.floor(bet.stake * ((100 - percentage) / 100)))}`,
+      });
+      
+      setShowPartialCashout(prev => ({ ...prev, [bet.id]: false }));
+      await refreshBets();
+    } catch (error) {
+      console.error('Error with partial cash out:', error);
+      toast({
+        title: "Error",
+        description: "Failed to complete partial cash out.",
         variant: "destructive",
       });
     }
@@ -497,15 +525,14 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
         return;
       }
 
-      await cashOutParlay(parlay.id, calculation.amount);
+      await cashOutParlay(parlay.id, calculation.amount, mode);
       
-      // Play cash-out sound and haptic
       playSound('info', 'cashouts');
       vibrateInfo('cashouts');
       
       toast({
         title: "Parlay Cashed Out! 💰",
-        description: `You received ${calculation.amount} points (${calculation.percentage}% of potential win)`,
+        description: `You received ${formatCurrency(calculation.amount)} (${calculation.percentage}% of potential win)`,
       });
       
       await refreshBets();
@@ -514,6 +541,30 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
       toast({
         title: "Error",
         description: "Failed to cash out parlay. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleParlayPartialCashOut = async (parlay: ParlayWithLegs, percentage: number, amount: number) => {
+    try {
+      await partialCashOutParlay(parlay.id, amount, percentage, mode);
+      
+      playSound('info', 'cashouts');
+      vibrateInfo('cashouts');
+      
+      toast({
+        title: "Partial Cash-Out! 💰",
+        description: `You received ${formatCurrency(amount)} (${percentage}%). Remaining stake: ${formatCurrency(Math.floor(parlay.total_stake * ((100 - percentage) / 100)))}`,
+      });
+      
+      setShowPartialCashout(prev => ({ ...prev, [parlay.id]: false }));
+      await refreshBets();
+    } catch (error) {
+      console.error('Error with partial cash out:', error);
+      toast({
+        title: "Error",
+        description: "Failed to complete partial cash out.",
         variant: "destructive",
       });
     }
@@ -601,15 +652,14 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
         return;
       }
 
-      await cashOutCombinedBet(combinedBet.id, calculation.amount);
+      await cashOutCombinedBet(combinedBet.id, calculation.amount, mode);
       
-      // Play cash-out sound and haptic
       playSound('info', 'cashouts');
       vibrateInfo('cashouts');
       
       toast({
         title: "Combined Bet Cashed Out! 💰",
-        description: `You received ${calculation.amount} points (${calculation.percentage}% of potential win)`,
+        description: `You received ${formatCurrency(calculation.amount)} (${calculation.percentage}% of potential win)`,
       });
       
       await refreshBets();
@@ -618,6 +668,30 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
       toast({
         title: "Error",
         description: "Failed to cash out combined bet. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleCombinedBetPartialCashOut = async (combinedBet: any, percentage: number, amount: number) => {
+    try {
+      await partialCashOutCombinedBet(combinedBet.id, amount, percentage, mode);
+      
+      playSound('info', 'cashouts');
+      vibrateInfo('cashouts');
+      
+      toast({
+        title: "Partial Cash-Out! 💰",
+        description: `You received ${formatCurrency(amount)} (${percentage}%). Remaining stake: ${formatCurrency(Math.floor(combinedBet.total_stake * ((100 - percentage) / 100)))}`,
+      });
+      
+      setShowPartialCashout(prev => ({ ...prev, [combinedBet.id]: false }));
+      await refreshBets();
+    } catch (error) {
+      console.error('Error with partial cash out:', error);
+      toast({
+        title: "Error",
+        description: "Failed to complete partial cash out.",
         variant: "destructive",
       });
     }
@@ -1023,17 +1097,47 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
                               onDeleteRule={deleteRule}
                               onToggleRule={(ruleId, isActive) => updateRule(ruleId, { is_active: isActive })}
                             />
-                            <Button 
-                              size="sm" 
-                              onClick={() => handleCashOut(bet)}
-                              className="bg-gradient-primary"
-                              disabled={calculatingCashOuts}
-                            >
-                              Cash Out
-                              <span className="ml-2 font-bold">{formatCurrency(cashOutCalculations[bet.id].amount)}</span>
-                            </Button>
+                            <div className="flex flex-col gap-2">
+                              <div className="flex gap-2">
+                                <Button 
+                                  size="sm" 
+                                  onClick={() => handleCashOut(bet)}
+                                  className="bg-gradient-primary"
+                                  disabled={calculatingCashOuts}
+                                >
+                                  Cash Out All
+                                  <span className="ml-2 font-bold">{formatCurrency(cashOutCalculations[bet.id].amount)}</span>
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => setShowPartialCashout(prev => ({ ...prev, [bet.id]: !prev[bet.id] }))}
+                                  disabled={calculatingCashOuts}
+                                >
+                                  Partial
+                                  {showPartialCashout[bet.id] ? (
+                                    <ChevronUp className="h-4 w-4 ml-1" />
+                                  ) : (
+                                    <ChevronDown className="h-4 w-4 ml-1" />
+                                  )}
+                                </Button>
+                              </div>
+                            </div>
                           </div>
                         </div>
+                        
+                        {/* Partial Cashout Slider */}
+                        {showPartialCashout[bet.id] && (
+                          <div className="mt-3 animate-in slide-in-from-top-2">
+                            <PartialCashoutSlider
+                              totalCashoutAmount={cashOutCalculations[bet.id].amount}
+                              currentStake={bet.stake}
+                              onPartialCashout={(percentage, amount) => handlePartialCashOut(bet, percentage, amount)}
+                              onFullCashout={() => handleCashOut(bet)}
+                              disabled={calculatingCashOuts}
+                            />
+                          </div>
+                        )}
                         
                         {/* Cash-Out History Chart */}
                         <CashOutHistoryChart
@@ -1212,17 +1316,47 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
                               onDeleteRule={deleteRule}
                               onToggleRule={(ruleId, isActive) => updateRule(ruleId, { is_active: isActive })}
                             />
-                            <Button 
-                              size="sm" 
-                              onClick={() => handleParlayCashOut(parlay)}
-                              className="bg-gradient-primary"
-                              disabled={calculatingCashOuts}
-                            >
-                              Cash Out
-                              <span className="ml-2 font-bold">{formatCurrency(cashOutCalculations[parlay.id].amount)}</span>
-                            </Button>
+                            <div className="flex flex-col gap-2">
+                              <div className="flex gap-2">
+                                <Button 
+                                  size="sm" 
+                                  onClick={() => handleParlayCashOut(parlay)}
+                                  className="bg-gradient-primary"
+                                  disabled={calculatingCashOuts}
+                                >
+                                  Cash Out All
+                                  <span className="ml-2 font-bold">{formatCurrency(cashOutCalculations[parlay.id].amount)}</span>
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => setShowPartialCashout(prev => ({ ...prev, [parlay.id]: !prev[parlay.id] }))}
+                                  disabled={calculatingCashOuts}
+                                >
+                                  Partial
+                                  {showPartialCashout[parlay.id] ? (
+                                    <ChevronUp className="h-4 w-4 ml-1" />
+                                  ) : (
+                                    <ChevronDown className="h-4 w-4 ml-1" />
+                                  )}
+                                </Button>
+                              </div>
+                            </div>
                           </div>
                         </div>
+                        
+                        {/* Partial Cashout Slider */}
+                        {showPartialCashout[parlay.id] && (
+                          <div className="mt-3 animate-in slide-in-from-top-2">
+                            <PartialCashoutSlider
+                              totalCashoutAmount={cashOutCalculations[parlay.id].amount}
+                              currentStake={parlay.total_stake}
+                              onPartialCashout={(percentage, amount) => handleParlayPartialCashOut(parlay, percentage, amount)}
+                              onFullCashout={() => handleParlayCashOut(parlay)}
+                              disabled={calculatingCashOuts}
+                            />
+                          </div>
+                        )}
                         
                         {/* Cash-Out History Chart */}
                         <CashOutHistoryChart
@@ -1467,17 +1601,47 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
                               onDeleteRule={deleteRule}
                               onToggleRule={(ruleId, isActive) => updateRule(ruleId, { is_active: isActive })}
                             />
-                            <Button 
-                              size="sm" 
-                              onClick={() => handleCombinedBetCashOut(combinedBet)}
-                              className="bg-gradient-primary"
-                              disabled={calculatingCashOuts}
-                            >
-                              Cash Out
-                              <span className="ml-2 font-bold">{formatCurrency(cashOutCalculations[combinedBet.id].amount)}</span>
-                            </Button>
+                            <div className="flex flex-col gap-2">
+                              <div className="flex gap-2">
+                                <Button 
+                                  size="sm" 
+                                  onClick={() => handleCombinedBetCashOut(combinedBet)}
+                                  className="bg-gradient-primary"
+                                  disabled={calculatingCashOuts}
+                                >
+                                  Cash Out All
+                                  <span className="ml-2 font-bold">{formatCurrency(cashOutCalculations[combinedBet.id].amount)}</span>
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => setShowPartialCashout(prev => ({ ...prev, [combinedBet.id]: !prev[combinedBet.id] }))}
+                                  disabled={calculatingCashOuts}
+                                >
+                                  Partial
+                                  {showPartialCashout[combinedBet.id] ? (
+                                    <ChevronUp className="h-4 w-4 ml-1" />
+                                  ) : (
+                                    <ChevronDown className="h-4 w-4 ml-1" />
+                                  )}
+                                </Button>
+                              </div>
+                            </div>
                           </div>
                         </div>
+                        
+                        {/* Partial Cashout Slider */}
+                        {showPartialCashout[combinedBet.id] && (
+                          <div className="mt-3 animate-in slide-in-from-top-2">
+                            <PartialCashoutSlider
+                              totalCashoutAmount={cashOutCalculations[combinedBet.id].amount}
+                              currentStake={combinedBet.total_stake}
+                              onPartialCashout={(percentage, amount) => handleCombinedBetPartialCashOut(combinedBet, percentage, amount)}
+                              onFullCashout={() => handleCombinedBetCashOut(combinedBet)}
+                              disabled={calculatingCashOuts}
+                            />
+                          </div>
+                        )}
                       </div>
                     )}
                     
