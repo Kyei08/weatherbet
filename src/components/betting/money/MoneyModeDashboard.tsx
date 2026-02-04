@@ -189,7 +189,7 @@ const MoneyModeDashboard = () => {
         </div>
 
         {/* Money Mode Specific Actions */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
           <Button 
             variant="outline" 
             size="lg" 
@@ -197,6 +197,15 @@ const MoneyModeDashboard = () => {
             onClick={() => setActiveView('mybets')}
           >
             📊 My Bets ({bets.length})
+          </Button>
+          <Button 
+            variant="outline" 
+            size="lg" 
+            className={`h-16 text-lg border-2 ${theme.borderColorHeavy} ${theme.hoverBg}`}
+            onClick={() => navigate('/cashout')}
+          >
+            <DollarSign className="mr-2 h-5 w-5" />
+            💰 Cash Out
           </Button>
           <Button 
             variant="outline" 

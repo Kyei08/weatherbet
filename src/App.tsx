@@ -14,6 +14,7 @@ import CityComparisonPage from "./pages/CityComparisonPage";
 import Admin from "./pages/Admin";
 import Transactions from "./pages/Transactions";
 import ModeComparison from "./pages/ModeComparison";
+import CashoutManagement from "./pages/CashoutManagement";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -36,6 +37,7 @@ const App = () => (
                 <Route path="/admin" element={<Admin />} />
                 <Route path="/transactions" element={<Transactions />} />
                 <Route path="/mode-comparison" element={<ModeComparison />} />
+                <Route path="/cashout" element={<CashoutManagement />} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
               </Routes>
