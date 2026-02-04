@@ -28,6 +28,7 @@ import { LiveCashoutValue } from './LiveCashoutValue';
 import { useAutoCashout, RuleType, BetType } from '@/hooks/useAutoCashout';
 import { AutoCashoutBadge } from './AutoCashoutBadge';
 import { PartialCashoutSlider } from './PartialCashoutSlider';
+import { PartialCashoutHistory } from './PartialCashoutHistory';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
 // Helper to parse prediction type that may include time slot
@@ -1128,13 +1129,18 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
                         
                         {/* Partial Cashout Slider */}
                         {showPartialCashout[bet.id] && (
-                          <div className="mt-3 animate-in slide-in-from-top-2">
+                          <div className="mt-3 animate-in slide-in-from-top-2 space-y-3">
                             <PartialCashoutSlider
                               totalCashoutAmount={cashOutCalculations[bet.id].amount}
                               currentStake={bet.stake}
                               onPartialCashout={(percentage, amount) => handlePartialCashOut(bet, percentage, amount)}
                               onFullCashout={() => handleCashOut(bet)}
                               disabled={calculatingCashOuts}
+                            />
+                            <PartialCashoutHistory
+                              betId={bet.id}
+                              betType="bet"
+                              currencyType={mode}
                             />
                           </div>
                         )}
@@ -1347,13 +1353,18 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
                         
                         {/* Partial Cashout Slider */}
                         {showPartialCashout[parlay.id] && (
-                          <div className="mt-3 animate-in slide-in-from-top-2">
+                          <div className="mt-3 animate-in slide-in-from-top-2 space-y-3">
                             <PartialCashoutSlider
                               totalCashoutAmount={cashOutCalculations[parlay.id].amount}
                               currentStake={parlay.total_stake}
                               onPartialCashout={(percentage, amount) => handleParlayPartialCashOut(parlay, percentage, amount)}
                               onFullCashout={() => handleParlayCashOut(parlay)}
                               disabled={calculatingCashOuts}
+                            />
+                            <PartialCashoutHistory
+                              betId={parlay.id}
+                              betType="parlay"
+                              currencyType={mode}
                             />
                           </div>
                         )}
@@ -1632,13 +1643,18 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
                         
                         {/* Partial Cashout Slider */}
                         {showPartialCashout[combinedBet.id] && (
-                          <div className="mt-3 animate-in slide-in-from-top-2">
+                          <div className="mt-3 animate-in slide-in-from-top-2 space-y-3">
                             <PartialCashoutSlider
                               totalCashoutAmount={cashOutCalculations[combinedBet.id].amount}
                               currentStake={combinedBet.total_stake}
                               onPartialCashout={(percentage, amount) => handleCombinedBetPartialCashOut(combinedBet, percentage, amount)}
                               onFullCashout={() => handleCombinedBetCashOut(combinedBet)}
                               disabled={calculatingCashOuts}
+                            />
+                            <PartialCashoutHistory
+                              betId={combinedBet.id}
+                              betType="combined_bet"
+                              currencyType={mode}
                             />
                           </div>
                         )}

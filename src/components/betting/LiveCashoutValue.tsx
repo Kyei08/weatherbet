@@ -4,6 +4,7 @@ import { cn } from '@/lib/utils';
 import { useCurrencyMode } from '@/contexts/CurrencyModeContext';
 import { formatRands } from '@/lib/currency';
 import { PartialCashoutSlider } from './PartialCashoutSlider';
+import { PartialCashoutHistory } from './PartialCashoutHistory';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
 interface LiveCashoutValueProps {
@@ -18,6 +19,8 @@ interface LiveCashoutValueProps {
   isUpdating?: boolean;
   compact?: boolean;
   currentStake: number;
+  betId: string;
+  betType: 'bet' | 'parlay' | 'combined_bet';
   onCashout?: () => void;
   onPartialCashout?: (percentage: number, amount: number) => Promise<void>;
 }
@@ -34,6 +37,8 @@ export const LiveCashoutValue = ({
   isUpdating = false,
   compact = false,
   currentStake,
+  betId,
+  betType,
   onCashout,
   onPartialCashout,
 }: LiveCashoutValueProps) => {
@@ -229,6 +234,13 @@ export const LiveCashoutValue = ({
           )}
         </div>
       )}
+      
+      {/* Partial Cashout History */}
+      <PartialCashoutHistory
+        betId={betId}
+        betType={betType}
+        currencyType={mode}
+      />
     </div>
   );
 };
