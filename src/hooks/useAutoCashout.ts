@@ -5,7 +5,7 @@ import { cashOutBet } from '@/lib/supabase-auth-storage';
 import { cashOutParlay } from '@/lib/supabase-parlays';
 import { cashOutCombinedBet } from '@/lib/supabase-combined-bets';
 import { useCurrencyMode } from '@/contexts/CurrencyModeContext';
-
+import { sendAutoCashoutNotification } from '@/lib/push-notification-client';
 export type RuleType = 
   | 'percentage_above' 
   | 'percentage_below' 
@@ -218,6 +218,9 @@ export const useAutoCashout = () => {
     cashoutAmount: number
   ): Promise<boolean> => {
     try {
+      // Get current user for push notification
+      const { data: { user } } = await supabase.auth.getUser();
+      
       // Execute cashout based on bet type
       switch (rule.bet_type) {
         case 'bet':
@@ -253,6 +256,18 @@ export const useAutoCashout = () => {
             : r
         )
       );
+
+      // Send push notification (async, don't wait)
+      if (user) {
+        sendAutoCashoutNotification({
+          userId: user.id,
+          betId: rule.bet_id,
+          betType: rule.bet_type,
+          ruleType: rule.rule_type,
+          thresholdValue: rule.threshold_value,
+          cashoutAmount,
+        }).catch(err => console.warn('Push notification failed:', err));
+      }
 
       toast({
         title: '🤖 Auto-cashout triggered!',
