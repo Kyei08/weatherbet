@@ -5,6 +5,17 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { 
   ArrowLeft, 
   RefreshCw, 
@@ -16,7 +27,8 @@ import {
   AlertTriangle,
   CheckCircle2,
   Coins,
-  Activity
+  Activity,
+  Banknote
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { getBets } from '@/lib/supabase-auth-storage';
@@ -193,6 +205,89 @@ const CashoutManagement = () => {
     }
   };
 
+  // Quick Cash Out All handler
+  const [isCashingOutAll, setIsCashingOutAll] = useState(false);
+  
+  const handleCashOutAll = async () => {
+    if (totalActiveBets === 0) return;
+    
+    setIsCashingOutAll(true);
+    let successCount = 0;
+    let failCount = 0;
+    let totalCashedOut = 0;
+    
+    try {
+      // Cash out single bets
+      for (const bet of bets) {
+        const calc = cashOutCalculations[bet.id];
+        if (calc) {
+          try {
+            await cashOutBet(bet.id, calc.amount, mode);
+            successCount++;
+            totalCashedOut += calc.amount;
+          } catch (error) {
+            console.error('Failed to cash out bet:', bet.id, error);
+            failCount++;
+          }
+        }
+      }
+      
+      // Cash out parlays
+      for (const parlay of parlays) {
+        const calc = cashOutCalculations[parlay.id];
+        if (calc) {
+          try {
+            await cashOutParlay(parlay.id, calc.amount, mode);
+            successCount++;
+            totalCashedOut += calc.amount;
+          } catch (error) {
+            console.error('Failed to cash out parlay:', parlay.id, error);
+            failCount++;
+          }
+        }
+      }
+      
+      // Cash out combined bets
+      for (const cb of combinedBets) {
+        const calc = cashOutCalculations[cb.id];
+        if (calc) {
+          try {
+            await cashOutCombinedBet(cb.id, calc.amount, mode);
+            successCount++;
+            totalCashedOut += calc.amount;
+          } catch (error) {
+            console.error('Failed to cash out combined bet:', cb.id, error);
+            failCount++;
+          }
+        }
+      }
+      
+      if (failCount === 0) {
+        toast({
+          title: "All Bets Cashed Out! 🎉",
+          description: `Successfully cashed out ${successCount} bets for ${formatCurrency(totalCashedOut, mode)}`,
+        });
+      } else {
+        toast({
+          title: "Partial Success",
+          description: `Cashed out ${successCount} bets for ${formatCurrency(totalCashedOut, mode)}. ${failCount} failed.`,
+          variant: failCount > successCount ? "destructive" : "default",
+        });
+      }
+      
+      fetchData();
+    } catch (error) {
+      console.error('Error in bulk cash out:', error);
+      toast({
+        title: "Error",
+        description: "Failed to complete bulk cash out",
+        variant: "destructive",
+      });
+    } finally {
+      setIsCashingOutAll(false);
+    }
+  };
+
   // Calculate totals
   const totalPotentialCashout = Object.values(cashOutCalculations).reduce((sum, calc) => sum + calc.amount, 0);
   const totalStake = [...bets, ...parlays, ...combinedBets].reduce((sum, bet) => {
@@ -228,10 +323,62 @@ const CashoutManagement = () => {
               </p>
             </div>
           </div>
-          <Button variant="outline" onClick={refreshData} disabled={calculatingCashOuts}>
-            <RefreshCw className={`h-4 w-4 mr-2 ${calculatingCashOuts ? 'animate-spin' : ''}`} />
-            Refresh
-          </Button>
+          <div className="flex items-center gap-2">
+            {totalActiveBets > 0 && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button 
+                    variant="default" 
+                    disabled={isCashingOutAll || calculatingCashOuts}
+                    className="bg-primary hover:bg-primary/90"
+                  >
+                    {isCashingOutAll ? (
+                      <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <Banknote className="h-4 w-4 mr-2" />
+                    )}
+                    Cash Out All
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle className="flex items-center gap-2">
+                      <AlertTriangle className="h-5 w-5 text-yellow-500" />
+                      Cash Out All Bets?
+                    </AlertDialogTitle>
+                    <AlertDialogDescription className="space-y-3">
+                      <p>
+                        You are about to cash out <strong>{totalActiveBets} active bets</strong> for a total of:
+                      </p>
+                      <p className="text-2xl font-bold text-primary">
+                        {formatCurrency(totalPotentialCashout, mode)}
+                      </p>
+                      <p className="text-sm">
+                        Original stake: {formatCurrency(totalStake, mode)} • 
+                        {totalPotentialCashout >= totalStake 
+                          ? ` Profit: ${formatCurrency(totalPotentialCashout - totalStake, mode)}`
+                          : ` Loss: ${formatCurrency(totalStake - totalPotentialCashout, mode)}`
+                        }
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        This action cannot be undone. All pending bets will be settled immediately.
+                      </p>
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleCashOutAll}>
+                      Confirm Cash Out All
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
+            <Button variant="outline" onClick={refreshData} disabled={calculatingCashOuts}>
+              <RefreshCw className={`h-4 w-4 mr-2 ${calculatingCashOuts ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
+          </div>
         </div>
 
         {/* Summary Cards */}
