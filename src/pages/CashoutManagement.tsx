@@ -288,6 +288,9 @@ const CashoutManagement = () => {
     }
   };
 
+  // Cash Out Profitable Only handler
+  const [isCashingOutProfitable, setIsCashingOutProfitable] = useState(false);
+
   // Calculate totals
   const totalPotentialCashout = Object.values(cashOutCalculations).reduce((sum, calc) => sum + calc.amount, 0);
   const totalStake = [...bets, ...parlays, ...combinedBets].reduce((sum, bet) => {
@@ -295,6 +298,115 @@ const CashoutManagement = () => {
   }, 0);
   const totalActiveBets = bets.length + parlays.length + combinedBets.length;
   const activeRulesCount = autoCashoutRules.filter(r => r.is_active).length;
+
+  // Calculate profitable bets
+  const profitableBets = bets.filter(bet => {
+    const calc = cashOutCalculations[bet.id];
+    return calc && calc.amount > bet.stake;
+  });
+  
+  const profitableParlays = parlays.filter(parlay => {
+    const calc = cashOutCalculations[parlay.id];
+    return calc && calc.amount > parlay.total_stake;
+  });
+  
+  const profitableCombinedBets = combinedBets.filter(cb => {
+    const calc = cashOutCalculations[cb.id];
+    return calc && calc.amount > cb.total_stake;
+  });
+  
+  const totalProfitableBets = profitableBets.length + profitableParlays.length + profitableCombinedBets.length;
+  
+  const profitableCashoutTotal = [
+    ...profitableBets.map(b => cashOutCalculations[b.id]?.amount || 0),
+    ...profitableParlays.map(p => cashOutCalculations[p.id]?.amount || 0),
+    ...profitableCombinedBets.map(cb => cashOutCalculations[cb.id]?.amount || 0),
+  ].reduce((sum, val) => sum + val, 0);
+  
+  const profitableStakeTotal = [
+    ...profitableBets.map(b => b.stake),
+    ...profitableParlays.map(p => p.total_stake),
+    ...profitableCombinedBets.map(cb => cb.total_stake),
+  ].reduce((sum, val) => sum + val, 0);
+  
+  const profitAmount = profitableCashoutTotal - profitableStakeTotal;
+
+  const handleCashOutProfitableOnly = async () => {
+    if (totalProfitableBets === 0) return;
+    
+    setIsCashingOutProfitable(true);
+    let successCount = 0;
+    let failCount = 0;
+    let totalCashedOut = 0;
+    
+    try {
+      for (const bet of profitableBets) {
+        const calc = cashOutCalculations[bet.id];
+        if (calc) {
+          try {
+            await cashOutBet(bet.id, calc.amount, mode);
+            successCount++;
+            totalCashedOut += calc.amount;
+          } catch (error) {
+            console.error('Failed to cash out bet:', bet.id, error);
+            failCount++;
+          }
+        }
+      }
+      
+      for (const parlay of profitableParlays) {
+        const calc = cashOutCalculations[parlay.id];
+        if (calc) {
+          try {
+            await cashOutParlay(parlay.id, calc.amount, mode);
+            successCount++;
+            totalCashedOut += calc.amount;
+          } catch (error) {
+            console.error('Failed to cash out parlay:', parlay.id, error);
+            failCount++;
+          }
+        }
+      }
+      
+      for (const cb of profitableCombinedBets) {
+        const calc = cashOutCalculations[cb.id];
+        if (calc) {
+          try {
+            await cashOutCombinedBet(cb.id, calc.amount, mode);
+            successCount++;
+            totalCashedOut += calc.amount;
+          } catch (error) {
+            console.error('Failed to cash out combined bet:', cb.id, error);
+            failCount++;
+          }
+        }
+      }
+      
+      if (failCount === 0) {
+        toast({
+          title: "Profitable Bets Cashed Out! 💰",
+          description: `Cashed out ${successCount} profitable bets for ${formatCurrency(totalCashedOut, mode)}`,
+        });
+      } else {
+        toast({
+          title: "Partial Success",
+          description: `Cashed out ${successCount} bets for ${formatCurrency(totalCashedOut, mode)}. ${failCount} failed.`,
+          variant: failCount > successCount ? "destructive" : "default",
+        });
+      }
+      
+      fetchData();
+    } catch (error) {
+      console.error('Error in profitable cash out:', error);
+      toast({
+        title: "Error",
+        description: "Failed to complete profitable cash out",
+        variant: "destructive",
+      });
+    } finally {
+      setIsCashingOutProfitable(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -323,14 +435,60 @@ const CashoutManagement = () => {
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            {totalProfitableBets > 0 && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button 
+                    variant="outline" 
+                    disabled={isCashingOutProfitable || calculatingCashOuts}
+                    className="border-green-500/50 text-green-600 hover:bg-green-500/10"
+                  >
+                    {isCashingOutProfitable ? (
+                      <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <TrendingUp className="h-4 w-4 mr-2" />
+                    )}
+                    Profitable Only ({totalProfitableBets})
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle className="flex items-center gap-2">
+                      <TrendingUp className="h-5 w-5 text-green-500" />
+                      Cash Out Profitable Bets?
+                    </AlertDialogTitle>
+                    <AlertDialogDescription className="space-y-3">
+                      <p>
+                        You are about to cash out <strong>{totalProfitableBets} profitable bets</strong> for:
+                      </p>
+                      <p className="text-2xl font-bold text-green-600">
+                        {formatCurrency(profitableCashoutTotal, mode)}
+                      </p>
+                      <p className="text-sm text-green-600">
+                        Original stake: {formatCurrency(profitableStakeTotal, mode)} • 
+                        Profit: +{formatCurrency(profitAmount, mode)}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        Only bets currently showing a profit will be cashed out. {totalActiveBets - totalProfitableBets} other bets will remain active.
+                      </p>
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleCashOutProfitableOnly} className="bg-green-600 hover:bg-green-700">
+                      Cash Out Profitable
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
             {totalActiveBets > 0 && (
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button 
                     variant="default" 
                     disabled={isCashingOutAll || calculatingCashOuts}
-                    className="bg-primary hover:bg-primary/90"
                   >
                     {isCashingOutAll ? (
                       <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
