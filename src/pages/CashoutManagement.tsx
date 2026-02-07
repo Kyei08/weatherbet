@@ -48,6 +48,7 @@ import { PartialCashoutSlider } from '@/components/betting/PartialCashoutSlider'
 import { PartialCashoutHistory } from '@/components/betting/PartialCashoutHistory';
 import { AutoCashoutBadge } from '@/components/betting/AutoCashoutBadge';
 import { LiveCashoutValue } from '@/components/betting/LiveCashoutValue';
+import CashOutHistoryChart from '@/components/betting/CashOutHistoryChart';
 import { format } from 'date-fns';
 
 const CashoutManagement = () => {
@@ -919,9 +920,30 @@ const BetCard = ({
           </Button>
         </div>
 
-        {/* Expanded section with partial cashout and history */}
+        {/* Expanded section with partial cashout, history chart, and partial history */}
         {isExpanded && calculation && (
           <div className="space-y-4 pt-4 border-t animate-in slide-in-from-top-2">
+            {/* Cash-Out Value History Chart */}
+            <div>
+              <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
+                <TrendingUp className="h-4 w-4" />
+                Cash-Out Value History
+              </h4>
+              <CashOutHistoryChart
+                stake={stake}
+                odds={Number(odds)}
+                city={type === 'bet' ? bet.city : type === 'combined_bet' ? bet.city : undefined}
+                predictionType={type === 'bet' ? bet.prediction_type : undefined}
+                predictionValue={type === 'bet' ? bet.prediction_value : undefined}
+                createdAt={bet.created_at}
+                expiresAt={bet.expires_at}
+                isParlay={type === 'parlay'}
+                parlayLegs={type === 'parlay' ? bet.parlay_legs : []}
+                combinedOdds={type !== 'bet' ? Number(odds) : undefined}
+                totalStake={type !== 'bet' ? stake : undefined}
+              />
+            </div>
+
             <div>
               <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
                 <Coins className="h-4 w-4" />
