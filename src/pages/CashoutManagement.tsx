@@ -49,6 +49,7 @@ import { PartialCashoutHistory } from '@/components/betting/PartialCashoutHistor
 import { AutoCashoutBadge } from '@/components/betting/AutoCashoutBadge';
 import { LiveCashoutValue } from '@/components/betting/LiveCashoutValue';
 import CashOutHistoryChart from '@/components/betting/CashOutHistoryChart';
+import PortfolioOverviewChart from '@/components/betting/PortfolioOverviewChart';
 import { format } from 'date-fns';
 
 const CashoutManagement = () => {
@@ -589,6 +590,14 @@ const CashoutManagement = () => {
             </CardContent>
           </Card>
         </div>
+
+        {/* Portfolio Overview Chart */}
+        <PortfolioOverviewChart
+          bets={bets}
+          parlays={parlays}
+          combinedBets={combinedBets}
+          currencyMode={mode}
+        />
 
         {/* Main Content */}
         <Tabs defaultValue="all" className="space-y-4">
