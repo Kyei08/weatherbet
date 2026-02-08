@@ -40,11 +40,8 @@ export const calculateDynamicCashOut = async (
 ): Promise<CashOutCalculation> => {
   const potentialWin = Math.floor(stake * odds);
   
-  // Base cash-out rate (minimum guarantee)
-  const BASE_RATE = 0.55; // 55% minimum
-  
-  // Calculate time-based bonus (0-25% bonus)
-  const timeBonus = calculateTimeBonus(createdAt, expiresAt);
+  // Calculate time-based factor (0-1, how far through the bet period)
+  const timeFactor = calculateTimeFactor(createdAt, expiresAt);
   
   // Calculate weather-based bonus (0-20% bonus)
   const weatherBonus = await calculateWeatherBonus(
@@ -53,50 +50,52 @@ export const calculateDynamicCashOut = async (
     predictionValue
   );
   
-  // Total cash-out percentage (max 95%)
-  const totalPercentage = Math.min(BASE_RATE + timeBonus + weatherBonus, 0.95);
+  // Cash-out scaling: starts below stake and scales up with time + weather
+  // Early cashout should NEVER exceed stake (no free money)
+  // Formula: cashout = stake * (BASE_RATE + timeFactor * TIME_SCALE + weatherBonus * WEATHER_SCALE)
+  // Where the maximum possible value approaches but never exceeds potentialWin * 0.85
+  const BASE_RATE = 0.40; // Start at 40% of stake (guaranteed loss if you cash out immediately)
+  const TIME_SCALE = 0.35; // Time can add up to 35%
+  const WEATHER_SCALE = 0.20; // Weather match can add up to 20%
   
-  // Calculate final amount
+  const rawPercentage = BASE_RATE + (timeFactor * TIME_SCALE) + (weatherBonus * WEATHER_SCALE);
+  
+  // Cap at 85% of potential win to maintain house edge
+  const totalPercentage = Math.min(rawPercentage, 0.85);
+  
+  // Calculate final amount - use potentialWin as the ceiling
   const cashOutAmount = Math.floor(potentialWin * totalPercentage);
   
   // Generate reasoning
-  const reasoning = generateReasoning(timeBonus, weatherBonus, totalPercentage);
+  const reasoning = generateReasoning(timeFactor * TIME_SCALE, weatherBonus * WEATHER_SCALE, totalPercentage);
   
   return {
     amount: cashOutAmount,
     percentage: Math.round(totalPercentage * 100),
-    timeBonus: Math.round(timeBonus * 100),
-    weatherBonus: Math.round(weatherBonus * 100),
+    timeBonus: Math.round(timeFactor * TIME_SCALE * 100),
+    weatherBonus: Math.round(weatherBonus * WEATHER_SCALE * 100),
     reasoning,
   };
 };
 
 /**
- * Calculate time-based bonus (0-25%)
- * Bet gets more valuable as it approaches expiration
+ * Calculate time factor (0 to 1) — how far through the bet period we are
+ * Returns a value from 0 (just placed) to 1 (about to expire)
  */
-const calculateTimeBonus = (createdAt: string, expiresAt?: string | null): number => {
+const calculateTimeFactor = (createdAt: string, expiresAt?: string | null): number => {
   if (!expiresAt) {
-    // Default 1-hour bet assumption
     const betAge = Date.now() - new Date(createdAt).getTime();
     const hoursPassed = betAge / (60 * 60 * 1000);
-    
-    // Linear increase: 0% at creation, 25% at 1 hour
-    return Math.min(hoursPassed * 0.25, 0.25);
+    return Math.min(hoursPassed, 1.0);
   }
   
   const now = Date.now();
   const created = new Date(createdAt).getTime();
   const expires = new Date(expiresAt).getTime();
   
-  // Calculate how far through the bet period we are (0 to 1)
   const totalDuration = expires - created;
   const elapsed = now - created;
-  const progressRatio = Math.min(Math.max(elapsed / totalDuration, 0), 1);
-  
-  // Exponential curve: slow start, rapid increase near end
-  // 0% at start, 25% at 80% complete, 25% at 100% complete
-  return 0.25 * Math.pow(progressRatio, 0.7);
+  return Math.min(Math.max(elapsed / totalDuration, 0), 1);
 };
 
 /**
@@ -226,10 +225,9 @@ export const calculateDynamicParlayCashOut = async (
   expiresAt?: string | null
 ): Promise<CashOutCalculation> => {
   const potentialWin = Math.floor(totalStake * combinedOdds);
-  const BASE_RATE = 0.50; // Lower base for parlays (riskier)
   
-  // Calculate time bonus
-  const timeBonus = calculateTimeBonus(createdAt, expiresAt);
+  // Calculate time factor (0 to 1)
+  const timeFactor = calculateTimeFactor(createdAt, expiresAt);
   
   // Calculate weather bonus for each leg, use the minimum (weakest leg)
   const weatherBonuses = await Promise.all(
@@ -241,18 +239,25 @@ export const calculateDynamicParlayCashOut = async (
   // Use minimum weather bonus (weakest link in the chain)
   const weatherBonus = Math.min(...weatherBonuses);
   
-  // Total percentage (max 90% for parlays)
-  const totalPercentage = Math.min(BASE_RATE + timeBonus + weatherBonus, 0.90);
+  // Parlay cashout: lower base, same scaling logic
+  const BASE_RATE = 0.30; // 30% base for parlays (riskier)
+  const TIME_SCALE = 0.35;
+  const WEATHER_SCALE = 0.15;
+  
+  const rawPercentage = BASE_RATE + (timeFactor * TIME_SCALE) + (weatherBonus * WEATHER_SCALE);
+  const totalPercentage = Math.min(rawPercentage, 0.80); // Max 80% for parlays
   
   const cashOutAmount = Math.floor(potentialWin * totalPercentage);
   
-  const reasoning = generateParlayReasoning(timeBonus, weatherBonus, weatherBonuses, totalPercentage);
+  const timeValue = timeFactor * TIME_SCALE;
+  const weatherValue = weatherBonus * WEATHER_SCALE;
+  const reasoning = generateParlayReasoning(timeValue, weatherValue, weatherBonuses, totalPercentage);
   
   return {
     amount: cashOutAmount,
     percentage: Math.round(totalPercentage * 100),
-    timeBonus: Math.round(timeBonus * 100),
-    weatherBonus: Math.round(weatherBonus * 100),
+    timeBonus: Math.round(timeValue * 100),
+    weatherBonus: Math.round(weatherValue * 100),
     reasoning,
   };
 };
