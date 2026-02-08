@@ -3,7 +3,8 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { TrendingUp, TrendingDown, Minus, RefreshCw, Layers, BarChart3 } from 'lucide-react';
+import { TrendingUp, TrendingDown, Minus, RefreshCw, Layers, BarChart3, Clock } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { generateCashOutHistory, generateParlayCashOutHistory, CashOutHistoryPoint } from '@/lib/cashout-history';
 import { formatCurrency } from '@/lib/currency';
 import { Bet } from '@/types/supabase-betting';
@@ -24,6 +25,14 @@ interface BetMeta {
 }
 
 const NUM_SLOTS = 10;
+
+type TimeRange = '1h' | '6h' | '24h' | 'all';
+const TIME_RANGE_MS: Record<TimeRange, number | null> = {
+  '1h': 60 * 60 * 1000,
+  '6h': 6 * 60 * 60 * 1000,
+  '24h': 24 * 60 * 60 * 1000,
+  'all': null,
+};
 
 // Distinct colors for stacked areas (HSL values for good contrast)
 const STACK_COLORS = [
@@ -69,6 +78,7 @@ const PortfolioOverviewChart = ({
   const [betMetas, setBetMetas] = useState<BetMeta[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<'aggregate' | 'stacked'>('aggregate');
+  const [timeRange, setTimeRange] = useState<TimeRange>('all');
 
   const totalStake = useMemo(() => {
     return bets.reduce((s, b) => s + b.stake, 0)
@@ -111,13 +121,15 @@ const PortfolioOverviewChart = ({
         const now = Date.now();
         const allItems = [...bets, ...parlays, ...combinedBets];
         const earliestCreation = Math.min(...allItems.map(b => new Date(b.created_at).getTime()));
-        const timeRange = now - earliestCreation;
+        const rangeDuration = TIME_RANGE_MS[timeRange];
+        const rangeStart = rangeDuration ? Math.max(earliestCreation, now - rangeDuration) : earliestCreation;
+        const timeRangeSpan = now - rangeStart;
 
         const data: Record<string, any>[] = [];
 
         for (let i = 0; i < NUM_SLOTS; i++) {
           const progress = i / (NUM_SLOTS - 1);
-          const targetTime = earliestCreation + timeRange * progress;
+          const targetTime = rangeStart + timeRangeSpan * progress;
           const date = new Date(targetTime);
           const label = i === 0 ? 'Start' : i === NUM_SLOTS - 1 ? 'Now' : date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
 
@@ -142,7 +154,7 @@ const PortfolioOverviewChart = ({
     };
 
     fetchAllHistories();
-  }, [bets, parlays, combinedBets, totalBets, totalStake]);
+  }, [bets, parlays, combinedBets, totalBets, totalStake, timeRange]);
 
   if (totalBets === 0) return null;
 
@@ -186,6 +198,18 @@ const PortfolioOverviewChart = ({
             </Badge>
           </CardTitle>
           <div className="flex items-center gap-3">
+            <Select value={timeRange} onValueChange={(v) => setTimeRange(v as TimeRange)}>
+              <SelectTrigger className="h-7 w-[80px] text-xs">
+                <Clock className="h-3 w-3 mr-1" />
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="1h">1h</SelectItem>
+                <SelectItem value="6h">6h</SelectItem>
+                <SelectItem value="24h">24h</SelectItem>
+                <SelectItem value="all">All</SelectItem>
+              </SelectContent>
+            </Select>
             <div className="flex items-center border rounded-md overflow-hidden">
               <Button
                 variant={viewMode === 'aggregate' ? 'default' : 'ghost'}
