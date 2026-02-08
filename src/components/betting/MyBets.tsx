@@ -4,9 +4,9 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, RefreshCw, Shield, TrendingUp, Zap, Clock, CheckCircle2, Circle, XCircle, Timer, ChevronDown, ChevronUp } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { getBets, updateBetResult, getUser, updateUserPoints, cashOutBet } from '@/lib/supabase-auth-storage';
-import { getParlays, updateParlayResult, ParlayWithLegs, cashOutParlay } from '@/lib/supabase-parlays';
-import { getCombinedBets, updateCombinedBetResult, cashOutCombinedBet } from '@/lib/supabase-combined-bets';
+import { getBets, getUser, cashOutBet } from '@/lib/supabase-auth-storage';
+import { getParlays, ParlayWithLegs, cashOutParlay } from '@/lib/supabase-parlays';
+import { getCombinedBets, cashOutCombinedBet } from '@/lib/supabase-combined-bets';
 import { partialCashOutBet, partialCashOutParlay, partialCashOutCombinedBet } from '@/lib/partial-cashout';
 import { Bet } from '@/types/supabase-betting';
 import { useToast } from '@/hooks/use-toast';
@@ -380,81 +380,7 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
     }
   };
 
-  const handleManualSettle = async (bet: Bet, result: 'win' | 'loss') => {
-    if (settlingBets.has(bet.id)) return;
-    
-    setSettlingBets(prev => new Set(prev).add(bet.id));
-    try {
-      await updateBetResult(bet.id, result);
-      
-      const user = await getUser();
-      
-      if (result === 'win') {
-        const winnings = Math.floor(bet.stake * Number(bet.odds));
-        await updateUserPoints(user.points + winnings);
-        
-        // Track win for challenges
-        await checkAndUpdateChallenges('bet_won');
-
-        // Check for newly unlocked achievements
-        await checkAchievements();
-
-        // Award XP based on result
-        await awardXPForAction('BET_WON');
-        
-        // Play win sound and haptic
-        playSound('success', 'wins');
-        vibrateSuccess('wins');
-        
-        toast({
-          title: "Bet Won! 🎉",
-          description: `You won ${winnings} points!`,
-        });
-      } else {
-        // Handle loss with insurance
-        const betData = bet as any;
-        if (betData.has_insurance && betData.insurance_payout_percentage) {
-          const insurancePayout = Math.floor(bet.stake * betData.insurance_payout_percentage);
-          await updateUserPoints(user.points + insurancePayout);
-          
-          // Play info sound and haptic for insured loss
-          playSound('info', 'losses');
-          vibrateInfo('losses');
-          
-          toast({
-            title: "Bet Lost (Insured) 🛡️",
-            description: `Insurance returned ${insurancePayout} points!`,
-          });
-        } else {
-          // Play loss sound and haptic
-          playSound('error', 'losses');
-          vibrateError('losses');
-          
-          toast({
-            title: "Bet Lost 😞",
-            description: `Better luck next time!`,
-          });
-        }
-        
-        await awardXPForAction('BET_LOST');
-      }
-      
-      await refreshBets();
-    } catch (error) {
-      console.error('Error settling bet:', error);
-      toast({
-        title: "Error",
-        description: "Failed to settle bet. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setSettlingBets(prev => {
-        const next = new Set(prev);
-        next.delete(bet.id);
-        return next;
-      });
-    }
-  };
+  // Manual settlement removed — bets are resolved server-side only via resolve-bets edge function
 
   const handleCashOut = async (bet: Bet) => {
     try {
@@ -571,75 +497,7 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
     }
   };
 
-  const handleParlaySettle = async (parlay: ParlayWithLegs, result: 'win' | 'loss') => {
-    if (settlingBets.has(parlay.id)) return;
-    
-    setSettlingBets(prev => new Set(prev).add(parlay.id));
-    try {
-      await updateParlayResult(parlay.id, result);
-      
-      const user = await getUser();
-      
-      if (result === 'win') {
-        const winnings = Math.floor(parlay.total_stake * Number(parlay.combined_odds));
-        await updateUserPoints(user.points + winnings);
-        
-        await checkAndUpdateChallenges('bet_won');
-        await checkAchievements();
-        await awardXPForAction('BET_WON');
-        
-        // Play win sound and haptic
-        playSound('success', 'wins');
-        vibrateSuccess('wins');
-        
-        toast({
-          title: "Parlay Won! 🎉",
-          description: `You won ${winnings} points!`,
-        });
-      } else {
-        // Handle loss with insurance
-        if (parlay.has_insurance && parlay.insurance_payout_percentage) {
-          const insurancePayout = Math.floor(parlay.total_stake * parlay.insurance_payout_percentage);
-          await updateUserPoints(user.points + insurancePayout);
-          
-          // Play info sound and haptic for insured loss
-          playSound('info', 'losses');
-          vibrateInfo('losses');
-          
-          toast({
-            title: "Parlay Lost (Insured) 🛡️",
-            description: `Insurance returned ${insurancePayout} points!`,
-          });
-        } else {
-          // Play loss sound and haptic
-          playSound('error', 'losses');
-          vibrateError('losses');
-          
-          toast({
-            title: "Parlay Lost 😞",
-            description: `Better luck next time!`,
-          });
-        }
-        
-        await awardXPForAction('BET_LOST');
-      }
-      
-      await refreshBets();
-    } catch (error) {
-      console.error('Error settling parlay:', error);
-      toast({
-        title: "Error",
-        description: "Failed to settle parlay. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setSettlingBets(prev => {
-        const next = new Set(prev);
-        next.delete(parlay.id);
-        return next;
-      });
-    }
-  };
+  // Manual parlay settlement removed — parlays are resolved server-side only
 
   const handleCombinedBetCashOut = async (combinedBet: any) => {
     try {
@@ -698,75 +556,7 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
     }
   };
 
-  const handleCombinedBetSettle = async (combinedBet: any, result: 'win' | 'loss') => {
-    if (settlingBets.has(combinedBet.id)) return;
-    
-    setSettlingBets(prev => new Set(prev).add(combinedBet.id));
-    try {
-      await updateCombinedBetResult(combinedBet.id, result);
-      
-      const user = await getUser();
-      
-      if (result === 'win') {
-        const winnings = Math.floor(combinedBet.total_stake * Number(combinedBet.combined_odds));
-        await updateUserPoints(user.points + winnings);
-        
-        await checkAndUpdateChallenges('bet_won');
-        await checkAchievements();
-        await awardXPForAction('BET_WON');
-        
-        // Play win sound and haptic
-        playSound('success', 'wins');
-        vibrateSuccess('wins');
-        
-        toast({
-          title: "Combined Bet Won! 🎉",
-          description: `You won ${winnings} points!`,
-        });
-      } else {
-        // Handle loss with insurance
-        if (combinedBet.has_insurance && combinedBet.insurance_payout_percentage) {
-          const insurancePayout = Math.floor(combinedBet.total_stake * combinedBet.insurance_payout_percentage);
-          await updateUserPoints(user.points + insurancePayout);
-          
-          // Play info sound and haptic for insured loss
-          playSound('info', 'losses');
-          vibrateInfo('losses');
-          
-          toast({
-            title: "Combined Bet Lost (Insured) 🛡️",
-            description: `Insurance returned ${insurancePayout} points!`,
-          });
-        } else {
-          // Play loss sound and haptic
-          playSound('error', 'losses');
-          vibrateError('losses');
-          
-          toast({
-            title: "Combined Bet Lost 😞",
-            description: `Better luck next time!`,
-          });
-        }
-        
-        await awardXPForAction('BET_LOST');
-      }
-      
-      await refreshBets();
-    } catch (error) {
-      console.error('Error settling combined bet:', error);
-      toast({
-        title: "Error",
-        description: "Failed to settle combined bet. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setSettlingBets(prev => {
-        const next = new Set(prev);
-        next.delete(combinedBet.id);
-        return next;
-      });
-    }
-  };
+  // Manual combined bet settlement removed — resolved server-side only
 
   const pendingBets = bets.filter(bet => bet.result === 'pending');
   const settledBets = bets.filter(bet => bet.result !== 'pending');
@@ -1174,27 +964,11 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
                       </div>
                     )}
                     
-                    {/* Manual Settlement Buttons */}
-                    <div className="flex gap-2 pt-2 border-t mt-2">
-                      <p className="text-sm text-muted-foreground mr-auto">Manual Settlement:</p>
-                      <Button 
-                        size="sm" 
-                        variant="outline"
-                        onClick={() => handleManualSettle(bet, 'win')}
-                        disabled={settlingBets.has(bet.id)}
-                        className="text-green-600 border-green-200 hover:bg-green-50"
-                      >
-                        {settlingBets.has(bet.id) ? 'Processing...' : 'Mark as Win'}
-                      </Button>
-                      <Button 
-                        size="sm" 
-                        variant="outline"
-                        onClick={() => handleManualSettle(bet, 'loss')}
-                        disabled={settlingBets.has(bet.id)}
-                        className="text-red-600 border-red-200 hover:bg-red-50"
-                      >
-                        {settlingBets.has(bet.id) ? 'Processing...' : 'Mark as Loss'}
-                      </Button>
+                    {/* Bets are resolved automatically by the server */}
+                    <div className="pt-2 border-t mt-2">
+                      <p className="text-xs text-muted-foreground text-center">
+                        ⏳ This bet will be resolved automatically when weather data is verified
+                      </p>
                     </div>
                   </div>
                 )})}
@@ -1399,27 +1173,11 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
                       </div>
                     )}
                     
-                    {/* Manual Settlement Buttons */}
-                    <div className="flex gap-2 pt-2 border-t mt-2">
-                      <p className="text-sm text-muted-foreground mr-auto">Manual Settlement:</p>
-                      <Button 
-                        size="sm" 
-                        variant="outline"
-                        onClick={() => handleParlaySettle(parlay, 'win')}
-                        disabled={settlingBets.has(parlay.id)}
-                        className="text-green-600 border-green-200 hover:bg-green-50"
-                      >
-                        {settlingBets.has(parlay.id) ? 'Processing...' : 'Mark as Win'}
-                      </Button>
-                      <Button 
-                        size="sm" 
-                        variant="outline"
-                        onClick={() => handleParlaySettle(parlay, 'loss')}
-                        disabled={settlingBets.has(parlay.id)}
-                        className="text-red-600 border-red-200 hover:bg-red-50"
-                      >
-                        {settlingBets.has(parlay.id) ? 'Processing...' : 'Mark as Loss'}
-                      </Button>
+                    {/* Parlays are resolved automatically by the server */}
+                    <div className="pt-2 border-t mt-2">
+                      <p className="text-xs text-muted-foreground text-center">
+                        ⏳ This parlay will be resolved automatically when weather data is verified
+                      </p>
                     </div>
                   </div>
                   )
@@ -1661,27 +1419,11 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
                       </div>
                     )}
                     
-                    {/* Manual Settlement Buttons */}
-                    <div className="flex gap-2 pt-2 border-t mt-2">
-                      <p className="text-sm text-muted-foreground mr-auto">Manual Settlement:</p>
-                      <Button 
-                        size="sm" 
-                        variant="outline"
-                        onClick={() => handleCombinedBetSettle(combinedBet, 'win')}
-                        disabled={settlingBets.has(combinedBet.id)}
-                        className="text-green-600 border-green-200 hover:bg-green-50"
-                      >
-                        {settlingBets.has(combinedBet.id) ? 'Processing...' : 'Mark as Win'}
-                      </Button>
-                      <Button 
-                        size="sm" 
-                        variant="outline"
-                        onClick={() => handleCombinedBetSettle(combinedBet, 'loss')}
-                        disabled={settlingBets.has(combinedBet.id)}
-                        className="text-red-600 border-red-200 hover:bg-red-50"
-                      >
-                        {settlingBets.has(combinedBet.id) ? 'Processing...' : 'Mark as Loss'}
-                      </Button>
+                    {/* Combined bets are resolved automatically by the server */}
+                    <div className="pt-2 border-t mt-2">
+                      <p className="text-xs text-muted-foreground text-center">
+                        ⏳ This bet will be resolved automatically when weather data is verified
+                      </p>
                     </div>
                   </div>
                   )

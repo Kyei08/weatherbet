@@ -49,28 +49,7 @@ export const partialCashOutBet = async (
     if (betError) throw betError;
   }
 
-  // Add partial cashout amount to user balance with metadata
-  const { data: { user: currentUser } } = await supabase.auth.getUser();
-  const balanceBefore = await getCurrentBalance(user.id, currencyType);
-  
-  await supabase.from('financial_transactions').insert({
-    user_id: user.id,
-    amount_cents: cashoutAmount,
-    transaction_type: 'partial_cashout',
-    reference_id: betId,
-    reference_type: 'bet',
-    currency_type: currencyType,
-    balance_before_cents: balanceBefore,
-    balance_after_cents: balanceBefore + cashoutAmount,
-    metadata: {
-      percentage,
-      original_stake: bet.stake,
-      remaining_stake: newStake,
-      cashed_out_amount: cashoutAmount,
-    },
-  });
-
-  // Update user balance
+  // Update user balance (this also records the transaction via update_user_points_safe)
   await supabase.rpc('update_user_points_safe', {
     user_uuid: user.id,
     points_change: cashoutAmount,
@@ -81,18 +60,6 @@ export const partialCashOutBet = async (
   });
 };
 
-// Helper to get current balance
-const getCurrentBalance = async (userId: string, currencyType: 'virtual' | 'real'): Promise<number> => {
-  const column = currencyType === 'real' ? 'balance_cents' : 'points';
-  const { data } = await supabase
-    .from('users')
-    .select(column)
-    .eq('id', userId)
-    .single();
-  
-  if (!data) return 0;
-  return (data as Record<string, number>)[column] || 0;
-};
 
 // Partial cashout for parlays
 export const partialCashOutParlay = async (
@@ -140,26 +107,7 @@ export const partialCashOutParlay = async (
     if (parlayError) throw parlayError;
   }
 
-  // Add transaction with metadata
-  const balanceBefore = await getCurrentBalance(user.id, currencyType);
-  
-  await supabase.from('financial_transactions').insert({
-    user_id: user.id,
-    amount_cents: cashoutAmount,
-    transaction_type: 'partial_cashout',
-    reference_id: parlayId,
-    reference_type: 'parlay',
-    currency_type: currencyType,
-    balance_before_cents: balanceBefore,
-    balance_after_cents: balanceBefore + cashoutAmount,
-    metadata: {
-      percentage,
-      original_stake: parlay.total_stake,
-      remaining_stake: newStake,
-      cashed_out_amount: cashoutAmount,
-    },
-  });
-
+  // Update user balance (this also records the transaction via update_user_points_safe)
   await supabase.rpc('update_user_points_safe', {
     user_uuid: user.id,
     points_change: cashoutAmount,
@@ -216,26 +164,7 @@ export const partialCashOutCombinedBet = async (
     if (betError) throw betError;
   }
 
-  // Add transaction with metadata
-  const balanceBefore = await getCurrentBalance(user.id, currencyType);
-  
-  await supabase.from('financial_transactions').insert({
-    user_id: user.id,
-    amount_cents: cashoutAmount,
-    transaction_type: 'partial_cashout',
-    reference_id: combinedBetId,
-    reference_type: 'combined_bet',
-    currency_type: currencyType,
-    balance_before_cents: balanceBefore,
-    balance_after_cents: balanceBefore + cashoutAmount,
-    metadata: {
-      percentage,
-      original_stake: combinedBet.total_stake,
-      remaining_stake: newStake,
-      cashed_out_amount: cashoutAmount,
-    },
-  });
-
+  // Update user balance (this also records the transaction via update_user_points_safe)
   await supabase.rpc('update_user_points_safe', {
     user_uuid: user.id,
     points_change: cashoutAmount,
