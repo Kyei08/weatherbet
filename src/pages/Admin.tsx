@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { ArrowLeft, Shield, Users, Activity, Settings, AlertTriangle, CheckCircle, Package, Target, Award, Plus, Pencil, Trash2, DollarSign, TrendingUp, TrendingDown, ArrowUpRight, ArrowDownLeft, Wallet, Webhook, ShieldAlert } from 'lucide-react';
+import { ArrowLeft, Shield, Users, Activity, Settings, AlertTriangle, CheckCircle, Package, Target, Award, Plus, Pencil, Trash2, DollarSign, TrendingUp, TrendingDown, ArrowUpRight, ArrowDownLeft, Wallet, Webhook, ShieldAlert, Gavel } from 'lucide-react';
 import { useAdminCheck } from '@/hooks/useAdminCheck';
 import { getAllUsersWithRoles, getAuditLogs, grantRole, revokeRole, logAdminAction } from '@/lib/admin';
 import { getAllShopItems, getAllChallenges, getAllAchievements, deleteShopItem, deleteChallenge, deleteAchievement } from '@/lib/admin-content';
@@ -27,6 +27,7 @@ import { ChallengeForm } from '@/components/admin/ChallengeForm';
 import { AchievementForm } from '@/components/admin/AchievementForm';
 import { WebhookTester } from '@/components/admin/WebhookTester';
 import { DisputeResolution } from '@/components/admin/DisputeResolution';
+import { BetSettlement } from '@/components/admin/BetSettlement';
 import {
   Select,
   SelectContent,
@@ -437,6 +438,10 @@ const Admin = () => {
             <TabsTrigger value="disputes" className="gap-2">
               <ShieldAlert className="h-4 w-4" />
               Disputes
+            </TabsTrigger>
+            <TabsTrigger value="settlement" className="gap-2">
+              <Gavel className="h-4 w-4" />
+              Settlement
             </TabsTrigger>
             <TabsTrigger value="settings" className="gap-2">
               <Settings className="h-4 w-4" />
@@ -1066,6 +1071,11 @@ const Admin = () => {
           {/* Disputes Tab */}
           <TabsContent value="disputes">
             <DisputeResolution />
+          </TabsContent>
+
+          {/* Settlement Tab */}
+          <TabsContent value="settlement">
+            <BetSettlement />
           </TabsContent>
 
           {/* Settings Tab */}
