@@ -4,17 +4,53 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { PlayCircle, Loader2, CheckCircle, AlertTriangle, Clock, RefreshCw } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { PlayCircle, Loader2, CheckCircle, AlertTriangle, Clock, RefreshCw, Eye, MapPin, Target, TrendingUp } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { logAdminAction } from '@/lib/admin';
 import { useToast } from '@/hooks/use-toast';
-import { formatCurrency } from '@/lib/currency';
+import { formatDistanceToNow, isPast } from 'date-fns';
 
 interface ResolutionLog {
   timestamp: string;
   status: 'success' | 'error';
   message: string;
   resolved: number;
+}
+
+interface PendingBet {
+  id: string;
+  city: string;
+  prediction_type: string;
+  prediction_value: string;
+  odds: number;
+  stake: number;
+  currency_type: string;
+  target_date: string | null;
+  expires_at: string | null;
+  created_at: string;
+  has_insurance: boolean;
+}
+
+interface PendingParlay {
+  id: string;
+  combined_odds: number;
+  total_stake: number;
+  currency_type: string;
+  expires_at: string | null;
+  created_at: string;
+  has_insurance: boolean;
+}
+
+interface PendingCombined {
+  id: string;
+  city: string;
+  combined_odds: number;
+  total_stake: number;
+  currency_type: string;
+  target_date: string;
+  created_at: string;
+  has_insurance: boolean;
 }
 
 export const BetSettlement = () => {
@@ -28,9 +64,14 @@ export const BetSettlement = () => {
     combinedBets: 0,
   });
   const [loading, setLoading] = useState(true);
+  const [pendingBets, setPendingBets] = useState<PendingBet[]>([]);
+  const [pendingParlays, setPendingParlays] = useState<PendingParlay[]>([]);
+  const [pendingCombined, setPendingCombined] = useState<PendingCombined[]>([]);
+  const [detailsLoading, setDetailsLoading] = useState(false);
 
   useEffect(() => {
     fetchPendingCounts();
+    fetchPendingDetails();
   }, []);
 
   const fetchPendingCounts = async () => {
@@ -52,6 +93,30 @@ export const BetSettlement = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const fetchPendingDetails = async () => {
+    setDetailsLoading(true);
+    try {
+      const [betsRes, parlaysRes, combinedRes] = await Promise.all([
+        supabase.from('bets').select('id, city, prediction_type, prediction_value, odds, stake, currency_type, target_date, expires_at, created_at, has_insurance').eq('result', 'pending').order('target_date', { ascending: true }).limit(100),
+        supabase.from('parlays').select('id, combined_odds, total_stake, currency_type, expires_at, created_at, has_insurance').eq('result', 'pending').order('created_at', { ascending: true }).limit(100),
+        supabase.from('combined_bets').select('id, city, combined_odds, total_stake, currency_type, target_date, created_at, has_insurance').eq('result', 'pending').order('target_date', { ascending: true }).limit(100),
+      ]);
+      setPendingBets(betsRes.data ?? []);
+      setPendingParlays(parlaysRes.data ?? []);
+      setPendingCombined(combinedRes.data ?? []);
+    } catch (error) {
+      console.error('Error fetching pending details:', error);
+    } finally {
+      setDetailsLoading(false);
+    }
+  };
+
+  const getTimeRemaining = (date: string | null) => {
+    if (!date) return <Badge variant="secondary">No date</Badge>;
+    if (isPast(new Date(date))) return <Badge variant="destructive">Overdue</Badge>;
+    return <Badge variant="outline">{formatDistanceToNow(new Date(date), { addSuffix: false })} left</Badge>;
   };
 
   const handleResolve = async () => {
@@ -103,8 +168,8 @@ export const BetSettlement = () => {
           description: `${resolved} bets resolved in ${elapsed}s`,
         });
 
-        // Refresh counts
-        await fetchPendingCounts();
+        // Refresh counts and details
+        await Promise.all([fetchPendingCounts(), fetchPendingDetails()]);
       }
     } catch (err: any) {
       const log: ResolutionLog = {
@@ -288,6 +353,160 @@ export const BetSettlement = () => {
           </CardContent>
         </Card>
       )}
+
+      {/* Pending Bet Inspection */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Eye className="h-4 w-4" />
+                Pending Bet Inspection
+              </CardTitle>
+              <CardDescription>Detailed view of all pending bets awaiting resolution</CardDescription>
+            </div>
+            <Button variant="outline" size="sm" onClick={fetchPendingDetails} disabled={detailsLoading} className="gap-2">
+              <RefreshCw className={`h-3 w-3 ${detailsLoading ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <Tabs defaultValue="bets">
+            <TabsList className="mb-4">
+              <TabsTrigger value="bets" className="gap-1">
+                <Target className="h-3 w-3" />
+                Bets ({pendingBets.length})
+              </TabsTrigger>
+              <TabsTrigger value="parlays" className="gap-1">
+                <TrendingUp className="h-3 w-3" />
+                Parlays ({pendingParlays.length})
+              </TabsTrigger>
+              <TabsTrigger value="combined" className="gap-1">
+                <MapPin className="h-3 w-3" />
+                Combined ({pendingCombined.length})
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="bets">
+              {pendingBets.length === 0 ? (
+                <p className="text-sm text-muted-foreground py-4 text-center">No pending bets</p>
+              ) : (
+                <div className="rounded-md border overflow-auto max-h-[400px]">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>City</TableHead>
+                        <TableHead>Prediction</TableHead>
+                        <TableHead>Value</TableHead>
+                        <TableHead>Odds</TableHead>
+                        <TableHead>Stake</TableHead>
+                        <TableHead>Mode</TableHead>
+                        <TableHead>Insurance</TableHead>
+                        <TableHead>Time Remaining</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {pendingBets.map(bet => (
+                        <TableRow key={bet.id}>
+                          <TableCell className="font-medium">{bet.city}</TableCell>
+                          <TableCell>
+                            <Badge variant="outline">{bet.prediction_type}</Badge>
+                          </TableCell>
+                          <TableCell className="text-sm">{bet.prediction_value}</TableCell>
+                          <TableCell className="font-mono">{Number(bet.odds).toFixed(2)}x</TableCell>
+                          <TableCell>{bet.stake}</TableCell>
+                          <TableCell>
+                            <Badge variant={bet.currency_type === 'real' ? 'default' : 'secondary'}>
+                              {bet.currency_type}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>{bet.has_insurance ? '🛡️' : '—'}</TableCell>
+                          <TableCell>{getTimeRemaining(bet.target_date || bet.expires_at)}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </TabsContent>
+
+            <TabsContent value="parlays">
+              {pendingParlays.length === 0 ? (
+                <p className="text-sm text-muted-foreground py-4 text-center">No pending parlays</p>
+              ) : (
+                <div className="rounded-md border overflow-auto max-h-[400px]">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>ID</TableHead>
+                        <TableHead>Combined Odds</TableHead>
+                        <TableHead>Stake</TableHead>
+                        <TableHead>Mode</TableHead>
+                        <TableHead>Insurance</TableHead>
+                        <TableHead>Time Remaining</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {pendingParlays.map(parlay => (
+                        <TableRow key={parlay.id}>
+                          <TableCell className="font-mono text-xs">{parlay.id.slice(0, 8)}…</TableCell>
+                          <TableCell className="font-mono">{Number(parlay.combined_odds).toFixed(2)}x</TableCell>
+                          <TableCell>{parlay.total_stake}</TableCell>
+                          <TableCell>
+                            <Badge variant={parlay.currency_type === 'real' ? 'default' : 'secondary'}>
+                              {parlay.currency_type}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>{parlay.has_insurance ? '🛡️' : '—'}</TableCell>
+                          <TableCell>{getTimeRemaining(parlay.expires_at)}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </TabsContent>
+
+            <TabsContent value="combined">
+              {pendingCombined.length === 0 ? (
+                <p className="text-sm text-muted-foreground py-4 text-center">No pending combined bets</p>
+              ) : (
+                <div className="rounded-md border overflow-auto max-h-[400px]">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>City</TableHead>
+                        <TableHead>Combined Odds</TableHead>
+                        <TableHead>Stake</TableHead>
+                        <TableHead>Mode</TableHead>
+                        <TableHead>Insurance</TableHead>
+                        <TableHead>Time Remaining</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {pendingCombined.map(bet => (
+                        <TableRow key={bet.id}>
+                          <TableCell className="font-medium">{bet.city}</TableCell>
+                          <TableCell className="font-mono">{Number(bet.combined_odds).toFixed(2)}x</TableCell>
+                          <TableCell>{bet.total_stake}</TableCell>
+                          <TableCell>
+                            <Badge variant={bet.currency_type === 'real' ? 'default' : 'secondary'}>
+                              {bet.currency_type}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>{bet.has_insurance ? '🛡️' : '—'}</TableCell>
+                          <TableCell>{getTimeRemaining(bet.target_date)}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
+        </CardContent>
+      </Card>
     </div>
   );
 };
