@@ -1,15 +1,19 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { PlayCircle, Loader2, CheckCircle, AlertTriangle, Clock, RefreshCw, Eye, MapPin, Target, TrendingUp } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { PlayCircle, Loader2, CheckCircle, AlertTriangle, Clock, RefreshCw, Eye, MapPin, Target, TrendingUp, ArrowUpDown, Filter, X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { logAdminAction } from '@/lib/admin';
 import { useToast } from '@/hooks/use-toast';
 import { formatDistanceToNow, isPast } from 'date-fns';
+
+type SortField = 'odds' | 'stake' | 'time' | 'city';
+type SortDir = 'asc' | 'desc';
 
 interface ResolutionLog {
   timestamp: string;
@@ -68,6 +72,75 @@ export const BetSettlement = () => {
   const [pendingParlays, setPendingParlays] = useState<PendingParlay[]>([]);
   const [pendingCombined, setPendingCombined] = useState<PendingCombined[]>([]);
   const [detailsLoading, setDetailsLoading] = useState(false);
+  const [filterCity, setFilterCity] = useState<string>('all');
+  const [filterPrediction, setFilterPrediction] = useState<string>('all');
+  const [filterCurrency, setFilterCurrency] = useState<string>('all');
+  const [sortField, setSortField] = useState<SortField>('time');
+  const [sortDir, setSortDir] = useState<SortDir>('asc');
+
+  // Derive unique values for filter dropdowns
+  const uniqueCities = useMemo(() => [...new Set([...pendingBets.map(b => b.city), ...pendingCombined.map(b => b.city)])].sort(), [pendingBets, pendingCombined]);
+  const uniquePredictions = useMemo(() => [...new Set(pendingBets.map(b => b.prediction_type))].sort(), [pendingBets]);
+  const uniqueCurrencies = useMemo(() => [...new Set([...pendingBets.map(b => b.currency_type), ...pendingParlays.map(b => b.currency_type), ...pendingCombined.map(b => b.currency_type)])].sort(), [pendingBets, pendingParlays, pendingCombined]);
+
+  const hasActiveFilters = filterCity !== 'all' || filterPrediction !== 'all' || filterCurrency !== 'all';
+
+  const clearFilters = () => {
+    setFilterCity('all');
+    setFilterPrediction('all');
+    setFilterCurrency('all');
+  };
+
+  const sortItems = <T extends Record<string, any>>(items: T[], cityKey: string, oddsKey: string, stakeKey: string, timeKey: string): T[] => {
+    return [...items].sort((a, b) => {
+      let cmp = 0;
+      switch (sortField) {
+        case 'city': cmp = (a[cityKey] || '').localeCompare(b[cityKey] || ''); break;
+        case 'odds': cmp = Number(a[oddsKey]) - Number(b[oddsKey]); break;
+        case 'stake': cmp = Number(a[stakeKey]) - Number(b[stakeKey]); break;
+        case 'time': {
+          const aTime = a[timeKey] ? new Date(a[timeKey]).getTime() : Infinity;
+          const bTime = b[timeKey] ? new Date(b[timeKey]).getTime() : Infinity;
+          cmp = aTime - bTime;
+          break;
+        }
+      }
+      return sortDir === 'desc' ? -cmp : cmp;
+    });
+  };
+
+  const filteredBets = useMemo(() => {
+    let items = pendingBets;
+    if (filterCity !== 'all') items = items.filter(b => b.city === filterCity);
+    if (filterPrediction !== 'all') items = items.filter(b => b.prediction_type === filterPrediction);
+    if (filterCurrency !== 'all') items = items.filter(b => b.currency_type === filterCurrency);
+    return sortItems(items, 'city', 'odds', 'stake', 'target_date');
+  }, [pendingBets, filterCity, filterPrediction, filterCurrency, sortField, sortDir]);
+
+  const filteredParlays = useMemo(() => {
+    let items = pendingParlays;
+    if (filterCurrency !== 'all') items = items.filter(b => b.currency_type === filterCurrency);
+    return sortItems(items, 'id', 'combined_odds', 'total_stake', 'expires_at');
+  }, [pendingParlays, filterCurrency, sortField, sortDir]);
+
+  const filteredCombined = useMemo(() => {
+    let items = pendingCombined;
+    if (filterCity !== 'all') items = items.filter(b => b.city === filterCity);
+    if (filterCurrency !== 'all') items = items.filter(b => b.currency_type === filterCurrency);
+    return sortItems(items, 'city', 'combined_odds', 'total_stake', 'target_date');
+  }, [pendingCombined, filterCity, filterCurrency, sortField, sortDir]);
+
+  const toggleSort = (field: SortField) => {
+    if (sortField === field) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    else { setSortField(field); setSortDir('asc'); }
+  };
+
+  const SortButton = ({ field, label }: { field: SortField; label: string }) => (
+    <button onClick={() => toggleSort(field)} className="flex items-center gap-1 hover:text-foreground transition-colors">
+      {label}
+      <ArrowUpDown className={`h-3 w-3 ${sortField === field ? 'text-primary' : 'text-muted-foreground/50'}`} />
+    </button>
+  );
 
   useEffect(() => {
     fetchPendingCounts();
@@ -372,42 +445,82 @@ export const BetSettlement = () => {
           </div>
         </CardHeader>
         <CardContent>
+          {/* Filter Controls */}
+          <div className="flex flex-wrap items-center gap-3 mb-4 p-3 rounded-lg border bg-muted/30">
+            <Filter className="h-4 w-4 text-muted-foreground" />
+            <Select value={filterCity} onValueChange={setFilterCity}>
+              <SelectTrigger className="w-[150px] h-8 text-xs">
+                <SelectValue placeholder="All Cities" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Cities</SelectItem>
+                {uniqueCities.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Select value={filterPrediction} onValueChange={setFilterPrediction}>
+              <SelectTrigger className="w-[160px] h-8 text-xs">
+                <SelectValue placeholder="All Predictions" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Predictions</SelectItem>
+                {uniquePredictions.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Select value={filterCurrency} onValueChange={setFilterCurrency}>
+              <SelectTrigger className="w-[130px] h-8 text-xs">
+                <SelectValue placeholder="All Modes" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Modes</SelectItem>
+                {uniqueCurrencies.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            {hasActiveFilters && (
+              <Button variant="ghost" size="sm" onClick={clearFilters} className="h-8 gap-1 text-xs">
+                <X className="h-3 w-3" />
+                Clear
+              </Button>
+            )}
+          </div>
+
           <Tabs defaultValue="bets">
             <TabsList className="mb-4">
               <TabsTrigger value="bets" className="gap-1">
                 <Target className="h-3 w-3" />
-                Bets ({pendingBets.length})
+                Bets ({filteredBets.length})
               </TabsTrigger>
               <TabsTrigger value="parlays" className="gap-1">
                 <TrendingUp className="h-3 w-3" />
-                Parlays ({pendingParlays.length})
+                Parlays ({filteredParlays.length})
               </TabsTrigger>
               <TabsTrigger value="combined" className="gap-1">
                 <MapPin className="h-3 w-3" />
-                Combined ({pendingCombined.length})
+                Combined ({filteredCombined.length})
               </TabsTrigger>
             </TabsList>
 
             <TabsContent value="bets">
-              {pendingBets.length === 0 ? (
-                <p className="text-sm text-muted-foreground py-4 text-center">No pending bets</p>
+              {filteredBets.length === 0 ? (
+                <p className="text-sm text-muted-foreground py-4 text-center">
+                  {hasActiveFilters ? 'No bets match filters' : 'No pending bets'}
+                </p>
               ) : (
                 <div className="rounded-md border overflow-auto max-h-[400px]">
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>City</TableHead>
+                        <TableHead><SortButton field="city" label="City" /></TableHead>
                         <TableHead>Prediction</TableHead>
                         <TableHead>Value</TableHead>
-                        <TableHead>Odds</TableHead>
-                        <TableHead>Stake</TableHead>
+                        <TableHead><SortButton field="odds" label="Odds" /></TableHead>
+                        <TableHead><SortButton field="stake" label="Stake" /></TableHead>
                         <TableHead>Mode</TableHead>
                         <TableHead>Insurance</TableHead>
-                        <TableHead>Time Remaining</TableHead>
+                        <TableHead><SortButton field="time" label="Time Left" /></TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {pendingBets.map(bet => (
+                      {filteredBets.map(bet => (
                         <TableRow key={bet.id}>
                           <TableCell className="font-medium">{bet.city}</TableCell>
                           <TableCell>
@@ -432,23 +545,25 @@ export const BetSettlement = () => {
             </TabsContent>
 
             <TabsContent value="parlays">
-              {pendingParlays.length === 0 ? (
-                <p className="text-sm text-muted-foreground py-4 text-center">No pending parlays</p>
+              {filteredParlays.length === 0 ? (
+                <p className="text-sm text-muted-foreground py-4 text-center">
+                  {hasActiveFilters ? 'No parlays match filters' : 'No pending parlays'}
+                </p>
               ) : (
                 <div className="rounded-md border overflow-auto max-h-[400px]">
                   <Table>
                     <TableHeader>
                       <TableRow>
                         <TableHead>ID</TableHead>
-                        <TableHead>Combined Odds</TableHead>
-                        <TableHead>Stake</TableHead>
+                        <TableHead><SortButton field="odds" label="Combined Odds" /></TableHead>
+                        <TableHead><SortButton field="stake" label="Stake" /></TableHead>
                         <TableHead>Mode</TableHead>
                         <TableHead>Insurance</TableHead>
-                        <TableHead>Time Remaining</TableHead>
+                        <TableHead><SortButton field="time" label="Time Left" /></TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {pendingParlays.map(parlay => (
+                      {filteredParlays.map(parlay => (
                         <TableRow key={parlay.id}>
                           <TableCell className="font-mono text-xs">{parlay.id.slice(0, 8)}…</TableCell>
                           <TableCell className="font-mono">{Number(parlay.combined_odds).toFixed(2)}x</TableCell>
@@ -469,23 +584,25 @@ export const BetSettlement = () => {
             </TabsContent>
 
             <TabsContent value="combined">
-              {pendingCombined.length === 0 ? (
-                <p className="text-sm text-muted-foreground py-4 text-center">No pending combined bets</p>
+              {filteredCombined.length === 0 ? (
+                <p className="text-sm text-muted-foreground py-4 text-center">
+                  {hasActiveFilters ? 'No combined bets match filters' : 'No pending combined bets'}
+                </p>
               ) : (
                 <div className="rounded-md border overflow-auto max-h-[400px]">
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>City</TableHead>
-                        <TableHead>Combined Odds</TableHead>
-                        <TableHead>Stake</TableHead>
+                        <TableHead><SortButton field="city" label="City" /></TableHead>
+                        <TableHead><SortButton field="odds" label="Combined Odds" /></TableHead>
+                        <TableHead><SortButton field="stake" label="Stake" /></TableHead>
                         <TableHead>Mode</TableHead>
                         <TableHead>Insurance</TableHead>
-                        <TableHead>Time Remaining</TableHead>
+                        <TableHead><SortButton field="time" label="Time Left" /></TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {pendingCombined.map(bet => (
+                      {filteredCombined.map(bet => (
                         <TableRow key={bet.id}>
                           <TableCell className="font-medium">{bet.city}</TableCell>
                           <TableCell className="font-mono">{Number(bet.combined_odds).toFixed(2)}x</TableCell>
