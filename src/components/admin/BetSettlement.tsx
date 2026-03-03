@@ -6,7 +6,8 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { PlayCircle, Loader2, CheckCircle, AlertTriangle, Clock, RefreshCw, Eye, MapPin, Target, TrendingUp, ArrowUpDown, Filter, X } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { PlayCircle, Loader2, CheckCircle, AlertTriangle, Clock, RefreshCw, Eye, MapPin, Target, TrendingUp, ArrowUpDown, Filter, X, Search } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { logAdminAction } from '@/lib/admin';
 import { useToast } from '@/hooks/use-toast';
@@ -77,18 +78,26 @@ export const BetSettlement = () => {
   const [filterCurrency, setFilterCurrency] = useState<string>('all');
   const [sortField, setSortField] = useState<SortField>('time');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Derive unique values for filter dropdowns
   const uniqueCities = useMemo(() => [...new Set([...pendingBets.map(b => b.city), ...pendingCombined.map(b => b.city)])].sort(), [pendingBets, pendingCombined]);
   const uniquePredictions = useMemo(() => [...new Set(pendingBets.map(b => b.prediction_type))].sort(), [pendingBets]);
   const uniqueCurrencies = useMemo(() => [...new Set([...pendingBets.map(b => b.currency_type), ...pendingParlays.map(b => b.currency_type), ...pendingCombined.map(b => b.currency_type)])].sort(), [pendingBets, pendingParlays, pendingCombined]);
 
-  const hasActiveFilters = filterCity !== 'all' || filterPrediction !== 'all' || filterCurrency !== 'all';
+  const hasActiveFilters = filterCity !== 'all' || filterPrediction !== 'all' || filterCurrency !== 'all' || searchQuery.trim() !== '';
 
   const clearFilters = () => {
     setFilterCity('all');
     setFilterPrediction('all');
     setFilterCurrency('all');
+    setSearchQuery('');
+  };
+
+  const matchesSearch = (item: { id: string; prediction_value?: string }) => {
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.toLowerCase();
+    return item.id.toLowerCase().includes(q) || (item.prediction_value?.toLowerCase().includes(q) ?? false);
   };
 
   const sortItems = <T extends Record<string, any>>(items: T[], cityKey: string, oddsKey: string, stakeKey: string, timeKey: string): T[] => {
@@ -110,25 +119,25 @@ export const BetSettlement = () => {
   };
 
   const filteredBets = useMemo(() => {
-    let items = pendingBets;
+    let items = pendingBets.filter(matchesSearch);
     if (filterCity !== 'all') items = items.filter(b => b.city === filterCity);
     if (filterPrediction !== 'all') items = items.filter(b => b.prediction_type === filterPrediction);
     if (filterCurrency !== 'all') items = items.filter(b => b.currency_type === filterCurrency);
     return sortItems(items, 'city', 'odds', 'stake', 'target_date');
-  }, [pendingBets, filterCity, filterPrediction, filterCurrency, sortField, sortDir]);
+  }, [pendingBets, filterCity, filterPrediction, filterCurrency, sortField, sortDir, searchQuery]);
 
   const filteredParlays = useMemo(() => {
-    let items = pendingParlays;
+    let items = pendingParlays.filter(matchesSearch);
     if (filterCurrency !== 'all') items = items.filter(b => b.currency_type === filterCurrency);
     return sortItems(items, 'id', 'combined_odds', 'total_stake', 'expires_at');
-  }, [pendingParlays, filterCurrency, sortField, sortDir]);
+  }, [pendingParlays, filterCurrency, sortField, sortDir, searchQuery]);
 
   const filteredCombined = useMemo(() => {
-    let items = pendingCombined;
+    let items = pendingCombined.filter(matchesSearch);
     if (filterCity !== 'all') items = items.filter(b => b.city === filterCity);
     if (filterCurrency !== 'all') items = items.filter(b => b.currency_type === filterCurrency);
     return sortItems(items, 'city', 'combined_odds', 'total_stake', 'target_date');
-  }, [pendingCombined, filterCity, filterCurrency, sortField, sortDir]);
+  }, [pendingCombined, filterCity, filterCurrency, sortField, sortDir, searchQuery]);
 
   const toggleSort = (field: SortField) => {
     if (sortField === field) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
@@ -447,6 +456,15 @@ export const BetSettlement = () => {
         <CardContent>
           {/* Filter Controls */}
           <div className="flex flex-wrap items-center gap-3 mb-4 p-3 rounded-lg border bg-muted/30">
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              <Input
+                placeholder="Search ID or prediction…"
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                className="pl-8 h-8 w-[200px] text-xs"
+              />
+            </div>
             <Filter className="h-4 w-4 text-muted-foreground" />
             <Select value={filterCity} onValueChange={setFilterCity}>
               <SelectTrigger className="w-[150px] h-8 text-xs">
