@@ -1,4 +1,4 @@
-import { ReactNode, useMemo, useState } from 'react';
+import { ReactNode, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -7,7 +7,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Eye, RefreshCw, MapPin, Target, TrendingUp, ArrowUpDown } from 'lucide-react';
 import { formatDistanceToNow, isPast } from 'date-fns';
 import { FilterBar } from './FilterBar';
-import type { PendingBet, PendingParlay, PendingCombined, SortField, SortDir } from './types';
+import { useFilteredSort } from '@/hooks/useFilteredSort';
+import type { PendingBet, PendingParlay, PendingCombined, SortField } from './types';
 
 interface InspectionTableProps {
   pendingBets: PendingBet[];
@@ -31,70 +32,36 @@ const SortButton = ({ field, label, sortField, onToggle }: { field: SortField; l
 );
 
 export const InspectionTable = ({ pendingBets, pendingParlays, pendingCombined, detailsLoading, onRefresh }: InspectionTableProps) => {
-  const [filterCity, setFilterCity] = useState('all');
-  const [filterPrediction, setFilterPrediction] = useState('all');
-  const [filterCurrency, setFilterCurrency] = useState('all');
-  const [sortField, setSortField] = useState<SortField>('time');
-  const [sortDir, setSortDir] = useState<SortDir>('asc');
-  const [searchQuery, setSearchQuery] = useState('');
+  const {
+    filterCity, setFilterCity,
+    filterPrediction, setFilterPrediction,
+    filterCurrency, setFilterCurrency,
+    sortField,
+    searchQuery, setSearchQuery,
+    hasActiveFilters,
+    clearFilters,
+    toggleSort,
+    filterAndSort,
+  } = useFilteredSort();
 
   const uniqueCities = useMemo(() => [...new Set([...pendingBets.map(b => b.city), ...pendingCombined.map(b => b.city)])].sort(), [pendingBets, pendingCombined]);
   const uniquePredictions = useMemo(() => [...new Set(pendingBets.map(b => b.prediction_type))].sort(), [pendingBets]);
   const uniqueCurrencies = useMemo(() => [...new Set([...pendingBets.map(b => b.currency_type), ...pendingParlays.map(b => b.currency_type), ...pendingCombined.map(b => b.currency_type)])].sort(), [pendingBets, pendingParlays, pendingCombined]);
 
-  const hasActiveFilters = filterCity !== 'all' || filterPrediction !== 'all' || filterCurrency !== 'all' || searchQuery.trim() !== '';
+  const filteredBets = useMemo(() =>
+    filterAndSort(pendingBets, { cityKey: 'city', oddsKey: 'odds', stakeKey: 'stake', timeKey: 'target_date', applyCityFilter: true, applyPredictionFilter: true }),
+    [pendingBets, filterAndSort]
+  );
 
-  const clearFilters = () => { setFilterCity('all'); setFilterPrediction('all'); setFilterCurrency('all'); setSearchQuery(''); };
+  const filteredParlays = useMemo(() =>
+    filterAndSort(pendingParlays, { cityKey: 'id', oddsKey: 'combined_odds', stakeKey: 'total_stake', timeKey: 'expires_at' }),
+    [pendingParlays, filterAndSort]
+  );
 
-  const matchesSearch = (item: { id: string; prediction_value?: string }) => {
-    if (!searchQuery.trim()) return true;
-    const q = searchQuery.toLowerCase();
-    return item.id.toLowerCase().includes(q) || (item.prediction_value?.toLowerCase().includes(q) ?? false);
-  };
-
-  const sortItems = <T extends Record<string, any>>(items: T[], cityKey: string, oddsKey: string, stakeKey: string, timeKey: string): T[] => {
-    return [...items].sort((a, b) => {
-      let cmp = 0;
-      switch (sortField) {
-        case 'city': cmp = (a[cityKey] || '').localeCompare(b[cityKey] || ''); break;
-        case 'odds': cmp = Number(a[oddsKey]) - Number(b[oddsKey]); break;
-        case 'stake': cmp = Number(a[stakeKey]) - Number(b[stakeKey]); break;
-        case 'time': {
-          const aTime = a[timeKey] ? new Date(a[timeKey]).getTime() : Infinity;
-          const bTime = b[timeKey] ? new Date(b[timeKey]).getTime() : Infinity;
-          cmp = aTime - bTime;
-          break;
-        }
-      }
-      return sortDir === 'desc' ? -cmp : cmp;
-    });
-  };
-
-  const filteredBets = useMemo(() => {
-    let items = pendingBets.filter(matchesSearch);
-    if (filterCity !== 'all') items = items.filter(b => b.city === filterCity);
-    if (filterPrediction !== 'all') items = items.filter(b => b.prediction_type === filterPrediction);
-    if (filterCurrency !== 'all') items = items.filter(b => b.currency_type === filterCurrency);
-    return sortItems(items, 'city', 'odds', 'stake', 'target_date');
-  }, [pendingBets, filterCity, filterPrediction, filterCurrency, sortField, sortDir, searchQuery]);
-
-  const filteredParlays = useMemo(() => {
-    let items = pendingParlays.filter(matchesSearch);
-    if (filterCurrency !== 'all') items = items.filter(b => b.currency_type === filterCurrency);
-    return sortItems(items, 'id', 'combined_odds', 'total_stake', 'expires_at');
-  }, [pendingParlays, filterCurrency, sortField, sortDir, searchQuery]);
-
-  const filteredCombined = useMemo(() => {
-    let items = pendingCombined.filter(matchesSearch);
-    if (filterCity !== 'all') items = items.filter(b => b.city === filterCity);
-    if (filterCurrency !== 'all') items = items.filter(b => b.currency_type === filterCurrency);
-    return sortItems(items, 'city', 'combined_odds', 'total_stake', 'target_date');
-  }, [pendingCombined, filterCity, filterCurrency, sortField, sortDir, searchQuery]);
-
-  const toggleSort = (field: SortField) => {
-    if (sortField === field) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
-    else { setSortField(field); setSortDir('asc'); }
-  };
+  const filteredCombined = useMemo(() =>
+    filterAndSort(pendingCombined, { cityKey: 'city', oddsKey: 'combined_odds', stakeKey: 'total_stake', timeKey: 'target_date', applyCityFilter: true }),
+    [pendingCombined, filterAndSort]
+  );
 
   return (
     <Card>
