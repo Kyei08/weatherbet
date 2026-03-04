@@ -1,61 +1,29 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { logAdminAction } from '@/lib/admin';
 import { useToast } from '@/hooks/use-toast';
+import { usePendingBets } from '@/hooks/usePendingBets';
 import { ResolutionPanel } from './settlement/ResolutionPanel';
 import { InspectionTable } from './settlement/InspectionTable';
-import type { ResolutionLog, PendingBet, PendingParlay, PendingCombined } from './settlement/types';
+import type { ResolutionLog } from './settlement/types';
 
 export const BetSettlement = () => {
   const { toast } = useToast();
   const [resolving, setResolving] = useState(false);
   const [lastResult, setLastResult] = useState<any>(null);
   const [logs, setLogs] = useState<ResolutionLog[]>([]);
-  const [pendingCounts, setPendingCounts] = useState({ bets: 0, parlays: 0, combinedBets: 0 });
-  const [loading, setLoading] = useState(true);
-  const [pendingBets, setPendingBets] = useState<PendingBet[]>([]);
-  const [pendingParlays, setPendingParlays] = useState<PendingParlay[]>([]);
-  const [pendingCombined, setPendingCombined] = useState<PendingCombined[]>([]);
-  const [detailsLoading, setDetailsLoading] = useState(false);
 
-  useEffect(() => {
-    fetchPendingCounts();
-    fetchPendingDetails();
-  }, []);
-
-  const fetchPendingCounts = async () => {
-    setLoading(true);
-    try {
-      const [bets, parlays, combined] = await Promise.all([
-        supabase.from('bets').select('id', { count: 'exact', head: true }).eq('result', 'pending'),
-        supabase.from('parlays').select('id', { count: 'exact', head: true }).eq('result', 'pending'),
-        supabase.from('combined_bets').select('id', { count: 'exact', head: true }).eq('result', 'pending'),
-      ]);
-      setPendingCounts({ bets: bets.count ?? 0, parlays: parlays.count ?? 0, combinedBets: combined.count ?? 0 });
-    } catch (error) {
-      console.error('Error fetching pending counts:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchPendingDetails = async () => {
-    setDetailsLoading(true);
-    try {
-      const [betsRes, parlaysRes, combinedRes] = await Promise.all([
-        supabase.from('bets').select('id, city, prediction_type, prediction_value, odds, stake, currency_type, target_date, expires_at, created_at, has_insurance').eq('result', 'pending').order('target_date', { ascending: true }).limit(100),
-        supabase.from('parlays').select('id, combined_odds, total_stake, currency_type, expires_at, created_at, has_insurance').eq('result', 'pending').order('created_at', { ascending: true }).limit(100),
-        supabase.from('combined_bets').select('id, city, combined_odds, total_stake, currency_type, target_date, created_at, has_insurance').eq('result', 'pending').order('target_date', { ascending: true }).limit(100),
-      ]);
-      setPendingBets(betsRes.data ?? []);
-      setPendingParlays(parlaysRes.data ?? []);
-      setPendingCombined(combinedRes.data ?? []);
-    } catch (error) {
-      console.error('Error fetching pending details:', error);
-    } finally {
-      setDetailsLoading(false);
-    }
-  };
+  const {
+    pendingCounts,
+    loading,
+    pendingBets,
+    pendingParlays,
+    pendingCombined,
+    detailsLoading,
+    fetchPendingCounts,
+    fetchPendingDetails,
+    refreshAll,
+  } = usePendingBets();
 
   const handleResolve = async () => {
     setResolving(true);
@@ -79,7 +47,7 @@ export const BetSettlement = () => {
         setLogs(prev => [{ timestamp: new Date().toISOString(), status: 'success', message: `Resolved ${resolved} bets in ${elapsed}s`, resolved }, ...prev]);
         setLastResult({ ...data, elapsed });
         toast({ title: 'Resolution Complete', description: `${resolved} bets resolved in ${elapsed}s` });
-        await Promise.all([fetchPendingCounts(), fetchPendingDetails()]);
+        await refreshAll();
       }
     } catch (err: any) {
       setLogs(prev => [{ timestamp: new Date().toISOString(), status: 'error', message: err.message || 'Unexpected error', resolved: 0 }, ...prev]);
