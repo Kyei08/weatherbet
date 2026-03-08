@@ -116,8 +116,25 @@ const PlayerProfileModal = ({
     ? Math.round((stats.wins / stats.totalBets) * 100)
     : 0;
 
-  return (
   const y = useMotionValue(0);
+  const opacity = useTransform(y, [0, 200], [1, 0.3]);
+  const scale = useTransform(y, [0, 200], [1, 0.92]);
+
+  const handleDragEnd = useCallback(
+    (_: any, info: { offset: { y: number }; velocity: { y: number } }) => {
+      if (info.offset.y > 80 || info.velocity.y > 400) {
+        animate(y, 400, { duration: 0.2 }).then(() => {
+          onOpenChange(false);
+          y.set(0);
+        });
+      } else {
+        animate(y, 0, { type: 'spring', stiffness: 400, damping: 30 });
+      }
+    },
+    [onOpenChange, y]
+  );
+
+  return (
   const opacity = useTransform(y, [0, 200], [1, 0.3]);
   const scale = useTransform(y, [0, 200], [1, 0.92]);
 
