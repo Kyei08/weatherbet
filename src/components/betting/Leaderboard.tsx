@@ -90,7 +90,7 @@ function PlayerRowSkeleton() {
   );
 }
 
-function PlayerRow({ user, profile, isFollowing, followerCount, onClick }: { user: LeaderboardEntry; profile?: ProfileInfo; isFollowing?: boolean; followerCount?: number; onClick: () => void }) {
+function PlayerRow({ user, profile, isFollowing, followerCount, followingCount, onClick }: { user: LeaderboardEntry; profile?: ProfileInfo; isFollowing?: boolean; followerCount?: number; followingCount?: number; onClick: () => void }) {
   return (
     <div
       onClick={onClick}
@@ -117,9 +117,27 @@ function PlayerRow({ user, profile, isFollowing, followerCount, onClick }: { use
             <p className="font-semibold truncate text-sm">{user.username}</p>
             <div className="flex items-center gap-1">
               {followerCount !== undefined && (
-                <Badge variant="outline" className="gap-0.5 text-[10px] px-1.5 py-0 h-4 shrink-0">
-                  👥 {followerCount}
-                </Badge>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Badge variant="outline" className="gap-0.5 text-[10px] px-1.5 py-0 h-4 shrink-0 cursor-help">
+                        👥 {followerCount}
+                      </Badge>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="bg-popover border border-border">
+                      <div className="space-y-1 text-sm">
+                        <div className="flex justify-between gap-4">
+                          <span className="text-muted-foreground">Followers:</span>
+                          <span className="font-semibold">{followerCount}</span>
+                        </div>
+                        <div className="flex justify-between gap-4">
+                          <span className="text-muted-foreground">Following:</span>
+                          <span className="font-semibold">{followingCount ?? 0}</span>
+                        </div>
+                      </div>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
               )}
               {isFollowing && (
                 <Badge variant="secondary" className="gap-0.5 text-[10px] px-1.5 py-0 h-4 shrink-0">
