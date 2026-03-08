@@ -18,7 +18,7 @@ import {
   PaginationEllipsis,
 } from '@/components/ui/pagination';
 import { getGroupLeaderboard, getUserLeaderboardGroup, assignUserToLeaderboardGroup, getProfilesByUsernames } from '@/lib/supabase-auth-storage';
-import { getFollowingIds } from '@/lib/supabase-follows';
+import { getFollowingIds, getFollowCounts } from '@/lib/supabase-follows';
 import { useToast } from '@/hooks/use-toast';
 import { usePullToRefresh } from '@/hooks/usePullToRefresh';
 import PlayerProfileModal from './PlayerProfileModal';
@@ -89,7 +89,7 @@ function PlayerRowSkeleton() {
   );
 }
 
-function PlayerRow({ user, profile, isFollowing, onClick }: { user: LeaderboardEntry; profile?: ProfileInfo; isFollowing?: boolean; onClick: () => void }) {
+function PlayerRow({ user, profile, isFollowing, followerCount, onClick }: { user: LeaderboardEntry; profile?: ProfileInfo; isFollowing?: boolean; followerCount?: number; onClick: () => void }) {
   return (
     <div
       onClick={onClick}
@@ -114,12 +114,19 @@ function PlayerRow({ user, profile, isFollowing, onClick }: { user: LeaderboardE
         <div className="min-w-0">
           <div className="flex items-center gap-1 sm:gap-1.5">
             <p className="font-semibold truncate text-sm">{user.username}</p>
-            {isFollowing && (
-              <Badge variant="secondary" className="gap-0.5 text-[10px] px-1.5 py-0 h-4 shrink-0">
-                <UserCheck className="h-2.5 w-2.5" />
-                Following
-              </Badge>
-            )}
+            <div className="flex items-center gap-1">
+              {followerCount !== undefined && (
+                <Badge variant="outline" className="gap-0.5 text-[10px] px-1.5 py-0 h-4 shrink-0">
+                  👥 {followerCount}
+                </Badge>
+              )}
+              {isFollowing && (
+                <Badge variant="secondary" className="gap-0.5 text-[10px] px-1.5 py-0 h-4 shrink-0">
+                  <UserCheck className="h-2.5 w-2.5" />
+                  Following
+                </Badge>
+              )}
+            </div>
           </div>
           {profile?.bio ? (
             <p className="text-xs text-muted-foreground truncate max-w-[180px]">{profile.bio}</p>
@@ -141,6 +148,7 @@ function PlayerRow({ user, profile, isFollowing, onClick }: { user: LeaderboardE
 const Leaderboard = ({ onBack }: LeaderboardProps) => {
   const [users, setUsers] = useState<LeaderboardEntry[]>([]);
   const [profiles, setProfiles] = useState<Map<string, ProfileInfo>>(new Map());
+  const [followerCounts, setFollowerCounts] = useState<Map<string, number>>(new Map());
   const [followingUserIds, setFollowingUserIds] = useState<Set<string>>(new Set());
   const [groupInfo, setGroupInfo] = useState<LeaderboardGroupInfo | null>(null);
   const [loading, setLoading] = useState(true);
@@ -210,6 +218,16 @@ const Leaderboard = ({ onBack }: LeaderboardProps) => {
           if (p.username) map.set(p.username, p);
         });
         setProfiles(map);
+
+        // Fetch follower counts for all players
+        const followerCountsMap = new Map<string, number>();
+        for (const profile of profilesList) {
+          if (profile.user_id) {
+            const counts = await getFollowCounts(profile.user_id);
+            followerCountsMap.set(profile.user_id, counts.followers);
+          }
+        }
+        setFollowerCounts(followerCountsMap);
       }
     } catch (error) {
       console.error('Error fetching leaderboard:', error);
@@ -362,6 +380,7 @@ const Leaderboard = ({ onBack }: LeaderboardProps) => {
                       >
                         {paginatedUsers.map((user, i) => {
                           const profile = profiles.get(user.username);
+                          const followerCount = profile?.user_id ? followerCounts.get(profile.user_id) : undefined;
                           return (
                             <motion.div
                               key={`${user.username}-${user.rank}`}
@@ -373,6 +392,7 @@ const Leaderboard = ({ onBack }: LeaderboardProps) => {
                                 user={user}
                                 profile={profile}
                                 isFollowing={profile?.user_id ? followingUserIds.has(profile.user_id) : false}
+                                followerCount={followerCount}
                                 onClick={() => setSelectedPlayer(user)}
                               />
                             </motion.div>
