@@ -673,7 +673,12 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
         )}
 
         {/* Day Selection - compact horizontal scroll */}
-        <div className="space-y-2">
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.05, duration: 0.3 }}
+          className="space-y-2"
+        >
           <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Target Day</Label>
           <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
             {availableDays.map((day) => {
@@ -694,7 +699,7 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
               );
             })}
           </div>
-        </div>
+        </motion.div>
 
         {/* City Selection - visual grid */}
         <div className="space-y-2">
