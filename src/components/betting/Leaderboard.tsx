@@ -28,6 +28,8 @@ import {
 import { getGroupLeaderboard, getUserLeaderboardGroup, assignUserToLeaderboardGroup, getProfilesByUsernames } from '@/lib/supabase-auth-storage';
 import { getFollowingIds, getFollowCounts } from '@/lib/supabase-follows';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
+import { recordRankSnapshot } from '@/lib/supabase-rank-history';
 import { usePullToRefresh } from '@/hooks/usePullToRefresh';
 import PlayerProfileModal from './PlayerProfileModal';
 
@@ -267,6 +269,7 @@ function PlayerRow({ user, profile, isFollowing, followerCount, followingCount, 
 }
 
 const Leaderboard = ({ onBack }: LeaderboardProps) => {
+  const { user: currentUser } = useAuth();
   const [users, setUsers] = useState<LeaderboardEntry[]>([]);
   const [profiles, setProfiles] = useState<Map<string, ProfileInfo>>(new Map());
   const [followerCounts, setFollowerCounts] = useState<Map<string, number>>(new Map());
@@ -370,6 +373,24 @@ const Leaderboard = ({ onBack }: LeaderboardProps) => {
         }
         setFollowerCounts(followerCountsMap);
         setFollowingCounts(followingCountsMap);
+
+        // Record rank snapshot for the current user
+        if (currentUser && groupData) {
+          const currentUserEntry = data.find((u: LeaderboardEntry) => {
+            const p = profilesList.find(pr => pr.username === u.username);
+            return p?.user_id === currentUser.id;
+          });
+          if (currentUserEntry) {
+            recordRankSnapshot(
+              currentUser.id,
+              currentUserEntry.rank,
+              currentUserEntry.points,
+              currentUserEntry.username,
+              'points',
+              groupData.group_id
+            );
+          }
+        }
       }
     } catch (error) {
       console.error('Error fetching leaderboard:', error);
@@ -377,7 +398,7 @@ const Leaderboard = ({ onBack }: LeaderboardProps) => {
     } finally {
       setLoading(false);
     }
-  }, [toast]);
+  }, [toast, currentUser]);
 
   useEffect(() => {
     fetchLeaderboard();

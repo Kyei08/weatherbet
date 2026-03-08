@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Trophy, Medal, Award, Star, Target, Zap, UserPlus, UserMinus, Users, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useFollow } from '@/hooks/useFollow';
+import RankHistoryChart from './RankHistoryChart';
 
 interface PlayerProfileModalProps {
   open: boolean;
@@ -285,6 +286,11 @@ const PlayerProfileModal = ({
               </div>
             )}
           </div>
+
+          {/* Rank History Chart */}
+          {targetUserId && (
+            <RankHistoryChart userId={targetUserId} username={username} />
+          )}
         </motion.div>
       </DialogContent>
     </Dialog>

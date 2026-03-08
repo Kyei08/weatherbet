@@ -426,6 +426,47 @@ export type Database = {
         }
         Relationships: []
       }
+      leaderboard_rank_history: {
+        Row: {
+          group_id: string | null
+          id: string
+          points: number
+          rank: number
+          recorded_at: string
+          sort_type: string
+          user_id: string
+          username: string
+        }
+        Insert: {
+          group_id?: string | null
+          id?: string
+          points: number
+          rank: number
+          recorded_at?: string
+          sort_type?: string
+          user_id: string
+          username: string
+        }
+        Update: {
+          group_id?: string | null
+          id?: string
+          points?: number
+          rank?: number
+          recorded_at?: string
+          sort_type?: string
+          user_id?: string
+          username?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leaderboard_rank_history_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "leaderboard_groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notifications: {
         Row: {
           created_at: string
