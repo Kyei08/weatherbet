@@ -63,7 +63,7 @@ function PlayerRow({ user, profile, isFollowing, onClick }: { user: LeaderboardE
         user.rank <= 3 ? 'bg-muted/50' : ''
       }`}
     >
-      <div className="flex items-center gap-3 min-w-0">
+      <div className="flex items-center gap-2 sm:gap-3 min-w-0">
         <div className="flex items-center gap-2 min-w-[60px] shrink-0">
           {getRankIcon(user.rank)}
           <Badge variant={getRankBadge(user.rank)}>#{user.rank}</Badge>
