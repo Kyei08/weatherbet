@@ -1,8 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { getUser, getRecentBets } from '@/lib/supabase-auth-storage';
-import { User, Bet } from '@/types/supabase-betting';
+import { useDashboardData } from '@/hooks/useDashboardData';
 import { Coins, TrendingUp, Activity, Trophy, ShoppingCart, Layers, History, MapPin, Shield, Zap, Scale, DollarSign } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAdminCheck } from '@/hooks/useAdminCheck';
