@@ -269,6 +269,7 @@ function PlayerRow({ user, profile, isFollowing, followerCount, followingCount, 
 }
 
 const Leaderboard = ({ onBack }: LeaderboardProps) => {
+  const { user: currentUser } = useAuth();
   const [users, setUsers] = useState<LeaderboardEntry[]>([]);
   const [profiles, setProfiles] = useState<Map<string, ProfileInfo>>(new Map());
   const [followerCounts, setFollowerCounts] = useState<Map<string, number>>(new Map());
