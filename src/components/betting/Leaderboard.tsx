@@ -181,10 +181,10 @@ const Leaderboard = ({ onBack }: LeaderboardProps) => {
     return filteredUsers.slice(start, start + PLAYERS_PER_PAGE);
   }, [filteredUsers, currentPage]);
 
-  // Reset to page 1 when search changes
+  // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery]);
+  }, [searchQuery, friendsOnly]);
 
   const fetchLeaderboard = useCallback(async () => {
     try {
