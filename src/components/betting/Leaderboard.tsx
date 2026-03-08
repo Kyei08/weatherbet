@@ -535,7 +535,8 @@ const Leaderboard = ({ onBack }: LeaderboardProps) => {
                                  followerCount={followerCount}
                                  followingCount={followingCount}
                                  sortBy={sortBy}
-                                 isTop10={isTop10}
+                                  isTop10={isTop10}
+                                  isFirst={isFirst}
                                  onClick={() => setSelectedPlayer(user)}
                                />
                             </motion.div>
