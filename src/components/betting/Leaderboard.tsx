@@ -657,6 +657,10 @@ const Leaderboard = ({ onBack }: LeaderboardProps) => {
                 </CardContent>
               </Card>
             )}
+
+            {groupInfo && (
+              <SeasonHistory groupId={groupInfo.group_id} />
+            )}
           </>
         )}
       </div>
