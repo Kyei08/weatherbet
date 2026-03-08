@@ -1,9 +1,8 @@
 import { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Coins, TrendingUp, Activity } from 'lucide-react';
-import { RecentBets } from './RecentBets';
 import { useDashboardData } from '@/hooks/useDashboardData';
 import { DashboardActions } from './DashboardActions';
+import { DashboardHeader } from './DashboardHeader';
+import { RecentBets } from './RecentBets';
 import BettingSlip from './BettingSlip';
 import ParlayBettingSlip from './ParlayBettingSlip';
 import { CombinedBettingSlip } from './CombinedBettingSlip';
@@ -22,12 +21,9 @@ import { VolatilityChart } from './VolatilityChart';
 import { StreakDisplay } from './StreakDisplay';
 import { TransactionHistory } from './TransactionHistory';
 import { CurrencyModeSwitcher } from './CurrencyModeSwitcher';
-import { formatCurrency } from '@/lib/currency';
-import { useCurrencyMode } from '@/contexts/CurrencyModeContext';
 import { useModeTheme } from '@/hooks/useModeTheme';
 
 const Dashboard = () => {
-  const { mode } = useCurrencyMode();
   const theme = useModeTheme();
   const { user, bets, loading, pendingBets, winRate, refreshData } = useDashboardData();
   const [activeView, setActiveView] = useState<'dashboard' | 'betting' | 'parlay' | 'combined' | 'multitime' | 'mybets' | 'leaderboard' | 'shop' | 'analytics'>('dashboard');
@@ -77,15 +73,7 @@ const Dashboard = () => {
   return (
     <div className={`min-h-screen p-4 transition-colors duration-300 ${theme.gradient}`}>
       <div className="max-w-4xl mx-auto space-y-6">
-        {/* Header */}
-        <div className={`text-center p-6 rounded-xl border-2 ${theme.borderColor} ${theme.cardBg} backdrop-blur-sm ${theme.glowShadow}`}>
-          <h1 className={`text-4xl font-bold mb-2 ${theme.primaryText}`}>
-            🌦️ Weather Betting
-          </h1>
-          <p className="text-muted-foreground">
-            {theme.isVirtual ? 'Practice mode - Predict the weather, win virtual points!' : 'Real money mode - Predict the weather, win real prizes!'}
-          </p>
-        </div>
+        <DashboardHeader user={user} winRate={winRate} pendingBetsCount={pendingBets.length} />
 
         {/* Currency Mode Switcher */}
         <CurrencyModeSwitcher />
@@ -95,48 +83,6 @@ const Dashboard = () => {
 
         {/* Level Display */}
         <LevelDisplay />
-
-        {/* User Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card className={`${theme.card} border-2 ${theme.glowShadow}`}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                {mode === 'virtual' ? '🎮 Virtual Balance' : '💰 Real Balance'}
-              </CardTitle>
-              <Coins className={`h-4 w-4 ${theme.primaryText}`} />
-            </CardHeader>
-            <CardContent>
-              <div className={`text-2xl font-bold ${theme.primaryText}`}>
-                {formatCurrency(mode === 'virtual' ? user.points : (user.balance_cents || 0), mode)}
-              </div>
-              <p className={`text-xs ${theme.secondaryText}`}>
-                {mode === 'virtual' ? 'Practice points - free to play' : 'South African Rands'}
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className={`${theme.card} border-2 ${theme.glowShadow}`}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Win Rate</CardTitle>
-              <TrendingUp className={`h-4 w-4 ${theme.accentText}`} />
-            </CardHeader>
-            <CardContent>
-              <div className={`text-2xl font-bold ${theme.secondaryText}`}>{winRate}%</div>
-              <p className="text-xs text-muted-foreground">Success Rate</p>
-            </CardContent>
-          </Card>
-
-          <Card className={`${theme.card} border-2 ${theme.glowShadow}`}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Active Bets</CardTitle>
-              <Activity className={`h-4 w-4 ${theme.accentText}`} />
-            </CardHeader>
-            <CardContent>
-              <div className={`text-2xl font-bold ${theme.secondaryText}`}>{pendingBets.length}</div>
-              <p className="text-xs text-muted-foreground">Pending Results</p>
-            </CardContent>
-          </Card>
-        </div>
 
         {/* Streak Display */}
         <StreakDisplay />
