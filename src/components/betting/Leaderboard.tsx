@@ -331,25 +331,36 @@ const Leaderboard = ({ onBack }: LeaderboardProps) => {
                   </div>
                 ) : (
                   <>
-                    <div className="space-y-3">
-                      {paginatedUsers.map((user, i) => {
-                        const profile = profiles.get(user.username);
-                        return (
-                          <div
-                            key={`${user.username}-${user.rank}`}
-                            className="animate-fade-in"
-                            style={{ animationDelay: `${100 + i * 30}ms`, animationFillMode: 'both' }}
-                          >
-                            <PlayerRow
-                              user={user}
-                              profile={profile}
-                              isFollowing={profile?.user_id ? followingUserIds.has(profile.user_id) : false}
-                              onClick={() => setSelectedPlayer(user)}
-                            />
-                          </div>
-                        );
-                      })}
-                    </div>
+                    <AnimatePresence mode="wait" custom={pageDirection}>
+                      <motion.div
+                        key={currentPage}
+                        custom={pageDirection}
+                        initial={{ opacity: 0, x: pageDirection * 40 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: pageDirection * -40 }}
+                        transition={{ duration: 0.2, ease: 'easeInOut' }}
+                        className="space-y-3"
+                      >
+                        {paginatedUsers.map((user, i) => {
+                          const profile = profiles.get(user.username);
+                          return (
+                            <motion.div
+                              key={`${user.username}-${user.rank}`}
+                              initial={{ opacity: 0, y: 8 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ delay: i * 0.025, duration: 0.2 }}
+                            >
+                              <PlayerRow
+                                user={user}
+                                profile={profile}
+                                isFollowing={profile?.user_id ? followingUserIds.has(profile.user_id) : false}
+                                onClick={() => setSelectedPlayer(user)}
+                              />
+                            </motion.div>
+                          );
+                        })}
+                      </motion.div>
+                    </AnimatePresence>
 
                     {totalPages > 1 && (
                       <div className="mt-6">
