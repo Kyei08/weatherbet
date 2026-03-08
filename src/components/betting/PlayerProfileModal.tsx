@@ -4,9 +4,10 @@ import { motion, useMotionValue, useTransform, animate } from 'framer-motion';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Trophy, Medal, Award, Star, Target, Zap, UserPlus, UserMinus, Users, Loader2 } from 'lucide-react';
+import { Trophy, Medal, Award, Star, Target, Zap, UserPlus, UserMinus, Users, Loader2, Share2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useFollow } from '@/hooks/useFollow';
+import { toast as sonnerToast } from 'sonner';
 import RankHistoryChart from './RankHistoryChart';
 
 interface PlayerProfileModalProps {
@@ -215,6 +216,23 @@ const PlayerProfileModal = ({
                 )}
               </Button>
             )}
+            <Button
+              size="sm"
+              variant="outline"
+              className="min-w-[40px]"
+              onClick={async () => {
+                const text = `🏆 ${username} is ranked #${rank} with ${points.toLocaleString()} points on WeatherBet!`;
+                const url = window.location.origin;
+                if (navigator.share) {
+                  try { await navigator.share({ title: 'WeatherBet', text, url }); } catch {}
+                } else {
+                  await navigator.clipboard.writeText(`${text}\n${url}`);
+                  sonnerToast.success('Copied to clipboard!');
+                }
+              }}
+            >
+              <Share2 className="h-4 w-4" />
+            </Button>
           </div>
 
           {/* Bio */}

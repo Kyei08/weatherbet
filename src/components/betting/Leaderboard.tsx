@@ -4,7 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowLeft, Trophy, Medal, Award, Users, UserCheck, RefreshCw, Search, X, Heart, Zap, UserPlus, TrendingUp, TrendingDown, Minus, Crown, Flame } from 'lucide-react';
+import { ArrowLeft, Trophy, Medal, Award, Users, UserCheck, RefreshCw, Search, X, Heart, Zap, UserPlus, TrendingUp, TrendingDown, Minus, Crown, Flame, Share2 } from 'lucide-react';
+import { toast as sonnerToast } from 'sonner';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -118,6 +119,19 @@ function RankChangeIndicator({ change }: { change: number | undefined }) {
       {Math.abs(change)}
     </span>
   );
+}
+
+async function shareRank(username: string, rank: number, points: number) {
+  const text = `🏆 ${username} is ranked #${rank} with ${points.toLocaleString()} points on WeatherBet! Can you beat them?`;
+  const url = window.location.origin;
+  if (navigator.share) {
+    try {
+      await navigator.share({ title: 'WeatherBet Leaderboard', text, url });
+    } catch {}
+  } else {
+    await navigator.clipboard.writeText(`${text}\n${url}`);
+    sonnerToast.success('Copied to clipboard!');
+  }
 }
 
 function PlayerRow({ user, profile, isFollowing, followerCount, followingCount, sortBy, isTop10, isFirst, rankChange, onClick }: { user: LeaderboardEntry; profile?: ProfileInfo; isFollowing?: boolean; followerCount?: number; followingCount?: number; sortBy: 'points' | 'followers' | 'following'; isTop10: boolean; isFirst: boolean; rankChange?: number; onClick: () => void }) {
@@ -282,9 +296,19 @@ function PlayerRow({ user, profile, isFollowing, followerCount, followingCount, 
           )}
         </div>
       </div>
-      <div className="text-right shrink-0 ml-2">
-        <p className="text-base sm:text-lg font-bold">{user.points.toLocaleString()}</p>
-        <p className="text-[10px] sm:text-xs text-muted-foreground">points</p>
+      <div className="flex items-center gap-1 shrink-0 ml-2">
+        <div className="text-right">
+          <p className="text-base sm:text-lg font-bold">{user.points.toLocaleString()}</p>
+          <p className="text-[10px] sm:text-xs text-muted-foreground">points</p>
+        </div>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7 shrink-0"
+          onClick={(e) => { e.stopPropagation(); shareRank(user.username, user.rank, user.points); }}
+        >
+          <Share2 className="h-3.5 w-3.5" />
+        </Button>
       </div>
     </div>
   );
