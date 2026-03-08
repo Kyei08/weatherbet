@@ -182,6 +182,7 @@ const Leaderboard = ({ onBack }: LeaderboardProps) => {
   const [selectedPlayer, setSelectedPlayer] = useState<LeaderboardEntry | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [friendsOnly, setFriendsOnly] = useState(false);
+  const [sortBy, setSortBy] = useState<'points' | 'followers' | 'following'>('points');
   const [currentPage, setCurrentPage] = useState(1);
   const [pageDirection, setPageDirection] = useState(0);
   const PLAYERS_PER_PAGE = 20;
