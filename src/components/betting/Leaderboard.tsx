@@ -141,6 +141,7 @@ function PlayerRow({ user, profile, isFollowing, onClick }: { user: LeaderboardE
 const Leaderboard = ({ onBack }: LeaderboardProps) => {
   const [users, setUsers] = useState<LeaderboardEntry[]>([]);
   const [profiles, setProfiles] = useState<Map<string, ProfileInfo>>(new Map());
+  const [followerCounts, setFollowerCounts] = useState<Map<string, number>>(new Map());
   const [followingUserIds, setFollowingUserIds] = useState<Set<string>>(new Set());
   const [groupInfo, setGroupInfo] = useState<LeaderboardGroupInfo | null>(null);
   const [loading, setLoading] = useState(true);
