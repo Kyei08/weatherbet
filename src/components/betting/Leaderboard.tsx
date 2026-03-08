@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -144,8 +145,17 @@ const Leaderboard = ({ onBack }: LeaderboardProps) => {
   const [selectedPlayer, setSelectedPlayer] = useState<LeaderboardEntry | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
+  const [pageDirection, setPageDirection] = useState(0);
   const PLAYERS_PER_PAGE = 20;
   const { toast } = useToast();
+
+  const goToPage = useCallback((page: number | ((prev: number) => number)) => {
+    setCurrentPage(prev => {
+      const next = typeof page === 'function' ? page(prev) : page;
+      setPageDirection(next > prev ? 1 : -1);
+      return next;
+    });
+  }, []);
 
   const filteredUsers = useMemo(() => {
     if (!searchQuery.trim()) return users;
@@ -321,25 +331,36 @@ const Leaderboard = ({ onBack }: LeaderboardProps) => {
                   </div>
                 ) : (
                   <>
-                    <div className="space-y-3">
-                      {paginatedUsers.map((user, i) => {
-                        const profile = profiles.get(user.username);
-                        return (
-                          <div
-                            key={`${user.username}-${user.rank}`}
-                            className="animate-fade-in"
-                            style={{ animationDelay: `${100 + i * 30}ms`, animationFillMode: 'both' }}
-                          >
-                            <PlayerRow
-                              user={user}
-                              profile={profile}
-                              isFollowing={profile?.user_id ? followingUserIds.has(profile.user_id) : false}
-                              onClick={() => setSelectedPlayer(user)}
-                            />
-                          </div>
-                        );
-                      })}
-                    </div>
+                    <AnimatePresence mode="wait" custom={pageDirection}>
+                      <motion.div
+                        key={currentPage}
+                        custom={pageDirection}
+                        initial={{ opacity: 0, x: pageDirection * 40 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: pageDirection * -40 }}
+                        transition={{ duration: 0.2, ease: 'easeInOut' }}
+                        className="space-y-3"
+                      >
+                        {paginatedUsers.map((user, i) => {
+                          const profile = profiles.get(user.username);
+                          return (
+                            <motion.div
+                              key={`${user.username}-${user.rank}`}
+                              initial={{ opacity: 0, y: 8 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ delay: i * 0.025, duration: 0.2 }}
+                            >
+                              <PlayerRow
+                                user={user}
+                                profile={profile}
+                                isFollowing={profile?.user_id ? followingUserIds.has(profile.user_id) : false}
+                                onClick={() => setSelectedPlayer(user)}
+                              />
+                            </motion.div>
+                          );
+                        })}
+                      </motion.div>
+                    </AnimatePresence>
 
                     {totalPages > 1 && (
                       <div className="mt-6">
@@ -350,7 +371,7 @@ const Leaderboard = ({ onBack }: LeaderboardProps) => {
                           <PaginationContent>
                             <PaginationItem>
                               <PaginationPrevious
-                                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                onClick={() => goToPage(p => Math.max(1, p - 1))}
                                 className={currentPage === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
                               />
                             </PaginationItem>
@@ -371,7 +392,7 @@ const Leaderboard = ({ onBack }: LeaderboardProps) => {
                                   <PaginationItem key={item}>
                                     <PaginationLink
                                       isActive={currentPage === item}
-                                      onClick={() => setCurrentPage(item as number)}
+                                      onClick={() => goToPage(item as number)}
                                       className="cursor-pointer"
                                     >
                                       {item}
@@ -382,7 +403,7 @@ const Leaderboard = ({ onBack }: LeaderboardProps) => {
 
                             <PaginationItem>
                               <PaginationNext
-                                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                                onClick={() => goToPage(p => Math.min(totalPages, p + 1))}
                                 className={currentPage === totalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
                               />
                             </PaginationItem>
