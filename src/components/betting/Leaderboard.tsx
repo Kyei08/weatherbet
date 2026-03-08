@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, Trophy, Medal, Award, Users } from 'lucide-react';
-import { getGroupLeaderboard, getUserLeaderboardGroup, assignUserToLeaderboardGroup } from '@/lib/supabase-auth-storage';
+import { getGroupLeaderboard, getUserLeaderboardGroup, assignUserToLeaderboardGroup, getProfilesByUsernames } from '@/lib/supabase-auth-storage';
 import { useToast } from '@/hooks/use-toast';
 
 interface LeaderboardEntry {
@@ -12,6 +12,12 @@ interface LeaderboardEntry {
   level: number;
   xp: number;
   rank: number;
+}
+
+interface ProfileInfo {
+  username: string | null;
+  avatar_url: string | null;
+  bio: string | null;
 }
 
 interface LeaderboardGroupInfo {
@@ -29,8 +35,67 @@ interface LeaderboardProps {
   onBack: () => void;
 }
 
+const getRankIcon = (rank: number) => {
+  switch (rank) {
+    case 1: return <Trophy className="h-5 w-5 text-yellow-500" />;
+    case 2: return <Medal className="h-5 w-5 text-gray-400" />;
+    case 3: return <Award className="h-5 w-5 text-amber-600" />;
+    default: return null;
+  }
+};
+
+const getRankBadge = (rank: number) => {
+  if (rank <= 3) {
+    const variants = { 1: 'default', 2: 'secondary', 3: 'outline' } as const;
+    return variants[rank as keyof typeof variants];
+  }
+  return 'outline';
+};
+
+function PlayerRow({ user, profile }: { user: LeaderboardEntry; profile?: ProfileInfo }) {
+  return (
+    <div
+      className={`flex items-center justify-between p-4 rounded-lg border ${
+        user.rank <= 3 ? 'bg-muted/50' : ''
+      }`}
+    >
+      <div className="flex items-center gap-3 min-w-0">
+        <div className="flex items-center gap-2 min-w-[60px] shrink-0">
+          {getRankIcon(user.rank)}
+          <Badge variant={getRankBadge(user.rank)}>#{user.rank}</Badge>
+        </div>
+        {/* Avatar */}
+        <div className="h-9 w-9 rounded-full shrink-0 overflow-hidden bg-primary/10 flex items-center justify-center">
+          {profile?.avatar_url ? (
+            <img src={profile.avatar_url} alt="" className="h-9 w-9 rounded-full object-cover" />
+          ) : (
+            <span className="text-sm font-bold text-primary">
+              {user.username.charAt(0).toUpperCase()}
+            </span>
+          )}
+        </div>
+        <div className="min-w-0">
+          <p className="font-semibold truncate">{user.username}</p>
+          {profile?.bio ? (
+            <p className="text-xs text-muted-foreground truncate max-w-[180px]">{profile.bio}</p>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              Level {user.level} • {user.xp} XP
+            </p>
+          )}
+        </div>
+      </div>
+      <div className="text-right shrink-0">
+        <p className="text-lg font-bold">{user.points.toLocaleString()}</p>
+        <p className="text-xs text-muted-foreground">points</p>
+      </div>
+    </div>
+  );
+}
+
 const Leaderboard = ({ onBack }: LeaderboardProps) => {
   const [users, setUsers] = useState<LeaderboardEntry[]>([]);
+  const [profiles, setProfiles] = useState<Map<string, ProfileInfo>>(new Map());
   const [groupInfo, setGroupInfo] = useState<LeaderboardGroupInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
@@ -38,75 +103,45 @@ const Leaderboard = ({ onBack }: LeaderboardProps) => {
   useEffect(() => {
     const fetchLeaderboard = async () => {
       try {
-        // Check if user has a group assignment
         let groupData = await getUserLeaderboardGroup();
-        
-        // If no group, assign user to one
         if (!groupData) {
           await assignUserToLeaderboardGroup(100);
           groupData = await getUserLeaderboardGroup();
         }
-        
         setGroupInfo(groupData);
-        
-        // Fetch leaderboard for user's group
+
         const data = await getGroupLeaderboard();
         setUsers(data);
+
+        // Fetch profiles for all leaderboard users
+        if (data.length > 0) {
+          const usernames = data.map((u: LeaderboardEntry) => u.username);
+          const profilesList = await getProfilesByUsernames(usernames);
+          const map = new Map<string, ProfileInfo>();
+          profilesList.forEach((p) => {
+            if (p.username) map.set(p.username, p);
+          });
+          setProfiles(map);
+        }
       } catch (error) {
         console.error('Error fetching leaderboard:', error);
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: "Failed to load leaderboard data"
-        });
+        toast({ variant: "destructive", title: "Error", description: "Failed to load leaderboard data" });
       } finally {
         setLoading(false);
       }
     };
-
     fetchLeaderboard();
   }, [toast]);
-
-  const getRankIcon = (rank: number) => {
-    switch (rank) {
-      case 1:
-        return <Trophy className="h-5 w-5 text-yellow-500" />;
-      case 2:
-        return <Medal className="h-5 w-5 text-gray-400" />;
-      case 3:
-        return <Award className="h-5 w-5 text-amber-600" />;
-      default:
-        return null;
-    }
-  };
-
-  const getRankBadge = (rank: number) => {
-    if (rank <= 3) {
-      const variants = {
-        1: 'default',
-        2: 'secondary', 
-        3: 'outline'
-      } as const;
-      return variants[rank as keyof typeof variants];
-    }
-    return 'outline';
-  };
 
   if (loading) {
     return (
       <div className="min-h-screen bg-background p-4">
         <div className="max-w-2xl mx-auto">
           <div className="flex items-center gap-4 mb-6">
-            <Button variant="ghost" size="sm" onClick={onBack}>
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
+            <Button variant="ghost" size="sm" onClick={onBack}><ArrowLeft className="h-4 w-4" /></Button>
             <h1 className="text-2xl font-bold">Leaderboard</h1>
           </div>
-          <Card>
-            <CardContent className="text-center py-12">
-              <p className="text-muted-foreground">Loading leaderboard...</p>
-            </CardContent>
-          </Card>
+          <Card><CardContent className="text-center py-12"><p className="text-muted-foreground">Loading leaderboard...</p></CardContent></Card>
         </div>
       </div>
     );
@@ -115,15 +150,11 @@ const Leaderboard = ({ onBack }: LeaderboardProps) => {
   return (
     <div className="min-h-screen bg-background p-4">
       <div className="max-w-2xl mx-auto space-y-6">
-        {/* Header */}
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="sm" onClick={onBack}>
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
+          <Button variant="ghost" size="sm" onClick={onBack}><ArrowLeft className="h-4 w-4" /></Button>
           <h1 className="text-2xl font-bold">🏆 Leaderboard</h1>
         </div>
 
-        {/* League Info Card */}
         {groupInfo && (
           <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-background">
             <CardContent className="pt-6">
@@ -139,9 +170,7 @@ const Leaderboard = ({ onBack }: LeaderboardProps) => {
                     </p>
                   </div>
                 </div>
-                <Badge variant="secondary" className="text-sm">
-                  Your League
-                </Badge>
+                <Badge variant="secondary" className="text-sm">Your League</Badge>
               </div>
             </CardContent>
           </Card>
@@ -160,46 +189,21 @@ const Leaderboard = ({ onBack }: LeaderboardProps) => {
               </div>
             ) : (
               <div className="space-y-3">
-                {users.map((user) => {
-                  return (
-                    <div
-                      key={`${user.username}-${user.rank}`}
-                      className={`flex items-center justify-between p-4 rounded-lg border ${
-                        user.rank <= 3 ? 'bg-muted/50' : ''
-                      }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="flex items-center gap-2 min-w-[60px]">
-                          {getRankIcon(user.rank)}
-                          <Badge variant={getRankBadge(user.rank)}>
-                            #{user.rank}
-                          </Badge>
-                        </div>
-                        <div>
-                          <p className="font-semibold">{user.username}</p>
-                          <p className="text-sm text-muted-foreground">
-                            Level {user.level} • {user.xp} XP
-                          </p>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-lg font-bold">{user.points.toLocaleString()}</p>
-                        <p className="text-sm text-muted-foreground">points</p>
-                      </div>
-                    </div>
-                  );
-                })}
+                {users.map((user) => (
+                  <PlayerRow
+                    key={`${user.username}-${user.rank}`}
+                    user={user}
+                    profile={profiles.get(user.username)}
+                  />
+                ))}
               </div>
             )}
           </CardContent>
         </Card>
 
-        {/* Stats */}
         {users.length > 0 && (
           <Card>
-            <CardHeader>
-              <CardTitle>Competition Stats</CardTitle>
-            </CardHeader>
+            <CardHeader><CardTitle>Competition Stats</CardTitle></CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 gap-4 text-center">
                 <div>
@@ -207,9 +211,7 @@ const Leaderboard = ({ onBack }: LeaderboardProps) => {
                   <p className="text-sm text-muted-foreground">Total Players</p>
                 </div>
                 <div>
-                  <p className="text-2xl font-bold">
-                    {Math.max(...users.map(u => u.points)).toLocaleString()}
-                  </p>
+                  <p className="text-2xl font-bold">{Math.max(...users.map(u => u.points)).toLocaleString()}</p>
                   <p className="text-sm text-muted-foreground">Highest Score</p>
                 </div>
               </div>

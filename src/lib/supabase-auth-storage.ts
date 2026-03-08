@@ -260,6 +260,20 @@ export const getGroupLeaderboard = async () => {
   }
 };
 
+// Get profiles by usernames (for leaderboard enrichment)
+export const getProfilesByUsernames = async (usernames: string[]): Promise<Profile[]> => {
+  if (usernames.length === 0) return [];
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('*')
+    .in('username', usernames);
+  if (error) {
+    console.error('Error fetching profiles by usernames:', error);
+    return [];
+  }
+  return data || [];
+};
+
 // Get user's leaderboard group info
 export const getUserLeaderboardGroup = async () => {
   try {
