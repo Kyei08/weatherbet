@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowLeft, Trophy, Medal, Award, Users, UserCheck, RefreshCw, Search, X, Heart, Zap, UserPlus, TrendingUp, Crown, Flame } from 'lucide-react';
+import { ArrowLeft, Trophy, Medal, Award, Users, UserCheck, RefreshCw, Search, X, Heart, Zap, UserPlus, TrendingUp, TrendingDown, Minus, Crown, Flame } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -29,7 +29,7 @@ import { getGroupLeaderboard, getUserLeaderboardGroup, assignUserToLeaderboardGr
 import { getFollowingIds, getFollowCounts } from '@/lib/supabase-follows';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
-import { recordRankSnapshot } from '@/lib/supabase-rank-history';
+import { recordRankSnapshot, getPreviousRanks } from '@/lib/supabase-rank-history';
 import { usePullToRefresh } from '@/hooks/usePullToRefresh';
 import PlayerProfileModal from './PlayerProfileModal';
 import SeasonHistory from './SeasonHistory';
@@ -100,7 +100,27 @@ function PlayerRowSkeleton() {
   );
 }
 
-function PlayerRow({ user, profile, isFollowing, followerCount, followingCount, sortBy, isTop10, isFirst, onClick }: { user: LeaderboardEntry; profile?: ProfileInfo; isFollowing?: boolean; followerCount?: number; followingCount?: number; sortBy: 'points' | 'followers' | 'following'; isTop10: boolean; isFirst: boolean; onClick: () => void }) {
+function RankChangeIndicator({ change }: { change: number | undefined }) {
+  if (change === undefined || change === 0) {
+    return <Minus className="h-3 w-3 text-muted-foreground" />;
+  }
+  if (change > 0) {
+    return (
+      <span className="flex items-center text-[10px] font-semibold text-green-500">
+        <TrendingUp className="h-3 w-3 mr-0.5" />
+        {change}
+      </span>
+    );
+  }
+  return (
+    <span className="flex items-center text-[10px] font-semibold text-destructive">
+      <TrendingDown className="h-3 w-3 mr-0.5" />
+      {Math.abs(change)}
+    </span>
+  );
+}
+
+function PlayerRow({ user, profile, isFollowing, followerCount, followingCount, sortBy, isTop10, isFirst, rankChange, onClick }: { user: LeaderboardEntry; profile?: ProfileInfo; isFollowing?: boolean; followerCount?: number; followingCount?: number; sortBy: 'points' | 'followers' | 'following'; isTop10: boolean; isFirst: boolean; rankChange?: number; onClick: () => void }) {
   const getSortIndicator = () => {
     if (sortBy === 'followers') {
       return (
@@ -205,6 +225,7 @@ function PlayerRow({ user, profile, isFollowing, followerCount, followingCount, 
         <div className="flex items-center gap-1 sm:gap-2 min-w-[44px] sm:min-w-[60px] shrink-0">
           {getRankIcon(user.rank)}
           <Badge variant={getRankBadge(user.rank)} className="text-[10px] sm:text-xs">#{user.rank}</Badge>
+          <RankChangeIndicator change={rankChange} />
         </div>
         <div className="h-8 w-8 sm:h-9 sm:w-9 rounded-full shrink-0 overflow-hidden bg-primary/10 flex items-center justify-center">
           {profile?.avatar_url ? (
@@ -279,6 +300,7 @@ const Leaderboard = ({ onBack }: LeaderboardProps) => {
   const [groupInfo, setGroupInfo] = useState<LeaderboardGroupInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedPlayer, setSelectedPlayer] = useState<LeaderboardEntry | null>(null);
+  const [previousRanks, setPreviousRanks] = useState<Map<string, number>>(new Map());
   const [searchQuery, setSearchQuery] = useState('');
   const [friendsOnly, setFriendsOnly] = useState(false);
   const [sortBy, setSortBy] = useState<'points' | 'followers' | 'following'>('points');
@@ -374,6 +396,12 @@ const Leaderboard = ({ onBack }: LeaderboardProps) => {
         }
         setFollowerCounts(followerCountsMap);
         setFollowingCounts(followingCountsMap);
+
+        // Fetch previous ranks for rank change indicators
+        if (groupData) {
+          const prevRanks = await getPreviousRanks(groupData.group_id, 'points');
+          setPreviousRanks(prevRanks);
+        }
 
         // Record rank snapshot for the current user
         if (currentUser && groupData) {
@@ -562,6 +590,9 @@ const Leaderboard = ({ onBack }: LeaderboardProps) => {
                            // Check if user is in top 10 of current sort
                            const isTop10 = sortBy !== 'points' && filteredUsers.slice(0, 10).some(u => u.username === user.username);
                            const isFirst = sortBy !== 'points' && filteredUsers[0]?.username === user.username;
+                           // Rank change: previousRank - currentRank (positive = moved up)
+                           const prevRank = profile?.user_id ? previousRanks.get(profile.user_id) : undefined;
+                           const rankChange = prevRank !== undefined ? prevRank - user.rank : undefined;
                            return (
                              <motion.div
                                key={`${user.username}-${user.rank}`}
@@ -576,8 +607,9 @@ const Leaderboard = ({ onBack }: LeaderboardProps) => {
                                  followerCount={followerCount}
                                  followingCount={followingCount}
                                  sortBy={sortBy}
-                                  isTop10={isTop10}
-                                  isFirst={isFirst}
+                                 isTop10={isTop10}
+                                 isFirst={isFirst}
+                                 rankChange={rankChange}
                                  onClick={() => setSelectedPlayer(user)}
                                />
                             </motion.div>
