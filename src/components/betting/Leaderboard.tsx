@@ -59,7 +59,7 @@ function PlayerRow({ user, profile, isFollowing, onClick }: { user: LeaderboardE
   return (
     <div
       onClick={onClick}
-      className={`flex items-center justify-between p-4 rounded-lg border cursor-pointer transition-colors hover:bg-accent/50 ${
+      className={`flex items-center justify-between p-3 sm:p-4 rounded-lg border cursor-pointer transition-colors hover:bg-accent/50 ${
         user.rank <= 3 ? 'bg-muted/50' : ''
       }`}
     >
