@@ -74,6 +74,14 @@ const MoneyModeDashboard = () => {
     }
   };
 
+  const swipeViews = useMemo(() => ['dashboard', 'mybets', 'analytics'] as const, []);
+  
+  const { currentIndex, totalViews, dragProps } = useSwipeNavigation({
+    views: swipeViews as unknown as string[],
+    activeView: activeView as string,
+    setActiveView: (v) => setActiveView(v as any),
+  });
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -87,15 +95,6 @@ const MoneyModeDashboard = () => {
   const pendingBets = bets.filter(bet => bet.result === 'pending');
   const settledBets = bets.filter(bet => bet.result !== 'pending');
   const winRate = settledBets.length > 0 ? (bets.filter(bet => bet.result === 'win').length / settledBets.length * 100).toFixed(1) : '0';
-
-  const swipeViews = useMemo(() => ['dashboard', 'mybets', 'analytics'] as const, []);
-  type SwipeView = typeof swipeViews[number];
-  
-  const { currentIndex, totalViews, dragProps } = useSwipeNavigation({
-    views: swipeViews as unknown as string[],
-    activeView: activeView as string,
-    setActiveView: (v) => setActiveView(v as any),
-  });
 
   // Non-swipeable full-screen views
   if (activeView === 'betting') {
