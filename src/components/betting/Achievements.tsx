@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Trophy, Lock } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 import { getAchievementsWithProgress, AchievementWithProgress } from '@/lib/supabase-achievements';
 import { toast } from 'sonner';
 

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { getBonusStats, getBonusEarningsOverTime, BonusStats } from '@/lib/supabase-bonus-tracker';
 import { TrendingUp, Zap, Gift, Award, DollarSign } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { ChartContainer, ChartTooltipContent } from '@/components/ui/chart';
 
