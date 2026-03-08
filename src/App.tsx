@@ -22,6 +22,7 @@ const Admin = lazy(() => import("./pages/Admin"));
 const Transactions = lazy(() => import("./pages/Transactions"));
 const ModeComparison = lazy(() => import("./pages/ModeComparison"));
 const CashoutManagement = lazy(() => import("./pages/CashoutManagement"));
+const Profile = lazy(() => import("./pages/Profile"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient();
@@ -47,6 +48,7 @@ const AnimatedRoutes = () => {
         <Route path="/transactions" element={<PageTransition><Transactions /></PageTransition>} />
         <Route path="/mode-comparison" element={<PageTransition><ModeComparison /></PageTransition>} />
         <Route path="/cashout" element={<PageTransition><CashoutManagement /></PageTransition>} />
+        <Route path="/profile" element={<PageTransition><Profile /></PageTransition>} />
         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
         <Route path="*" element={<PageTransition><NotFound /></PageTransition>} />
       </Routes>
