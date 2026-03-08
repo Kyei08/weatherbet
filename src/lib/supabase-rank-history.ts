@@ -74,3 +74,43 @@ export const getRankHistory = async (
   if (error || !data) return [];
   return (data as unknown as RankHistoryEntry[]);
 };
+
+/**
+ * Fetch the most recent rank snapshot for each user in a group (for rank change indicators).
+ * Returns a map of user_id -> previous rank.
+ */
+export const getPreviousRanks = async (
+  groupId: string,
+  sortType: string = 'points'
+): Promise<Map<string, number>> => {
+  // Get the second most recent snapshot per user (skip the latest one which is current)
+  const { data, error } = await supabase
+    .from('leaderboard_rank_history' as any)
+    .select('user_id, rank, recorded_at')
+    .eq('group_id', groupId)
+    .eq('sort_type', sortType)
+    .order('recorded_at', { ascending: false })
+    .limit(500);
+
+  if (error || !data) return new Map();
+
+  const entries = data as unknown as { user_id: string; rank: number; recorded_at: string }[];
+  
+  // Group by user_id, take the second entry (previous snapshot)
+  const userSnapshots = new Map<string, { rank: number; recorded_at: string }[]>();
+  for (const entry of entries) {
+    const list = userSnapshots.get(entry.user_id) || [];
+    list.push(entry);
+    userSnapshots.set(entry.user_id, list);
+  }
+
+  const result = new Map<string, number>();
+  for (const [userId, snapshots] of userSnapshots) {
+    // snapshots are sorted desc by recorded_at; index 0 is latest, index 1 is previous
+    if (snapshots.length >= 2) {
+      result.set(userId, snapshots[1].rank);
+    }
+  }
+
+  return result;
+};
