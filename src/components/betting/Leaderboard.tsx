@@ -373,6 +373,24 @@ const Leaderboard = ({ onBack }: LeaderboardProps) => {
         }
         setFollowerCounts(followerCountsMap);
         setFollowingCounts(followingCountsMap);
+
+        // Record rank snapshot for the current user
+        if (currentUser && groupData) {
+          const currentUserEntry = data.find((u: LeaderboardEntry) => {
+            const p = profilesList.find(pr => pr.username === u.username);
+            return p?.user_id === currentUser.id;
+          });
+          if (currentUserEntry) {
+            recordRankSnapshot(
+              currentUser.id,
+              currentUserEntry.rank,
+              currentUserEntry.points,
+              currentUserEntry.username,
+              'points',
+              groupData.group_id
+            );
+          }
+        }
       }
     } catch (error) {
       console.error('Error fetching leaderboard:', error);
