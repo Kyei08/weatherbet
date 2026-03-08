@@ -70,21 +70,49 @@ const Dashboard = () => {
   if (subView) return <>{subView}</>;
 
   return (
-    <div className={`min-h-screen p-4 transition-colors duration-300 ${theme.gradient} animate-fade-in`}>
+    <div className={`min-h-screen p-4 transition-colors duration-300 ${theme.gradient}`}>
       <div className="max-w-4xl mx-auto space-y-6">
-        <DashboardHeader user={user} winRate={winRate} pendingBetsCount={pendingBets.length} />
-        <CurrencyModeSwitcher />
-        {bets.length > 0 && <ActiveBetsWeather bets={bets} />}
-        <LevelDisplay />
-        <StreakDisplay />
-        <DailyChallenges />
-        <BonusTracker />
-        <TransactionHistory />
-        <Achievements />
-        <Perks />
-        <VolatilityChart />
-        <DashboardActions betsCount={bets.length} onViewChange={setActiveView} />
-        <RecentBets bets={bets} />
+        <div className="animate-fade-in" style={{ animationDelay: '0ms', animationFillMode: 'both' }}>
+          <DashboardHeader user={user} winRate={winRate} pendingBetsCount={pendingBets.length} />
+        </div>
+        <div className="animate-fade-in" style={{ animationDelay: '50ms', animationFillMode: 'both' }}>
+          <CurrencyModeSwitcher />
+        </div>
+        {bets.length > 0 && (
+          <div className="animate-fade-in" style={{ animationDelay: '100ms', animationFillMode: 'both' }}>
+            <ActiveBetsWeather bets={bets} />
+          </div>
+        )}
+        <div className="animate-fade-in" style={{ animationDelay: '150ms', animationFillMode: 'both' }}>
+          <LevelDisplay />
+        </div>
+        <div className="animate-fade-in" style={{ animationDelay: '200ms', animationFillMode: 'both' }}>
+          <StreakDisplay />
+        </div>
+        <div className="animate-fade-in" style={{ animationDelay: '250ms', animationFillMode: 'both' }}>
+          <DailyChallenges />
+        </div>
+        <div className="animate-fade-in" style={{ animationDelay: '300ms', animationFillMode: 'both' }}>
+          <BonusTracker />
+        </div>
+        <div className="animate-fade-in" style={{ animationDelay: '350ms', animationFillMode: 'both' }}>
+          <TransactionHistory />
+        </div>
+        <div className="animate-fade-in" style={{ animationDelay: '400ms', animationFillMode: 'both' }}>
+          <Achievements />
+        </div>
+        <div className="animate-fade-in" style={{ animationDelay: '450ms', animationFillMode: 'both' }}>
+          <Perks />
+        </div>
+        <div className="animate-fade-in" style={{ animationDelay: '500ms', animationFillMode: 'both' }}>
+          <VolatilityChart />
+        </div>
+        <div className="animate-fade-in" style={{ animationDelay: '550ms', animationFillMode: 'both' }}>
+          <DashboardActions betsCount={bets.length} onViewChange={setActiveView} />
+        </div>
+        <div className="animate-fade-in" style={{ animationDelay: '600ms', animationFillMode: 'both' }}>
+          <RecentBets bets={bets} />
+        </div>
       </div>
     </div>
   );
