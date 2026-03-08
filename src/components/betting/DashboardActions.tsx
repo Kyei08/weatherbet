@@ -66,7 +66,7 @@ export function DashboardActions({ betsCount, onViewChange }: DashboardActionsPr
       <Button
         variant="outline"
         size="lg"
-        className={`w-full h-12 text-base border-2 ${theme.borderColorHeavy} ${theme.hoverBg} hover:scale-[1.01] transition-all`}
+        className={`w-full h-11 sm:h-12 text-sm sm:text-base border-2 ${theme.borderColorHeavy} ${theme.hoverBg} hover:scale-[1.01] transition-all`}
         onClick={() => onViewChange('mybets')}
       >
         <BarChart3 className="mr-2 h-4 w-4" />
