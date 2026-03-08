@@ -64,9 +64,9 @@ function PlayerRow({ user, profile, isFollowing, onClick }: { user: LeaderboardE
       }`}
     >
       <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-        <div className="flex items-center gap-2 min-w-[60px] shrink-0">
+        <div className="flex items-center gap-1 sm:gap-2 min-w-[44px] sm:min-w-[60px] shrink-0">
           {getRankIcon(user.rank)}
-          <Badge variant={getRankBadge(user.rank)}>#{user.rank}</Badge>
+          <Badge variant={getRankBadge(user.rank)} className="text-[10px] sm:text-xs">#{user.rank}</Badge>
         </div>
         {/* Avatar */}
         <div className="h-9 w-9 rounded-full shrink-0 overflow-hidden bg-primary/10 flex items-center justify-center">
