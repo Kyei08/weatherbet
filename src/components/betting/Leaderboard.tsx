@@ -32,6 +32,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { recordRankSnapshot } from '@/lib/supabase-rank-history';
 import { usePullToRefresh } from '@/hooks/usePullToRefresh';
 import PlayerProfileModal from './PlayerProfileModal';
+import SeasonHistory from './SeasonHistory';
 
 interface LeaderboardEntry {
   username: string;
