@@ -223,6 +223,20 @@ const Leaderboard = ({ onBack }: LeaderboardProps) => {
           </Card>
         )}
       </div>
+
+      {selectedPlayer && (
+        <PlayerProfileModal
+          open={!!selectedPlayer}
+          onOpenChange={(open) => !open && setSelectedPlayer(null)}
+          username={selectedPlayer.username}
+          points={selectedPlayer.points}
+          level={selectedPlayer.level}
+          xp={selectedPlayer.xp}
+          rank={selectedPlayer.rank}
+          bio={profiles.get(selectedPlayer.username)?.bio}
+          avatarUrl={profiles.get(selectedPlayer.username)?.avatar_url}
+        />
+      )}
     </div>
   );
 };
