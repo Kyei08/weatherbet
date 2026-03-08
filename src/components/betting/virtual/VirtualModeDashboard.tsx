@@ -35,6 +35,18 @@ const VirtualModeDashboard = () => {
   const [activeView, setActiveView] = useState<'dashboard' | 'betting' | 'parlay' | 'combined' | 'mybets' | 'leaderboard' | 'shop' | 'analytics'>('dashboard');
   const [loading, setLoading] = useState(true);
 
+  // Listen for mobile bottom nav actions
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const action = (e as CustomEvent).detail;
+      if (action === 'mybets') setActiveView('mybets');
+      else if (action === 'analytics') setActiveView('analytics');
+      else if (action === 'shop') setActiveView('shop');
+    };
+    window.addEventListener('mobile-nav-action', handler);
+    return () => window.removeEventListener('mobile-nav-action', handler);
+  }, []);
+
   useEffect(() => {
     const fetchData = async () => {
       try {
