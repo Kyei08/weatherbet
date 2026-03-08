@@ -467,6 +467,41 @@ export type Database = {
           },
         ]
       }
+      leaderboard_seasons: {
+        Row: {
+          ended_at: string | null
+          group_id: string | null
+          id: string
+          is_active: boolean
+          season_number: number
+          started_at: string
+        }
+        Insert: {
+          ended_at?: string | null
+          group_id?: string | null
+          id?: string
+          is_active?: boolean
+          season_number: number
+          started_at?: string
+        }
+        Update: {
+          ended_at?: string | null
+          group_id?: string | null
+          id?: string
+          is_active?: boolean
+          season_number?: number
+          started_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leaderboard_seasons_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "leaderboard_groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notifications: {
         Row: {
           created_at: string
@@ -687,6 +722,50 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      season_results: {
+        Row: {
+          final_points: number
+          final_rank: number
+          id: string
+          recorded_at: string
+          season_id: string
+          total_bets: number
+          total_wins: number
+          user_id: string
+          username: string
+        }
+        Insert: {
+          final_points: number
+          final_rank: number
+          id?: string
+          recorded_at?: string
+          season_id: string
+          total_bets?: number
+          total_wins?: number
+          user_id: string
+          username: string
+        }
+        Update: {
+          final_points?: number
+          final_rank?: number
+          id?: string
+          recorded_at?: string
+          season_id?: string
+          total_bets?: number
+          total_wins?: number
+          user_id?: string
+          username?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "season_results_season_id_fkey"
+            columns: ["season_id"]
+            isOneToOne: false
+            referencedRelation: "leaderboard_seasons"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       shop_items: {
         Row: {
@@ -954,6 +1033,7 @@ export type Database = {
           points: number
           updated_at: string
           username: string
+          weekly_points: number
           xp: number
         }
         Insert: {
@@ -964,6 +1044,7 @@ export type Database = {
           points?: number
           updated_at?: string
           username: string
+          weekly_points?: number
           xp?: number
         }
         Update: {
@@ -974,6 +1055,7 @@ export type Database = {
           points?: number
           updated_at?: string
           username?: string
+          weekly_points?: number
           xp?: number
         }
         Relationships: []
