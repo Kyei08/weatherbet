@@ -353,6 +353,7 @@ const VirtualModeDashboard = () => {
         )}
       </div>
     </div>
+    </motion.div>
   );
 };
 
