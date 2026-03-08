@@ -208,8 +208,24 @@ const Leaderboard = ({ onBack }: LeaderboardProps) => {
       const q = searchQuery.toLowerCase();
       result = result.filter(u => u.username.toLowerCase().includes(q));
     }
+    
+    // Apply sorting
+    result = [...result].sort((a, b) => {
+      if (sortBy === 'followers') {
+        const aFollowers = profiles.get(a.username)?.user_id ? followerCounts.get(profiles.get(a.username)?.user_id!) ?? 0 : 0;
+        const bFollowers = profiles.get(b.username)?.user_id ? followerCounts.get(profiles.get(b.username)?.user_id!) ?? 0 : 0;
+        return bFollowers - aFollowers;
+      } else if (sortBy === 'following') {
+        const aFollowing = profiles.get(a.username)?.user_id ? followingCounts.get(profiles.get(a.username)?.user_id!) ?? 0 : 0;
+        const bFollowing = profiles.get(b.username)?.user_id ? followingCounts.get(profiles.get(b.username)?.user_id!) ?? 0 : 0;
+        return bFollowing - aFollowing;
+      }
+      // Default: sort by points (descending)
+      return b.points - a.points;
+    });
+    
     return result;
-  }, [users, searchQuery, friendsOnly, profiles, followingUserIds]);
+  }, [users, searchQuery, friendsOnly, profiles, followingUserIds, sortBy, followerCounts, followingCounts]);
 
   const totalPages = Math.max(1, Math.ceil(filteredUsers.length / PLAYERS_PER_PAGE));
   const paginatedUsers = useMemo(() => {
