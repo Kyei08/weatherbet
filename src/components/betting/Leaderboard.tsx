@@ -398,7 +398,7 @@ const Leaderboard = ({ onBack }: LeaderboardProps) => {
     } finally {
       setLoading(false);
     }
-  }, [toast]);
+  }, [toast, currentUser]);
 
   useEffect(() => {
     fetchLeaderboard();
