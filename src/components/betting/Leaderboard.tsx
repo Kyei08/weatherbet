@@ -269,16 +269,37 @@ const Leaderboard = ({ onBack }: LeaderboardProps) => {
               <CardHeader>
                 <CardTitle>Top Players</CardTitle>
                 <p className="text-muted-foreground">Compete with players in your league</p>
+                <div className="relative mt-2">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search players..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-9 pr-9"
+                  />
+                  {searchQuery && (
+                    <button
+                      onClick={() => setSearchQuery('')}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
               </CardHeader>
               <CardContent>
-                {users.length === 0 ? (
+                {filteredUsers.length === 0 ? (
                   <div className="text-center py-8">
-                    <p className="text-muted-foreground">No players yet!</p>
-                    <p className="text-sm text-muted-foreground mt-2">Be the first to place a bet</p>
+                    <p className="text-muted-foreground">
+                      {searchQuery ? 'No players match your search' : 'No players yet!'}
+                    </p>
+                    {!searchQuery && (
+                      <p className="text-sm text-muted-foreground mt-2">Be the first to place a bet</p>
+                    )}
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    {users.map((user, i) => {
+                    {filteredUsers.map((user, i) => {
                       const profile = profiles.get(user.username);
                       return (
                         <div
