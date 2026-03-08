@@ -32,6 +32,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { recordRankSnapshot } from '@/lib/supabase-rank-history';
 import { usePullToRefresh } from '@/hooks/usePullToRefresh';
 import PlayerProfileModal from './PlayerProfileModal';
+import SeasonHistory from './SeasonHistory';
 
 interface LeaderboardEntry {
   username: string;
@@ -655,6 +656,10 @@ const Leaderboard = ({ onBack }: LeaderboardProps) => {
                   </div>
                 </CardContent>
               </Card>
+            )}
+
+            {groupInfo && (
+              <SeasonHistory groupId={groupInfo.group_id} />
             )}
           </>
         )}
