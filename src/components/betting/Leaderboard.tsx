@@ -100,7 +100,27 @@ function PlayerRowSkeleton() {
   );
 }
 
-function PlayerRow({ user, profile, isFollowing, followerCount, followingCount, sortBy, isTop10, isFirst, onClick }: { user: LeaderboardEntry; profile?: ProfileInfo; isFollowing?: boolean; followerCount?: number; followingCount?: number; sortBy: 'points' | 'followers' | 'following'; isTop10: boolean; isFirst: boolean; onClick: () => void }) {
+function RankChangeIndicator({ change }: { change: number | undefined }) {
+  if (change === undefined || change === 0) {
+    return <Minus className="h-3 w-3 text-muted-foreground" />;
+  }
+  if (change > 0) {
+    return (
+      <span className="flex items-center text-[10px] font-semibold text-green-500">
+        <TrendingUp className="h-3 w-3 mr-0.5" />
+        {change}
+      </span>
+    );
+  }
+  return (
+    <span className="flex items-center text-[10px] font-semibold text-destructive">
+      <TrendingDown className="h-3 w-3 mr-0.5" />
+      {Math.abs(change)}
+    </span>
+  );
+}
+
+function PlayerRow({ user, profile, isFollowing, followerCount, followingCount, sortBy, isTop10, isFirst, rankChange, onClick }: { user: LeaderboardEntry; profile?: ProfileInfo; isFollowing?: boolean; followerCount?: number; followingCount?: number; sortBy: 'points' | 'followers' | 'following'; isTop10: boolean; isFirst: boolean; rankChange?: number; onClick: () => void }) {
   const getSortIndicator = () => {
     if (sortBy === 'followers') {
       return (
