@@ -373,14 +373,20 @@ export function CombinedBettingSlip({ onBack, onBetPlaced }: CombinedBettingSlip
           </div>
 
           {/* City Selection - visual grid */}
-          <div className="space-y-2">
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1, duration: 0.3 }}
+            className="space-y-2"
+          >
             <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">City</Label>
             <div className="grid grid-cols-5 gap-2">
               {CITIES.map((cityName) => {
                 const isSelected = city === cityName;
                 return (
-                  <button
+                  <motion.button
                     key={cityName}
+                    whileTap={{ scale: 0.95 }}
                     onClick={() => setCity(cityName as City)}
                     className={`flex flex-col items-center gap-1 p-2 rounded-lg border text-center transition-all
                       ${isSelected ? 'border-primary bg-primary/10 ring-1 ring-primary' : 'border-border hover:border-primary/50 hover:bg-accent/30'}
@@ -390,11 +396,11 @@ export function CombinedBettingSlip({ onBack, onBetPlaced }: CombinedBettingSlip
                     <span className={`text-[10px] leading-tight ${isSelected ? 'text-primary font-semibold' : 'text-muted-foreground'}`}>
                       {cityName.split(' ')[0]}
                     </span>
-                  </button>
+                  </motion.button>
                 );
               })}
             </div>
-          </div>
+          </motion.div>
 
           {/* Weather Display */}
           {city && <WeatherDisplay city={city} />}
