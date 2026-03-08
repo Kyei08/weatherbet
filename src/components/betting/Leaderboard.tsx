@@ -221,15 +221,18 @@ const Leaderboard = ({ onBack }: LeaderboardProps) => {
         });
         setProfiles(map);
 
-        // Fetch follower counts for all players
+        // Fetch follower and following counts for all players
         const followerCountsMap = new Map<string, number>();
+        const followingCountsMap = new Map<string, number>();
         for (const profile of profilesList) {
           if (profile.user_id) {
             const counts = await getFollowCounts(profile.user_id);
             followerCountsMap.set(profile.user_id, counts.followers);
+            followingCountsMap.set(profile.user_id, counts.following);
           }
         }
         setFollowerCounts(followerCountsMap);
+        setFollowingCounts(followingCountsMap);
       }
     } catch (error) {
       console.error('Error fetching leaderboard:', error);
