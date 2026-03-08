@@ -721,7 +721,7 @@ export function CombinedBettingSlip({ onBack, onBetPlaced }: CombinedBettingSlip
                   : 'Place Combined Bet'
             }
           </Button>
-        </div>
+        </motion.div>
       </div>
 
       <DuplicateBetDialog

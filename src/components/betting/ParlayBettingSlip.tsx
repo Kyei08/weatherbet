@@ -348,7 +348,12 @@ const ParlayBettingSlip = ({ onBack, onBetPlaced }: ParlayBettingSlipProps) => {
   return (
     <>
       <div className="min-h-screen bg-background p-4 pb-8">
-        <div className="max-w-2xl mx-auto space-y-4">
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, ease: 'easeOut' }}
+          className="max-w-2xl mx-auto space-y-4"
+        >
           {/* Header */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
