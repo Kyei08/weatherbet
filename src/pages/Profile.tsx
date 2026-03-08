@@ -14,6 +14,7 @@ import { Separator } from '@/components/ui/separator';
 import { ArrowLeft, User, Bell, Volume2, Vibrate, Shield, LogOut, Save, Loader2, Camera, Sun, Moon, Monitor } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
+import { Textarea } from '@/components/ui/textarea';
 import { ChangePasswordForm } from '@/components/profile/ChangePasswordForm';
 
 const Profile = () => {
