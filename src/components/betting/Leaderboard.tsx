@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowLeft, Trophy, Medal, Award, Users, UserCheck, RefreshCw, Search, X, Heart, Zap, UserPlus, TrendingUp, Crown, Flame } from 'lucide-react';
+import { ArrowLeft, Trophy, Medal, Award, Users, UserCheck, RefreshCw, Search, X, Heart, Zap, UserPlus, TrendingUp, TrendingDown, Minus, Crown, Flame } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
