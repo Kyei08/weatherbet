@@ -721,7 +721,7 @@ const ParlayBettingSlip = ({ onBack, onBetPlaced }: ParlayBettingSlipProps) => {
                   : 'Place Parlay Bet'
             }
           </Button>
-        </div>
+        </motion.div>
       </div>
 
       <DuplicateBetDialog
