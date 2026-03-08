@@ -549,6 +549,66 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
     }
   };
 
+  // Helper to get the current prediction value
+  const getCurrentPredictionValue = (): string => {
+    if (predictionType === 'rain') return rainPrediction;
+    if (predictionType === 'temperature') return tempRange;
+    if (predictionType === 'rainfall') return rainfallRange;
+    if (predictionType === 'snow') return snowPrediction;
+    if (predictionType === 'wind') return windRange;
+    if (predictionType === 'dew_point') return dewPointRange;
+    if (predictionType === 'pressure') return pressureRange;
+    if (predictionType === 'cloud_coverage') return cloudCoverageRange;
+    return '';
+  };
+
+  // Helper to get prediction display label
+  const getPredictionLabel = (): string => {
+    const value = getCurrentPredictionValue();
+    if (!value) return '';
+    if (predictionType === 'rain') return `Rain: ${value}`;
+    if (predictionType === 'snow') return `Snow: ${value}`;
+    if (predictionType === 'temperature') return `Temp: ${TEMPERATURE_RANGES.find(r => r.value === value)?.label || value}`;
+    if (predictionType === 'rainfall') return `Rainfall: ${RAINFALL_RANGES.find(r => r.value === value)?.label || value}`;
+    if (predictionType === 'wind') return `Wind: ${WIND_RANGES.find(r => r.value === value)?.label || value}`;
+    if (predictionType === 'dew_point') return `Dew Point: ${DEW_POINT_RANGES.find(r => r.value === value)?.label || value}`;
+    if (predictionType === 'pressure') return `Pressure: ${PRESSURE_RANGES.find(r => r.value === value)?.label || value}`;
+    if (predictionType === 'cloud_coverage') return `Cloud: ${CLOUD_COVERAGE_RANGES.find(r => r.value === value)?.label || value}`;
+    return value;
+  };
+
+  // City flag emojis
+  const cityFlags: Record<string, string> = {
+    'New York': '🇺🇸', 'Tokyo': '🇯🇵', 'London': '🇬🇧', 'Paris': '🇫🇷',
+    'Sydney': '🇦🇺', 'Cape Town': '🇿🇦', 'Sao Paulo': '🇧🇷',
+    'Mumbai': '🇮🇳', 'Cairo': '🇪🇬', 'Toronto': '🇨🇦',
+  };
+
+  // Category icons
+  const categoryConfig = [
+    { value: 'rain', label: 'Rain', icon: '🌧️', desc: 'Yes / No' },
+    { value: 'temperature', label: 'Temp', icon: '🌡️', desc: 'Range' },
+    { value: 'rainfall', label: 'Rainfall', icon: '💧', desc: 'Amount' },
+    { value: 'snow', label: 'Snow', icon: '❄️', desc: 'Yes / No' },
+    { value: 'wind', label: 'Wind', icon: '💨', desc: 'Speed' },
+    { value: 'dew_point', label: 'Dew Pt', icon: '💦', desc: 'Range' },
+    { value: 'pressure', label: 'Pressure', icon: '📊', desc: 'hPa' },
+    { value: 'cloud_coverage', label: 'Clouds', icon: '☁️', desc: 'Coverage' },
+  ];
+
+  // Quick stake presets
+  const stakePresets = mode === 'real'
+    ? [{ label: 'R5', value: 500 }, { label: 'R10', value: 1000 }, { label: 'R25', value: 2500 }, { label: 'R50', value: 5000 }, { label: 'R100', value: 10000 }]
+    : [{ label: '10', value: 10 }, { label: '25', value: 25 }, { label: '50', value: 50 }, { label: '75', value: 75 }, { label: '100', value: 100 }];
+
+  // Progress steps
+  const completedSteps = [
+    !!city,
+    !!predictionType && !!getCurrentPredictionValue(),
+    !!stake && parseInt(stake) >= getMinStake(),
+  ];
+  const currentStep = completedSteps.filter(Boolean).length;
+
   if (!user) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -558,710 +618,520 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
   }
 
   return (
-    <div className="min-h-screen bg-background p-4">
-      <div className="max-w-2xl mx-auto space-y-6">
-        {/* Header */}
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="sm" onClick={onBack}>
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-          <h1 className="text-2xl font-bold">Place Your Bet</h1>
+    <div className="min-h-screen bg-background p-4 pb-8">
+      <div className="max-w-2xl mx-auto space-y-4">
+        {/* Header with balance */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Button variant="ghost" size="icon" onClick={onBack} className="h-9 w-9">
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+            <div>
+              <h1 className="text-xl font-bold">Place Bet</h1>
+              <p className="text-xs text-muted-foreground">
+                {format(selectedDay, 'EEEE, MMM d')} • Closes {format(getDeadlineForDay(selectedDay), 'EEE')} 11:59 PM
+              </p>
+            </div>
+          </div>
+          <div className="text-right">
+            <p className="text-xs text-muted-foreground">Balance</p>
+            <p className="text-sm font-bold">{formatCurrency(mode === 'real' ? (user.balance_cents || 0) : user.points, mode)}</p>
+          </div>
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Betting Slip</CardTitle>
-            <p className="text-muted-foreground">
-              Available Balance: {formatCurrency(mode === 'real' ? (user.balance_cents || 0) : user.points, mode)}
-            </p>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            {/* Active Shop Bonuses */}
-            {activePurchases.length > 0 && (
-              <Card className="border-2 border-primary/30 bg-primary/5">
-                <CardContent className="pt-4">
-                  <div className="flex items-center gap-2 mb-3">
-                    <Sparkles className="h-4 w-4 text-primary" />
-                    <span className="font-semibold">Active Bonuses</span>
-                  </div>
-                  <div className="space-y-2">
-                    {activePurchases.map((purchase) => (
-                      <div key={purchase.id} className="flex items-center justify-between p-2 bg-background/50 rounded">
-                        <div className="flex items-center gap-2">
-                          <span className="text-lg">{purchase.item.item_icon}</span>
-                          <div>
-                            <p className="text-sm font-medium">{purchase.item.title}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {purchase.item.item_type === 'temp_multiplier' && `${purchase.item.item_value}x Multiplier`}
-                              {purchase.item.item_type === 'stake_boost' && `+${purchase.item.item_value} Max Stake`}
-                              {purchase.item.item_type === 'bonus_points' && `+${purchase.item.item_value} Points`}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          {purchase.expires_at ? (
-                            <Badge variant="secondary" className="flex items-center gap-1">
-                              <Clock className="h-3 w-3" />
-                              {formatTimeRemaining(purchase.expires_at)}
-                            </Badge>
-                          ) : (
-                            <Badge variant="outline" className="flex items-center gap-1">
-                              <Zap className="h-3 w-3" />
-                              One-time
-                            </Badge>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Day Selection */}
-            <div className="space-y-2">
-              <Label htmlFor="day-select" className="text-base font-semibold">Select Bet Day</Label>
-              <Select 
-                value={selectedDay.toISOString()} 
-                onValueChange={(value) => setSelectedDay(new Date(value))}
-              >
-                <SelectTrigger id="day-select">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {availableDays.map((day) => {
-                    const deadline = getDeadlineForDay(day);
-                    const isPassed = isDeadlinePassed(day);
-                    return (
-                      <SelectItem 
-                        key={day.toISOString()} 
-                        value={day.toISOString()}
-                        disabled={isPassed}
-                      >
-                        <div className="flex items-center justify-between w-full gap-4">
-                          <span className={isPassed ? 'text-muted-foreground line-through' : ''}>
-                            {format(day, 'EEEE, MMM dd')}
-                          </span>
-                          <span className="text-xs text-muted-foreground">
-                            {isPassed ? '(Expired)' : `Bet by: ${format(deadline, 'EEE')} 11:59 PM`}
-                          </span>
-                        </div>
-                      </SelectItem>
-                    );
-                  })}
-                </SelectContent>
-              </Select>
+        {/* Progress indicator */}
+        <div className="flex gap-1.5">
+          {['City', 'Prediction', 'Stake'].map((step, i) => (
+            <div key={step} className="flex-1 space-y-1">
+              <div className={`h-1.5 rounded-full transition-colors ${completedSteps[i] ? 'bg-primary' : 'bg-muted'}`} />
+              <p className={`text-[10px] text-center ${completedSteps[i] ? 'text-primary font-medium' : 'text-muted-foreground'}`}>{step}</p>
             </div>
+          ))}
+        </div>
 
-            {/* Betting Window Info */}
-            <Card className="border-2 border-primary/30 bg-primary/5">
-              <CardContent className="pt-4">
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Clock className="h-4 w-4 text-primary" />
-                      <span className="font-semibold">Betting Window</span>
-                    </div>
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Badge variant="outline" className="text-xs cursor-help">
-                            <Clock className="h-3 w-3 mr-1" />
-                            {userTimezone}
-                          </Badge>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>All times shown in your local timezone</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  </div>
-                  
-                  <div className="space-y-2 text-sm">
-                    <div className="flex items-start gap-2">
-                      <Clock className="h-4 w-4 mt-0.5 text-primary" />
-                      <div>
-                        <p className="font-medium">Betting on: {format(selectedDay, 'EEEE, MMMM dd')}</p>
-                        <p className="text-muted-foreground text-xs">
-                          Predict weather for this day
-                        </p>
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-start gap-2">
-                      <Clock className="h-4 w-4 mt-0.5 text-destructive" />
-                      <div>
-                        <p className="font-medium">
-                          Deadline: {format(getDeadlineForDay(selectedDay), 'EEEE')} at 11:59 PM
-                        </p>
-                        <p className="text-muted-foreground text-xs">
-                          Bets lock at: <strong>{format(getDeadlineForDay(selectedDay), 'PPp')}</strong>
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="pt-2 border-t">
-                    <p className="text-xs text-muted-foreground">
-                      ✅ No cheating - you can't bet on weather you're experiencing<br />
-                      ✅ True prediction - requires actual forecasting skill<br />
-                      ✅ Daily engagement - come back each day for new bets
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Weather Display */}
-            {city && <WeatherDisplay city={city} />}
-            
-            {/* City Selection */}
-            <div className="space-y-2">
-              <Label>Select City</Label>
-              <Select value={city} onValueChange={(value) => setCity(value as City)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Choose a city" />
-                </SelectTrigger>
-                <SelectContent>
-                  {CITIES.map((cityName) => (
-                    <SelectItem key={cityName} value={cityName}>
-                      {cityName}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Live Odds Indicator */}
-            {city && weatherForecast.length > 0 && (
-              <div className="flex items-center gap-2 p-3 bg-primary/10 rounded-lg flex-wrap">
-                <Activity className="h-4 w-4 text-primary animate-pulse" />
-                <span className="text-sm font-medium">Live Odds Active</span>
-                {predictionType && volatilityData && volatilityData.volatilityMultiplier > 1 && (
-                  <VolatilityBadge city={city} category={predictionType} showDetails />
+        {/* Active Bonuses - compact */}
+        {activePurchases.length > 0 && (
+          <div className="flex gap-2 flex-wrap">
+            {activePurchases.map((purchase) => (
+              <Badge key={purchase.id} variant="secondary" className="gap-1 text-xs">
+                <span>{purchase.item.item_icon}</span>
+                {purchase.item.item_type === 'temp_multiplier' && `${purchase.item.item_value}x`}
+                {purchase.item.item_type === 'stake_boost' && `+${purchase.item.item_value}`}
+                {purchase.item.item_type === 'bonus_points' && `+${purchase.item.item_value}`}
+                {purchase.expires_at && (
+                  <span className="text-muted-foreground">• {formatTimeRemaining(purchase.expires_at)}</span>
                 )}
-                <span className="text-xs text-muted-foreground ml-auto">
-                  Based on current forecast
-                </span>
-              </div>
-            )}
+              </Badge>
+            ))}
+          </div>
+        )}
 
-            {/* Prediction Type */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <Label>Prediction Type</Label>
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Badge variant="outline" className="text-xs cursor-help">
-                        <Info className="h-3 w-3 mr-1" />
-                        Smart Timing
-                      </Badge>
-                    </TooltipTrigger>
-                    <TooltipContent className="max-w-xs">
-                      <p className="font-semibold mb-1">⏱️ Smart Timing System</p>
-                      <p className="text-xs">Each category is measured at its optimal time for accurate predictions. Click any category to see when it's measured.</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              </div>
-              <RadioGroup value={predictionType} onValueChange={(value) => setPredictionType(value as any)}>
-                <div className="flex items-center justify-between space-x-2 p-2 rounded-lg hover:bg-accent/50 transition-colors">
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="rain" id="rain" />
-                    <Label htmlFor="rain" className="cursor-pointer">🌧️ Rain (Yes/No)</Label>
-                  </div>
-                  <CategoryTimingInfo category="rain" />
-                </div>
-                <div className="flex items-center justify-between space-x-2 p-2 rounded-lg hover:bg-accent/50 transition-colors">
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="temperature" id="temperature" />
-                    <Label htmlFor="temperature" className="cursor-pointer">🌡️ Temperature Range</Label>
-                  </div>
-                  <CategoryTimingInfo category="temperature" />
-                </div>
-                <div className="flex items-center justify-between space-x-2 p-2 rounded-lg hover:bg-accent/50 transition-colors">
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="rainfall" id="rainfall" />
-                    <Label htmlFor="rainfall" className="cursor-pointer">💧 Rainfall Amount</Label>
-                  </div>
-                  <CategoryTimingInfo category="rainfall" />
-                </div>
-                <div className="flex items-center justify-between space-x-2 p-2 rounded-lg hover:bg-accent/50 transition-colors">
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="snow" id="snow" />
-                    <Label htmlFor="snow" className="cursor-pointer">❄️ Snow (Yes/No)</Label>
-                  </div>
-                  <CategoryTimingInfo category="snow" />
-                </div>
-                <div className="flex items-center justify-between space-x-2 p-2 rounded-lg hover:bg-accent/50 transition-colors">
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="wind" id="wind" />
-                    <Label htmlFor="wind" className="cursor-pointer">💨 Wind Speed</Label>
-                  </div>
-                  <CategoryTimingInfo category="wind" />
-                </div>
-                <div className="flex items-center justify-between space-x-2 p-2 rounded-lg hover:bg-accent/50 transition-colors">
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="dew_point" id="dew_point" />
-                    <Label htmlFor="dew_point" className="cursor-pointer">💦 Dew Point</Label>
-                  </div>
-                  <CategoryTimingInfo category="dew_point" />
-                </div>
-                <div className="flex items-center justify-between space-x-2 p-2 rounded-lg hover:bg-accent/50 transition-colors">
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="pressure" id="pressure" />
-                    <Label htmlFor="pressure" className="cursor-pointer">📊 Atmospheric Pressure</Label>
-                  </div>
-                  <CategoryTimingInfo category="pressure" />
-                </div>
-                <div className="flex items-center justify-between space-x-2 p-2 rounded-lg hover:bg-accent/50 transition-colors">
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="cloud_coverage" id="cloud_coverage" />
-                    <Label htmlFor="cloud_coverage" className="cursor-pointer">☁️ Cloud Coverage</Label>
-                  </div>
-                  <CategoryTimingInfo category="cloud_coverage" />
-                </div>
-              </RadioGroup>
-            </div>
+        {/* Day Selection - compact horizontal scroll */}
+        <div className="space-y-2">
+          <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Target Day</Label>
+          <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
+            {availableDays.map((day) => {
+              const isPassed = isDeadlinePassed(day);
+              const isSelected = day.toISOString() === selectedDay.toISOString();
+              return (
+                <button
+                  key={day.toISOString()}
+                  disabled={isPassed}
+                  onClick={() => setSelectedDay(day)}
+                  className={`flex-shrink-0 px-3 py-2 rounded-lg border text-center transition-all text-xs
+                    ${isSelected ? 'border-primary bg-primary/10 text-primary font-semibold' : 'border-border hover:border-primary/50'}
+                    ${isPassed ? 'opacity-40 cursor-not-allowed line-through' : 'cursor-pointer'}`}
+                >
+                  <div className="font-medium">{format(day, 'EEE')}</div>
+                  <div className="text-muted-foreground">{format(day, 'MMM d')}</div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
 
-            {/* Time Slot Selection - for categories with multiple measurement times */}
-            {predictionType && hasMultipleTimeSlots(predictionType as BettingCategory) && (
-              <TimeSlotSelector
-                category={predictionType as BettingCategory}
-                selectedSlotId={selectedTimeSlot}
-                onSlotChange={setSelectedTimeSlot}
-              />
-            )}
-
-            {/* Selected Category Timing Details */}
-            {predictionType && (
-              <CategoryTimingInfo 
-                category={predictionType as BettingCategory} 
-                showFull 
-                slotId={selectedTimeSlot}
-              />
-            )}
-
-            {/* Rain Options */}
-            {predictionType === 'rain' && (
-              <div className="space-y-3">
-                <Label>Will it rain?</Label>
-                <RadioGroup value={rainPrediction} onValueChange={(value) => setRainPrediction(value as 'yes' | 'no')}>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="yes" id="rain-yes" />
-                    <Label htmlFor="rain-yes">Yes</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="no" id="rain-no" />
-                    <Label htmlFor="rain-no">No</Label>
-                  </div>
-                </RadioGroup>
-              </div>
-            )}
-
-            {/* Temperature Options */}
-            {predictionType === 'temperature' && (
-              <div className="space-y-2">
-                <Label>Temperature Range</Label>
-                <Select value={tempRange} onValueChange={setTempRange}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Choose temperature range" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {TEMPERATURE_RANGES.map((range) => (
-                      <SelectItem key={range.value} value={range.value}>
-                        {range.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-
-            {/* Rainfall Options */}
-            {predictionType === 'rainfall' && (
-              <div className="space-y-2">
-                <Label>Rainfall Amount</Label>
-                <Select value={rainfallRange} onValueChange={setRainfallRange}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Choose rainfall range" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {RAINFALL_RANGES.map((range) => (
-                      <SelectItem key={range.value} value={range.value}>
-                        {range.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-
-            {/* Snow Options */}
-            {predictionType === 'snow' && (
-              <div className="space-y-3">
-                <Label>Will it snow?</Label>
-                <RadioGroup value={snowPrediction} onValueChange={(value) => setSnowPrediction(value as 'yes' | 'no')}>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="yes" id="snow-yes" />
-                    <Label htmlFor="snow-yes">Yes</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="no" id="snow-no" />
-                    <Label htmlFor="snow-no">No</Label>
-                  </div>
-                </RadioGroup>
-              </div>
-            )}
-
-            {/* Wind Options */}
-            {predictionType === 'wind' && (
-              <div className="space-y-2">
-                <Label>Wind Speed Range</Label>
-                <Select value={windRange} onValueChange={setWindRange}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Choose wind speed range" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {WIND_RANGES.map((range) => (
-                      <SelectItem key={range.value} value={range.value}>
-                        {range.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-
-            {/* Dew Point Options */}
-            {predictionType === 'dew_point' && (
-              <div className="space-y-2">
-                <Label>Dew Point Range</Label>
-                <Select value={dewPointRange} onValueChange={setDewPointRange}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Choose dew point range" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {DEW_POINT_RANGES.map((range) => (
-                      <SelectItem key={range.value} value={range.value}>
-                        {range.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-
-            {/* Pressure Options */}
-            {predictionType === 'pressure' && (
-              <div className="space-y-2">
-                <Label>Atmospheric Pressure Range</Label>
-                <Select value={pressureRange} onValueChange={setPressureRange}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Choose pressure range" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {PRESSURE_RANGES.map((range) => (
-                      <SelectItem key={range.value} value={range.value}>
-                        {range.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-
-            {/* Cloud Coverage Options */}
-            {predictionType === 'cloud_coverage' && (
-              <div className="space-y-2">
-                <Label>Cloud Coverage Range</Label>
-                <Select value={cloudCoverageRange} onValueChange={setCloudCoverageRange}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Choose cloud coverage range" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {CLOUD_COVERAGE_RANGES.map((range) => (
-                      <SelectItem key={range.value} value={range.value}>
-                        {range.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-
-            {/* Stake */}
-            <div className="space-y-2">
-              <Label>
-                Stake ({mode === 'real' ? 'R1-R100' : `${getMinStake()}-${getMaxStake()} points`})
-                {maxStakeBoost > 0 && (
-                  <span className="ml-2 text-xs text-primary font-medium">
-                    +{mode === 'real' ? `R${maxStakeBoost}` : `${maxStakeBoost} points`} from boost!
+        {/* City Selection - visual grid */}
+        <div className="space-y-2">
+          <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">City</Label>
+          <div className="grid grid-cols-5 gap-2">
+            {CITIES.map((cityName) => {
+              const isSelected = city === cityName;
+              return (
+                <button
+                  key={cityName}
+                  onClick={() => setCity(cityName as City)}
+                  className={`flex flex-col items-center gap-1 p-2 rounded-lg border text-center transition-all
+                    ${isSelected ? 'border-primary bg-primary/10 ring-1 ring-primary' : 'border-border hover:border-primary/50 hover:bg-accent/30'}
+                    cursor-pointer`}
+                >
+                  <span className="text-lg">{cityFlags[cityName] || '🌍'}</span>
+                  <span className={`text-[10px] leading-tight ${isSelected ? 'text-primary font-semibold' : 'text-muted-foreground'}`}>
+                    {cityName.split(' ')[0]}
                   </span>
-                )}
-              </Label>
-              <Input
-                type="number"
-                min={getMinStake()}
-                max={getMaxStake()}
-                step={mode === 'real' ? 100 : 1}
-                value={stake}
-                onChange={(e) => setStake(e.target.value)}
-                placeholder={mode === 'real' ? 'Enter stake (R1-R100)' : 'Enter stake amount'}
-              />
-            </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
 
-            {/* Time Decay Bonus Chart */}
-            {BETTING_CONFIG.timeDecay.enabled && predictionType && (
+        {/* Weather Display - only if city selected */}
+        {city && <WeatherDisplay city={city} />}
+
+        {/* Live Odds Banner */}
+        {city && weatherForecast.length > 0 && (
+          <div className="flex items-center gap-2 px-3 py-2 bg-primary/5 rounded-lg border border-primary/10">
+            <Activity className="h-3.5 w-3.5 text-primary animate-pulse" />
+            <span className="text-xs font-medium">Live Odds</span>
+            {predictionType && volatilityData && volatilityData.volatilityMultiplier > 1 && (
+              <VolatilityBadge city={city} category={predictionType} showDetails />
+            )}
+            {(() => {
+              const daysAhead = getDaysAhead();
+              const timeDecay = getTimeDecayInfo(daysAhead);
+              return timeDecay.isActive ? (
+                <Badge variant="secondary" className="text-[10px] h-5 bg-amber-500/15 text-amber-600 border-amber-500/20 ml-auto">
+                  +{timeDecay.bonusPercentage}% Early 🕐
+                </Badge>
+              ) : null;
+            })()}
+          </div>
+        )}
+
+        {/* Prediction Type - compact grid */}
+        <div className="space-y-2">
+          <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">What to predict</Label>
+          <div className="grid grid-cols-4 gap-2">
+            {categoryConfig.map((cat) => {
+              const isSelected = predictionType === cat.value;
+              return (
+                <button
+                  key={cat.value}
+                  onClick={() => setPredictionType(cat.value as any)}
+                  className={`flex flex-col items-center gap-0.5 p-2.5 rounded-lg border text-center transition-all
+                    ${isSelected ? 'border-primary bg-primary/10 ring-1 ring-primary' : 'border-border hover:border-primary/50 hover:bg-accent/30'}
+                    cursor-pointer`}
+                >
+                  <span className="text-base">{cat.icon}</span>
+                  <span className={`text-[10px] font-medium ${isSelected ? 'text-primary' : 'text-foreground'}`}>{cat.label}</span>
+                  <span className="text-[9px] text-muted-foreground">{cat.desc}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Timing info for selected category */}
+        {predictionType && (
+          <div className="flex items-center justify-between text-xs text-muted-foreground bg-muted/50 rounded-lg px-3 py-2">
+            <CategoryTimingInfo category={predictionType as BettingCategory} slotId={selectedTimeSlot} />
+            {hasMultipleTimeSlots(predictionType as BettingCategory) && (
+              <Badge variant="outline" className="text-[10px] h-5">Multiple slots</Badge>
+            )}
+          </div>
+        )}
+
+        {/* Time Slot Selection */}
+        {predictionType && hasMultipleTimeSlots(predictionType as BettingCategory) && (
+          <TimeSlotSelector
+            category={predictionType as BettingCategory}
+            selectedSlotId={selectedTimeSlot}
+            onSlotChange={setSelectedTimeSlot}
+          />
+        )}
+
+        {/* Prediction Value Selection */}
+        {predictionType === 'rain' && (
+          <div className="space-y-2">
+            <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Will it rain?</Label>
+            <div className="grid grid-cols-2 gap-3">
+              {[{ value: 'yes', label: 'Yes 🌧️', desc: 'Rain expected' }, { value: 'no', label: 'No ☀️', desc: 'Stay dry' }].map((opt) => (
+                <button
+                  key={opt.value}
+                  onClick={() => setRainPrediction(opt.value as 'yes' | 'no')}
+                  className={`p-3 rounded-lg border text-center transition-all
+                    ${rainPrediction === opt.value ? 'border-primary bg-primary/10 ring-1 ring-primary' : 'border-border hover:border-primary/50'}
+                    cursor-pointer`}
+                >
+                  <p className="font-medium text-sm">{opt.label}</p>
+                  <p className="text-[10px] text-muted-foreground">{opt.desc}</p>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {predictionType === 'snow' && (
+          <div className="space-y-2">
+            <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Will it snow?</Label>
+            <div className="grid grid-cols-2 gap-3">
+              {[{ value: 'yes', label: 'Yes ❄️', desc: 'Snow expected' }, { value: 'no', label: 'No 🌤️', desc: 'No snow' }].map((opt) => (
+                <button
+                  key={opt.value}
+                  onClick={() => setSnowPrediction(opt.value as 'yes' | 'no')}
+                  className={`p-3 rounded-lg border text-center transition-all
+                    ${snowPrediction === opt.value ? 'border-primary bg-primary/10 ring-1 ring-primary' : 'border-border hover:border-primary/50'}
+                    cursor-pointer`}
+                >
+                  <p className="font-medium text-sm">{opt.label}</p>
+                  <p className="text-[10px] text-muted-foreground">{opt.desc}</p>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {predictionType === 'temperature' && (
+          <div className="space-y-2">
+            <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Temperature Range</Label>
+            <div className="grid grid-cols-3 gap-2">
+              {TEMPERATURE_RANGES.map((range) => (
+                <button
+                  key={range.value}
+                  onClick={() => setTempRange(range.value)}
+                  className={`p-3 rounded-lg border text-center transition-all
+                    ${tempRange === range.value ? 'border-primary bg-primary/10 ring-1 ring-primary' : 'border-border hover:border-primary/50'}
+                    cursor-pointer`}
+                >
+                  <p className="font-medium text-sm">{range.label}</p>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {predictionType === 'rainfall' && (
+          <div className="space-y-2">
+            <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Rainfall Amount</Label>
+            <div className="grid grid-cols-2 gap-2">
+              {RAINFALL_RANGES.map((range) => (
+                <button
+                  key={range.value}
+                  onClick={() => setRainfallRange(range.value)}
+                  className={`p-3 rounded-lg border text-center transition-all
+                    ${rainfallRange === range.value ? 'border-primary bg-primary/10 ring-1 ring-primary' : 'border-border hover:border-primary/50'}
+                    cursor-pointer`}
+                >
+                  <p className="font-medium text-sm">{range.label}</p>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {predictionType === 'wind' && (
+          <div className="space-y-2">
+            <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Wind Speed</Label>
+            <div className="grid grid-cols-2 gap-2">
+              {WIND_RANGES.map((range) => (
+                <button
+                  key={range.value}
+                  onClick={() => setWindRange(range.value)}
+                  className={`p-3 rounded-lg border text-center transition-all
+                    ${windRange === range.value ? 'border-primary bg-primary/10 ring-1 ring-primary' : 'border-border hover:border-primary/50'}
+                    cursor-pointer`}
+                >
+                  <p className="font-medium text-sm">{range.label}</p>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {predictionType === 'dew_point' && (
+          <div className="space-y-2">
+            <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Dew Point</Label>
+            <div className="grid grid-cols-2 gap-2">
+              {DEW_POINT_RANGES.map((range) => (
+                <button
+                  key={range.value}
+                  onClick={() => setDewPointRange(range.value)}
+                  className={`p-3 rounded-lg border text-center transition-all
+                    ${dewPointRange === range.value ? 'border-primary bg-primary/10 ring-1 ring-primary' : 'border-border hover:border-primary/50'}
+                    cursor-pointer`}
+                >
+                  <p className="font-medium text-sm">{range.label}</p>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {predictionType === 'pressure' && (
+          <div className="space-y-2">
+            <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Pressure</Label>
+            <div className="grid grid-cols-3 gap-2">
+              {PRESSURE_RANGES.map((range) => (
+                <button
+                  key={range.value}
+                  onClick={() => setPressureRange(range.value)}
+                  className={`p-3 rounded-lg border text-center transition-all
+                    ${pressureRange === range.value ? 'border-primary bg-primary/10 ring-1 ring-primary' : 'border-border hover:border-primary/50'}
+                    cursor-pointer`}
+                >
+                  <p className="font-medium text-xs">{range.label}</p>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {predictionType === 'cloud_coverage' && (
+          <div className="space-y-2">
+            <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Cloud Coverage</Label>
+            <div className="grid grid-cols-2 gap-2">
+              {CLOUD_COVERAGE_RANGES.map((range) => (
+                <button
+                  key={range.value}
+                  onClick={() => setCloudCoverageRange(range.value)}
+                  className={`p-3 rounded-lg border text-center transition-all
+                    ${cloudCoverageRange === range.value ? 'border-primary bg-primary/10 ring-1 ring-primary' : 'border-border hover:border-primary/50'}
+                    cursor-pointer`}
+                >
+                  <p className="font-medium text-sm">{range.label}</p>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Stake Input with quick-select */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+              Stake
+              {maxStakeBoost > 0 && (
+                <Badge variant="secondary" className="ml-2 text-[10px] h-4">
+                  +{mode === 'real' ? `R${maxStakeBoost}` : maxStakeBoost} boost
+                </Badge>
+              )}
+            </Label>
+            <span className="text-[10px] text-muted-foreground">
+              {mode === 'real' ? 'R1 – R100' : `${getMinStake()} – ${getMaxStake()} pts`}
+            </span>
+          </div>
+          <div className="flex gap-2">
+            {stakePresets.map((preset) => (
+              <button
+                key={preset.value}
+                onClick={() => setStake(String(preset.value))}
+                className={`flex-1 py-2 rounded-md border text-xs font-medium transition-all
+                  ${parseInt(stake) === preset.value ? 'border-primary bg-primary text-primary-foreground' : 'border-border hover:border-primary/50 text-muted-foreground hover:text-foreground'}
+                  cursor-pointer`}
+              >
+                {preset.label}
+              </button>
+            ))}
+          </div>
+          <Input
+            type="number"
+            min={getMinStake()}
+            max={getMaxStake()}
+            step={mode === 'real' ? 100 : 1}
+            value={stake}
+            onChange={(e) => setStake(e.target.value)}
+            placeholder={mode === 'real' ? 'Custom amount (cents)' : 'Custom amount'}
+            className="text-center font-medium"
+          />
+        </div>
+
+        {/* Time Decay Chart - collapsed into details */}
+        {BETTING_CONFIG.timeDecay.enabled && predictionType && getCurrentPredictionValue() && (
+          <details className="group">
+            <summary className="cursor-pointer text-xs text-muted-foreground hover:text-foreground flex items-center gap-1">
+              <Clock className="h-3 w-3" />
+              Early bird bonus details
+            </summary>
+            <div className="mt-2">
               <TimeDecayChart
                 currentDaysAhead={getDaysAhead()}
                 baseOdds={getCurrentOdds() > 0 ? getCurrentOdds() / getTimeDecayInfo(getDaysAhead()).multiplier : 2.0}
               />
-            )}
+            </div>
+          </details>
+        )}
 
-            {/* Difficulty Rating */}
-            {city && predictionType && weatherForecast.length > 0 && (() => {
-              let predictionValue = '';
-              if (predictionType === 'rain') predictionValue = rainPrediction;
-              else if (predictionType === 'temperature') predictionValue = tempRange;
-              else if (predictionType === 'rainfall') predictionValue = rainfallRange;
-              else if (predictionType === 'snow') predictionValue = snowPrediction;
-              else if (predictionType === 'wind') predictionValue = windRange;
-              else if (predictionType === 'dew_point') predictionValue = dewPointRange;
-              else if (predictionType === 'pressure') predictionValue = pressureRange;
-              else if (predictionType === 'cloud_coverage') predictionValue = cloudCoverageRange;
+        {/* Difficulty Rating */}
+        {city && predictionType && getCurrentPredictionValue() && weatherForecast.length > 0 && (
+          <DifficultyRating
+            city={city}
+            predictionType={predictionType}
+            predictionValue={getCurrentPredictionValue()}
+            forecast={weatherForecast}
+            daysAhead={getDaysAhead()}
+            showDetails
+          />
+        )}
+
+        {/* Low Balance Warning */}
+        {stake && isLowBalanceWarning() && (
+          <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-warning/10 border border-warning/20 text-xs">
+            <AlertTriangle className="h-4 w-4 text-warning flex-shrink-0" />
+            <span>Remaining balance: <strong>{formatCurrency(getRemainingBalance(), mode)}</strong></span>
+          </div>
+        )}
+
+        {/* Insurance toggle - compact */}
+        {stake && parseInt(stake) >= getMinStake() && (
+          <div className="flex items-center justify-between p-3 rounded-lg border border-primary/20 bg-primary/5">
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="insurance"
+                checked={hasInsurance}
+                onChange={(e) => setHasInsurance(e.target.checked)}
+                className="h-4 w-4 rounded border-border accent-primary"
+              />
+              <Label htmlFor="insurance" className="cursor-pointer text-sm font-medium">
+                🛡️ Insurance
+              </Label>
+              <span className="text-[10px] text-muted-foreground">
+                80% back if you lose • costs 15%
+              </span>
+            </div>
+            {hasInsurance && (
+              <span className="text-xs font-medium text-primary">
+                +{formatCurrency(getInsuranceCost(), mode)}
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* Bet Summary Card */}
+        {city && predictionType && getCurrentPredictionValue() && stake && parseInt(stake) >= getMinStake() && (
+          <Card className="border-2 border-primary/20 bg-gradient-to-b from-primary/5 to-transparent">
+            <CardContent className="pt-4 space-y-2">
+              <div className="flex items-center gap-2 mb-3">
+                <Sparkles className="h-4 w-4 text-primary" />
+                <span className="font-semibold text-sm">Bet Summary</span>
+              </div>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
+                <span className="text-muted-foreground">City</span>
+                <span className="font-medium text-right">{cityFlags[city]} {city}</span>
+                
+                <span className="text-muted-foreground">Prediction</span>
+                <span className="font-medium text-right">{getPredictionLabel()}</span>
+                
+                <span className="text-muted-foreground">Target</span>
+                <span className="font-medium text-right">{format(selectedDay, 'EEE, MMM d')}</span>
+                
+                <span className="text-muted-foreground">Deadline</span>
+                <span className="font-medium text-right">{format(getDeadlineForDay(selectedDay), 'EEE')} 11:59 PM</span>
+              </div>
               
-              return predictionValue ? (
-                <DifficultyRating
-                  city={city}
-                  predictionType={predictionType}
-                  predictionValue={predictionValue}
-                  forecast={weatherForecast}
-                  daysAhead={getDaysAhead()}
-                  showDetails
-                />
-              ) : null;
-            })()}
-
-            {/* Low Balance Warning */}
-            {stake && isLowBalanceWarning() && (
-              <Card className="border-2 border-yellow-500/50 bg-yellow-500/10">
-                <CardContent className="p-4">
-                  <div className="flex items-start gap-3">
-                    <AlertTriangle className="h-5 w-5 text-yellow-500 flex-shrink-0 mt-0.5" />
-                    <div>
-                      <p className="font-semibold text-yellow-700 dark:text-yellow-400">
-                        Low Balance Warning
-                      </p>
-                      <p className="text-sm text-yellow-600 dark:text-yellow-300 mt-1">
-                        Your remaining balance will be {formatCurrency(getRemainingBalance(), mode)} after this bet.
-                        Consider betting less to keep funds for future bets.
-                      </p>
-                    </div>
+              <div className="border-t border-border pt-2 mt-2 space-y-1.5">
+                <div className="flex justify-between text-xs">
+                  <span className="text-muted-foreground">Stake</span>
+                  <span className="font-medium">{formatCurrency(parseInt(stake), mode)}</span>
+                </div>
+                {hasInsurance && (
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <span>Insurance</span>
+                    <span>+{formatCurrency(getInsuranceCost(), mode)}</span>
                   </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Bet Insurance */}
-            {stake && parseInt(stake) >= 10 && (
-              <Card className="border-2 border-primary/20">
-                <CardContent className="pt-4">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="space-y-2 flex-1">
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="checkbox"
-                          id="insurance"
-                          checked={hasInsurance}
-                          onChange={(e) => setHasInsurance(e.target.checked)}
-                          className="h-4 w-4 rounded border-border"
-                        />
-                        <Label htmlFor="insurance" className="font-semibold cursor-pointer">
-                          🛡️ Bet Insurance
-                        </Label>
-                      </div>
-                      <p className="text-sm text-muted-foreground">
-                        Protect your bet! If you lose, get back <span className="font-medium text-foreground">{formatCurrency(getInsurancePayout(), mode)}</span> (80% of stake)
-                      </p>
-                      <div className="flex items-center justify-between text-sm">
-                        <span>Insurance Cost:</span>
-                        <span className="font-medium">{formatCurrency(getInsuranceCost(), mode)} (15% of stake)</span>
-                      </div>
-                    </div>
+                )}
+                {hasInsurance && (
+                  <div className="flex justify-between text-xs font-medium">
+                    <span>Total Cost</span>
+                    <span>{formatCurrency(getTotalCost(), mode)}</span>
                   </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Bet Summary */}
-            {city && predictionType && (predictionType === 'rain' ? rainPrediction : tempRange) && stake && (
-              <Card className="bg-muted">
-                <CardContent className="pt-4">
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span>City:</span>
-                      <span className="font-medium">{city}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Prediction:</span>
-                      <span className="font-medium">
-                        {predictionType === 'rain' 
-                          ? `Rain: ${rainPrediction}` 
-                          : `Temperature: ${TEMPERATURE_RANGES.find(r => r.value === tempRange)?.label}`
-                        }
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span>Difficulty:</span>
-                      <DifficultyRating
-                        city={city}
-                        predictionType={predictionType}
-                        predictionValue={predictionType === 'rain' ? rainPrediction : predictionType === 'temperature' ? tempRange : predictionType === 'rainfall' ? rainfallRange : predictionType === 'snow' ? snowPrediction : predictionType === 'wind' ? windRange : predictionType === 'dew_point' ? dewPointRange : predictionType === 'pressure' ? pressureRange : cloudCoverageRange}
-                        forecast={weatherForecast}
-                        daysAhead={getDaysAhead()}
-                      />
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Betting On:</span>
-                      <span className="font-medium">
-                        {format(selectedDay, 'EEEE (MMM d)')}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Deadline:</span>
-                      <span className="font-medium">
-                        {format(getDeadlineForDay(selectedDay), 'EEE')} 11:59 PM
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Stake:</span>
-                      <span className="font-medium">{formatCurrency(parseInt(stake), mode)}</span>
-                    </div>
-                    {hasInsurance && (
-                      <>
-                        <div className="flex justify-between text-muted-foreground">
-                          <span>Insurance:</span>
-                          <span>+{formatCurrency(getInsuranceCost(), mode)}</span>
-                        </div>
-                        <div className="flex justify-between font-medium border-t pt-2">
-                          <span>Total Cost:</span>
-                          <span>{formatCurrency(getTotalCost(), mode)}</span>
-                        </div>
-                      </>
+                )}
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-muted-foreground flex items-center gap-1">
+                    Odds
+                    {weatherForecast.length > 0 && (
+                      <Badge variant="outline" className="text-[9px] h-4 px-1 text-primary border-primary/30">LIVE</Badge>
                     )}
-                    <div className="flex justify-between">
-                      <span className="flex items-center gap-1">
-                        Odds:
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-                            </TooltipTrigger>
-                            <TooltipContent className="max-w-xs">
-                              <div className="space-y-2">
-                                <p className="font-semibold">10% House Edge</p>
-                                <p className="text-xs">Our odds include a 10% house edge, which is <strong>better than most betting sites</strong>:</p>
-                                <ul className="text-xs space-y-1 list-disc list-inside">
-                                  <li>Traditional sportsbooks: 5-15% edge</li>
-                                  <li>Casino games: 2-25% edge</li>
-                                  <li>Weather betting: 10% edge (transparent)</li>
-                                </ul>
-                                <p className="text-xs">This means for every 100 {mode === 'real' ? 'currency' : 'points'} wagered across all bets, the house keeps 10 {mode === 'real' ? 'currency' : 'points'} on average to maintain the platform.</p>
-                              </div>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      </span>
-                      <span className="font-medium flex items-center gap-2">
-                        {formatLiveOdds(getCurrentOdds())}
-                        {weatherForecast.length > 0 && (
-                          <span className="text-xs text-primary">LIVE</span>
-                        )}
-                        {(() => {
-                          const daysAhead = Math.ceil((selectedDay.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
-                          const timeDecay = getTimeDecayInfo(daysAhead);
-                          return timeDecay.isActive ? (
-                            <TooltipProvider>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Badge variant="secondary" className="text-xs bg-amber-500/20 text-amber-600 border-amber-500/30">
-                                    +{timeDecay.bonusPercentage}% 🕐
-                                  </Badge>
-                                </TooltipTrigger>
-                                <TooltipContent side="top" className="max-w-xs">
-                                  <div className="space-y-1">
-                                    <p className="font-semibold">{timeDecay.label}</p>
-                                    <p className="text-xs text-muted-foreground">
-                                      Betting {daysAhead} day{daysAhead > 1 ? 's' : ''} in advance gives you {timeDecay.bonusPercentage}% better odds!
-                                      Early bets are rewarded because forecasts are less certain.
-                                    </p>
-                                  </div>
-                                </TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
-                          ) : null;
-                        })()}
-                        {/* Volatility Badge */}
-                        {city && predictionType && VOLATILITY_CONFIG.enabled && (
-                          <VolatilityBadge city={city} category={predictionType} />
-                        )}
-                      </span>
-                    </div>
-                    {getCurrentProbability() !== null && (
-                      <div className="flex justify-between text-xs text-muted-foreground">
-                        <span>Win Probability:</span>
-                        <span className="font-medium">{getCurrentProbability()}%</span>
-                      </div>
-                    )}
-                    {activeMultiplier > 1 && (
-                      <>
-                        <div className="flex justify-between text-muted-foreground">
-                          <span>Base Win:</span>
-                          <span>{formatCurrency(getBaseWin(), mode)}</span>
-                        </div>
-                        <div className="flex justify-between text-primary">
-                          <span className="flex items-center gap-1">
-                            <Sparkles className="h-3 w-3" />
-                            Multiplier ({activeMultiplier}x):
-                          </span>
-                          <span>+{formatCurrency(getPotentialWin() - getBaseWin(), mode)}</span>
-                        </div>
-                      </>
-                    )}
-                    <div className="flex justify-between font-bold text-success">
-                      <span>If Win:</span>
-                      <span>+{formatCurrency(getPotentialWin(), mode)}</span>
-                    </div>
-                    {hasInsurance && (
-                      <div className="flex justify-between font-bold text-primary">
-                        <span>If Lose (Insured):</span>
-                        <span>-{formatCurrency(parseInt(stake) - getInsurancePayout(), mode)}</span>
-                      </div>
-                    )}
+                  </span>
+                  <span className="font-bold text-sm">{formatLiveOdds(getCurrentOdds())}</span>
+                </div>
+                {getCurrentProbability() !== null && (
+                  <div className="flex justify-between text-[10px] text-muted-foreground">
+                    <span>Win probability</span>
+                    <span>{getCurrentProbability()}%</span>
                   </div>
-                </CardContent>
-              </Card>
-            )}
+                )}
+                {activeMultiplier > 1 && (
+                  <div className="flex justify-between text-xs text-primary">
+                    <span className="flex items-center gap-1">
+                      <Sparkles className="h-3 w-3" />
+                      {activeMultiplier}x Multiplier
+                    </span>
+                    <span>+{formatCurrency(getPotentialWin() - getBaseWin(), mode)}</span>
+                  </div>
+                )}
+              </div>
 
-            {/* Place Bet Button */}
-            <Button 
-              className="w-full" 
-              size="lg"
-              onClick={handlePlaceBet}
-              disabled={!canPlaceBet() || loading || isDeadlinePassed(selectedDay)}
-            >
-              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {isDeadlinePassed(selectedDay) 
-                ? 'Deadline Passed' 
-                : loading 
-                  ? 'Placing Bet...' 
-                  : 'Place Bet'
-              }
-            </Button>
-          </CardContent>
-        </Card>
+              <div className="border-t border-border pt-3 mt-2 flex justify-between items-center">
+                <span className="text-sm font-semibold text-success">Potential Win</span>
+                <span className="text-lg font-bold text-success">+{formatCurrency(getPotentialWin(), mode)}</span>
+              </div>
+              {hasInsurance && (
+                <div className="flex justify-between text-xs text-primary">
+                  <span>If lose (insured)</span>
+                  <span>-{formatCurrency(parseInt(stake) - getInsurancePayout(), mode)}</span>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Place Bet Button */}
+        <Button 
+          className="w-full text-base" 
+          size="lg"
+          onClick={handlePlaceBet}
+          disabled={!canPlaceBet() || loading || isDeadlinePassed(selectedDay)}
+        >
+          {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          {isDeadlinePassed(selectedDay) 
+            ? '⏰ Deadline Passed' 
+            : loading 
+              ? 'Placing Bet...' 
+              : getCurrentOdds() > 0 
+                ? `Place Bet • ${formatLiveOdds(getCurrentOdds())}x`
+                : 'Place Bet'
+          }
+        </Button>
       </div>
       
       <DuplicateBetDialog 
