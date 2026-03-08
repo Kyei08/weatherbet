@@ -26,30 +26,30 @@ export const CurrencyModeSwitcher = () => {
 
   return (
     <>
-      <Card className={`p-6 border-3 ${theme.card} ${theme.glowShadow} relative overflow-hidden animate-fade-in`}>
+      <Card className={`p-4 sm:p-6 border-3 ${theme.card} ${theme.glowShadow} relative overflow-hidden animate-fade-in`}>
         {/* Animated background glow */}
         <div className={`absolute inset-0 ${theme.gradient} opacity-20 animate-pulse`} />
         
-        <div className="relative flex items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <div className={`p-3 rounded-xl ${theme.primary} ${theme.primaryForeground} ${theme.glowShadow}`}>
+        <div className="relative flex items-center justify-between gap-3 sm:gap-4">
+          <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+            <div className={`p-2 sm:p-3 rounded-xl shrink-0 ${theme.primary} ${theme.primaryForeground} ${theme.glowShadow}`}>
               {mode === 'virtual' ? (
-                <Coins className="h-7 w-7" />
+                <Coins className="h-5 w-5 sm:h-7 sm:w-7" />
               ) : (
-                <Banknote className="h-7 w-7" />
+                <Banknote className="h-5 w-5 sm:h-7 sm:w-7" />
               )}
             </div>
-            <div>
+            <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <Label htmlFor="mode-switch" className={`text-xl font-bold cursor-pointer ${theme.primaryText}`}>
-                  {mode === 'virtual' ? '🎮 Play Mode (Virtual)' : '💰 Real Money Mode'}
+                <Label htmlFor="mode-switch" className={`text-base sm:text-xl font-bold cursor-pointer ${theme.primaryText} truncate`}>
+                  {mode === 'virtual' ? '🎮 Play Mode' : '💰 Real Money'}
                 </Label>
-                <Sparkles className={`h-4 w-4 ${theme.accentText} animate-pulse`} />
+                <Sparkles className={`h-4 w-4 shrink-0 ${theme.accentText} animate-pulse`} />
               </div>
-              <p className={`text-sm ${theme.secondaryText} mt-1`}>
+              <p className={`text-xs sm:text-sm ${theme.secondaryText} mt-0.5 sm:mt-1 line-clamp-1`}>
                 {mode === 'virtual' 
-                  ? 'Practice with virtual points - completely risk-free!' 
-                  : 'Play with real Rands - win real cash prizes!'}
+                  ? 'Practice risk-free with virtual points!' 
+                  : 'Win real cash prizes!'}
               </p>
             </div>
           </div>
@@ -57,7 +57,7 @@ export const CurrencyModeSwitcher = () => {
             id="mode-switch"
             checked={mode === 'real'}
             onCheckedChange={handleToggle}
-            className={`data-[state=checked]:bg-real-primary data-[state=unchecked]:bg-virtual-primary scale-125`}
+            className={`data-[state=checked]:bg-real-primary data-[state=unchecked]:bg-virtual-primary scale-110 sm:scale-125 shrink-0`}
           />
         </div>
       </Card>

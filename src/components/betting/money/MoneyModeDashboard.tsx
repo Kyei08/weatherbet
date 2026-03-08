@@ -106,18 +106,18 @@ const MoneyModeDashboard = () => {
   }
 
   return (
-    <div className={`min-h-screen p-4 transition-colors duration-300 ${theme.gradient}`}>
-      <div className="max-w-4xl mx-auto space-y-6">
+    <div className={`min-h-screen p-3 sm:p-4 transition-colors duration-300 ${theme.gradient}`}>
+      <div className="max-w-4xl mx-auto space-y-4 sm:space-y-6">
         {/* Header */}
-        <div className={`text-center p-6 rounded-xl border-2 ${theme.borderColor} ${theme.cardBg} backdrop-blur-sm ${theme.glowShadow}`}>
-          <div className="flex items-center justify-center gap-3 mb-2">
-            <h1 className={`text-4xl font-bold ${theme.primaryText}`}>
+        <div className={`text-center p-4 sm:p-6 rounded-xl border-2 ${theme.borderColor} ${theme.cardBg} backdrop-blur-sm ${theme.glowShadow}`}>
+          <div className="flex items-center justify-center gap-2 sm:gap-3 mb-2">
+            <h1 className={`text-2xl sm:text-4xl font-bold ${theme.primaryText}`}>
               💰 WeatherBet SA
             </h1>
             <ModeBadge size="lg" />
           </div>
-          <p className="text-muted-foreground">
-            Real money betting - Win real prizes with weather predictions!
+          <p className="text-sm sm:text-base text-muted-foreground">
+            Real money betting - Win real prizes!
           </p>
           <div className="mt-2 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-real-primary/10 border border-real-primary/30">
             <Banknote className="h-4 w-4 text-real-primary" />
@@ -132,7 +132,7 @@ const MoneyModeDashboard = () => {
         <LiveOddsFeed />
 
         {/* User Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-3 gap-2 sm:gap-4">
           <Card className={`${theme.card} border-2 ${theme.glowShadow}`}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">💰 Real Balance</CardTitle>
