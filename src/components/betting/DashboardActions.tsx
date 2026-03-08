@@ -26,37 +26,37 @@ export function DashboardActions({ betsCount, onViewChange }: DashboardActionsPr
             Place a Bet
           </CardTitle>
         </CardHeader>
-        <CardContent className="grid grid-cols-2 gap-3">
+        <CardContent className="grid grid-cols-2 gap-2 sm:gap-3">
           <Button
             size="lg"
-            className={`h-14 ${theme.buttonPrimary} border ${theme.borderColor} hover:scale-[1.02] transition-all`}
+            className={`h-12 sm:h-14 text-xs sm:text-sm ${theme.buttonPrimary} border ${theme.borderColor} hover:scale-[1.02] transition-all`}
             onClick={() => onViewChange('betting')}
           >
-            <Target className="mr-2 h-4 w-4" />
+            <Target className="mr-1.5 h-4 w-4" />
             Single Bet
           </Button>
           <Button
             size="lg"
-            className={`h-14 ${theme.buttonSecondary} border ${theme.borderColor} hover:scale-[1.02] transition-all`}
+            className={`h-12 sm:h-14 text-xs sm:text-sm ${theme.buttonSecondary} border ${theme.borderColor} hover:scale-[1.02] transition-all`}
             onClick={() => onViewChange('combined')}
           >
-            <BarChart3 className="mr-2 h-4 w-4" />
+            <BarChart3 className="mr-1.5 h-4 w-4" />
             Combined
           </Button>
           <Button
             size="lg"
-            className={`h-14 ${theme.accent} ${theme.primaryForeground} border ${theme.borderColor} hover:scale-[1.02] transition-all`}
+            className={`h-12 sm:h-14 text-xs sm:text-sm ${theme.accent} ${theme.primaryForeground} border ${theme.borderColor} hover:scale-[1.02] transition-all`}
             onClick={() => onViewChange('parlay')}
           >
-            <Layers className="mr-2 h-4 w-4" />
+            <Layers className="mr-1.5 h-4 w-4" />
             Parlay
           </Button>
           <Button
             size="lg"
-            className={`h-14 ${theme.secondary} text-foreground border ${theme.borderColor} hover:scale-[1.02] transition-all`}
+            className={`h-12 sm:h-14 text-xs sm:text-sm ${theme.secondary} text-foreground border ${theme.borderColor} hover:scale-[1.02] transition-all`}
             onClick={() => onViewChange('multitime')}
           >
-            <Zap className="mr-2 h-4 w-4" />
+            <Zap className="mr-1.5 h-4 w-4" />
             Multi-Time
           </Button>
         </CardContent>
