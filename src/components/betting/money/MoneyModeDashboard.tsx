@@ -27,6 +27,17 @@ const MoneyModeDashboard = () => {
   const [activeView, setActiveView] = useState<'dashboard' | 'betting' | 'parlay' | 'combined' | 'mybets' | 'analytics'>('dashboard');
   const [loading, setLoading] = useState(true);
 
+  // Listen for mobile bottom nav actions
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const action = (e as CustomEvent).detail;
+      if (action === 'mybets') setActiveView('mybets');
+      else if (action === 'analytics') setActiveView('analytics');
+    };
+    window.addEventListener('mobile-nav-action', handler);
+    return () => window.removeEventListener('mobile-nav-action', handler);
+  }, []);
+
   useEffect(() => {
     const fetchData = async () => {
       try {
