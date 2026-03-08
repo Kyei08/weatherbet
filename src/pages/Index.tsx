@@ -59,11 +59,27 @@ const Index = () => {
     <div className="min-h-screen bg-gradient-subtle">
       <header className="border-b bg-background/80 backdrop-blur-sm sticky top-0 z-50">
         <div className="container mx-auto px-4 py-3 flex justify-between items-center">
-          <h1 className="text-lg sm:text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent truncate">
-            ⛈️ WeatherBet SA
-          </h1>
+          <div className="flex items-center gap-2">
+            {avatarUrl ? (
+              <img
+                src={avatarUrl}
+                alt="Avatar"
+                className="h-8 w-8 rounded-full object-cover cursor-pointer shrink-0"
+                onClick={() => navigate('/profile')}
+              />
+            ) : (
+              <div
+                className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-sm font-bold text-primary cursor-pointer shrink-0"
+                onClick={() => navigate('/profile')}
+              >
+                {user.email?.charAt(0).toUpperCase() ?? '?'}
+              </div>
+            )}
+            <h1 className="text-lg sm:text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent truncate">
+              ⛈️ WeatherBet SA
+            </h1>
+          </div>
           <div className="flex items-center gap-1 sm:gap-2">
-            <NotificationCenter />
             <Button 
               variant="ghost" 
               size="sm" 
