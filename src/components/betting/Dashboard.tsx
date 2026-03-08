@@ -26,8 +26,6 @@ import { useCurrencyMode } from '@/contexts/CurrencyModeContext';
 import { useModeTheme } from '@/hooks/useModeTheme';
 
 const Dashboard = () => {
-  const navigate = useNavigate();
-  const { isAdminUser } = useAdminCheck();
   const { mode } = useCurrencyMode();
   const theme = useModeTheme();
   const { user, bets, loading, pendingBets, winRate, refreshData } = useDashboardData();
