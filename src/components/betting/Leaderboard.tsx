@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowLeft, Trophy, Medal, Award, Users, UserCheck, RefreshCw, Search, X, Heart } from 'lucide-react';
+import { ArrowLeft, Trophy, Medal, Award, Users, UserCheck, RefreshCw, Search, X, Heart, Zap, UserPlus, TrendingUp } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -97,7 +97,44 @@ function PlayerRowSkeleton() {
   );
 }
 
-function PlayerRow({ user, profile, isFollowing, followerCount, followingCount, onClick }: { user: LeaderboardEntry; profile?: ProfileInfo; isFollowing?: boolean; followerCount?: number; followingCount?: number; onClick: () => void }) {
+function PlayerRow({ user, profile, isFollowing, followerCount, followingCount, sortBy, onClick }: { user: LeaderboardEntry; profile?: ProfileInfo; isFollowing?: boolean; followerCount?: number; followingCount?: number; sortBy: 'points' | 'followers' | 'following'; onClick: () => void }) {
+  const getSortIndicator = () => {
+    if (sortBy === 'followers') {
+      return (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Badge variant="secondary" className="gap-1 text-[10px] px-1.5 py-0 h-4 shrink-0 bg-accent/50">
+                <Users className="h-2.5 w-2.5" />
+                Ranked by followers
+              </Badge>
+            </TooltipTrigger>
+            <TooltipContent side="top" className="bg-popover border border-border text-xs">
+              Ranking position based on follower count
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      );
+    } else if (sortBy === 'following') {
+      return (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Badge variant="secondary" className="gap-1 text-[10px] px-1.5 py-0 h-4 shrink-0 bg-accent/50">
+                <UserPlus className="h-2.5 w-2.5" />
+                Ranked by following
+              </Badge>
+            </TooltipTrigger>
+            <TooltipContent side="top" className="bg-popover border border-border text-xs">
+              Ranking position based on following count
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      );
+    }
+    // Default points - no indicator needed
+    return null;
+  };
   return (
     <div
       onClick={onClick}
@@ -120,9 +157,10 @@ function PlayerRow({ user, profile, isFollowing, followerCount, followingCount, 
           )}
         </div>
         <div className="min-w-0">
-          <div className="flex items-center gap-1 sm:gap-1.5">
+          <div className="flex items-center gap-1 sm:gap-1.5 flex-wrap">
             <p className="font-semibold truncate text-sm">{user.username}</p>
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1 flex-wrap">
+              {getSortIndicator()}
               {followerCount !== undefined && (
                 <TooltipProvider>
                   <Tooltip>
@@ -438,25 +476,26 @@ const Leaderboard = ({ onBack }: LeaderboardProps) => {
                         transition={{ duration: 0.2, ease: 'easeInOut' }}
                         className="space-y-3"
                       >
-                        {paginatedUsers.map((user, i) => {
-                          const profile = profiles.get(user.username);
-                          const followerCount = profile?.user_id ? followerCounts.get(profile.user_id) : undefined;
-                          const followingCount = profile?.user_id ? followingCounts.get(profile.user_id) : undefined;
-                          return (
-                            <motion.div
-                              key={`${user.username}-${user.rank}`}
-                              initial={{ opacity: 0, y: 8 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              transition={{ delay: i * 0.025, duration: 0.2 }}
-                            >
-                              <PlayerRow
-                                user={user}
-                                profile={profile}
-                                isFollowing={profile?.user_id ? followingUserIds.has(profile.user_id) : false}
-                                followerCount={followerCount}
-                                followingCount={followingCount}
-                                onClick={() => setSelectedPlayer(user)}
-                              />
+                         {paginatedUsers.map((user, i) => {
+                           const profile = profiles.get(user.username);
+                           const followerCount = profile?.user_id ? followerCounts.get(profile.user_id) : undefined;
+                           const followingCount = profile?.user_id ? followingCounts.get(profile.user_id) : undefined;
+                           return (
+                             <motion.div
+                               key={`${user.username}-${user.rank}`}
+                               initial={{ opacity: 0, y: 8 }}
+                               animate={{ opacity: 1, y: 0 }}
+                               transition={{ delay: i * 0.025, duration: 0.2 }}
+                             >
+                               <PlayerRow
+                                 user={user}
+                                 profile={profile}
+                                 isFollowing={profile?.user_id ? followingUserIds.has(profile.user_id) : false}
+                                 followerCount={followerCount}
+                                 followingCount={followingCount}
+                                 sortBy={sortBy}
+                                 onClick={() => setSelectedPlayer(user)}
+                               />
                             </motion.div>
                           );
                         })}
