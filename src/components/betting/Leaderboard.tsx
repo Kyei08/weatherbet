@@ -69,11 +69,11 @@ function PlayerRow({ user, profile, isFollowing, onClick }: { user: LeaderboardE
           <Badge variant={getRankBadge(user.rank)} className="text-[10px] sm:text-xs">#{user.rank}</Badge>
         </div>
         {/* Avatar */}
-        <div className="h-9 w-9 rounded-full shrink-0 overflow-hidden bg-primary/10 flex items-center justify-center">
+        <div className="h-8 w-8 sm:h-9 sm:w-9 rounded-full shrink-0 overflow-hidden bg-primary/10 flex items-center justify-center">
           {profile?.avatar_url ? (
-            <img src={profile.avatar_url} alt="" className="h-9 w-9 rounded-full object-cover" />
+            <img src={profile.avatar_url} alt="" className="h-8 w-8 sm:h-9 sm:w-9 rounded-full object-cover" />
           ) : (
-            <span className="text-sm font-bold text-primary">
+            <span className="text-xs sm:text-sm font-bold text-primary">
               {user.username.charAt(0).toUpperCase()}
             </span>
           )}
