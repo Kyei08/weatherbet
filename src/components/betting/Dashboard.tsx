@@ -75,6 +75,15 @@ const Dashboard = () => {
       <div className="max-w-4xl mx-auto space-y-6">
         <DashboardHeader user={user} winRate={winRate} pendingBetsCount={pendingBets.length} />
 
+        {/* Currency Mode Switcher */}
+        <CurrencyModeSwitcher />
+
+        {/* Weather Alerts */}
+        {bets.length > 0 && <ActiveBetsWeather bets={bets} />}
+
+        {/* Level Display */}
+        <LevelDisplay />
+
         {/* Streak Display */}
         <StreakDisplay />
 
