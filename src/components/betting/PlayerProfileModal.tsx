@@ -117,7 +117,7 @@ const PlayerProfileModal = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
+      <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-md max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="sr-only">{username}'s Profile</DialogTitle>
           <DialogDescription className="sr-only">Player profile showing stats and achievements</DialogDescription>
