@@ -37,17 +37,8 @@ export function useDashboardData(): DashboardData {
   }, [fetchData]);
 
   const refreshData = useCallback(async () => {
-    try {
-      const [userData, betsData] = await Promise.all([
-        getUser(),
-        getRecentBets(),
-      ]);
-      setUser(userData);
-      setBets(betsData);
-    } catch (error) {
-      console.error('Error refreshing dashboard data:', error);
-    }
-  }, []);
+    await fetchData();
+  }, [fetchData]);
 
   const pendingBets = useMemo(() => bets.filter(bet => bet.result === 'pending'), [bets]);
   const settledBets = useMemo(() => bets.filter(bet => bet.result !== 'pending'), [bets]);
