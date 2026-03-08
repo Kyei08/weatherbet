@@ -80,6 +80,7 @@ const Index = () => {
             </h1>
           </div>
           <div className="flex items-center gap-1 sm:gap-2">
+            <NotificationCenter />
             <Button 
               variant="ghost" 
               size="sm" 
