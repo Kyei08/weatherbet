@@ -24,7 +24,7 @@ import { CurrencyModeSwitcher } from './CurrencyModeSwitcher';
 import { useModeTheme } from '@/hooks/useModeTheme';
 
 const Dashboard = () => {
-  const { mode } = useCurrencyMode();
+  const theme = useModeTheme();
   const theme = useModeTheme();
   const { user, bets, loading, pendingBets, winRate, refreshData } = useDashboardData();
   const [activeView, setActiveView] = useState<'dashboard' | 'betting' | 'parlay' | 'combined' | 'multitime' | 'mybets' | 'leaderboard' | 'shop' | 'analytics'>('dashboard');
