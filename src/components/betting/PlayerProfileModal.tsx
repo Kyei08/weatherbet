@@ -286,6 +286,11 @@ const PlayerProfileModal = ({
               </div>
             )}
           </div>
+
+          {/* Rank History Chart */}
+          {targetUserId && (
+            <RankHistoryChart userId={targetUserId} username={username} />
+          )}
         </motion.div>
       </DialogContent>
     </Dialog>
