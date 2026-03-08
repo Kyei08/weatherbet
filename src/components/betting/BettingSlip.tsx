@@ -1143,7 +1143,9 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
               )}
             </CardContent>
           </Card>
+          </motion.div>
         )}
+        </AnimatePresence>
 
         {/* Place Bet Button */}
         <Button 
