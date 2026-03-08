@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserPreferences } from '@/contexts/UserPreferencesContext';
 import { useNavigate } from 'react-router-dom';
+import { useTheme } from 'next-themes';
 import { getUser, updateUsername, getProfile, updateProfile } from '@/lib/supabase-auth-storage';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -10,7 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
-import { ArrowLeft, User, Bell, Volume2, Vibrate, Shield, LogOut, Save, Loader2, Camera } from 'lucide-react';
+import { ArrowLeft, User, Bell, Volume2, Vibrate, Shield, LogOut, Save, Loader2, Camera, Sun, Moon, Monitor } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 
