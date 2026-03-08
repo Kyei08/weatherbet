@@ -16,7 +16,9 @@ import { CurrencyModeSwitcher } from './CurrencyModeSwitcher';
 import { useModeTheme } from '@/hooks/useModeTheme';
 import { Skeleton } from '@/components/ui/skeleton';
 import { usePullToRefresh } from '@/hooks/usePullToRefresh';
-import { RefreshCw } from 'lucide-react';
+import { RefreshCw, ChevronDown } from 'lucide-react';
+import { useState } from 'react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
 const Dashboard = () => {
   const theme = useModeTheme();
@@ -25,6 +27,7 @@ const Dashboard = () => {
   const { containerRef, pullDistance, isRefreshing, isTriggered, progress } = usePullToRefresh({
     onRefresh: refreshData,
   });
+  const [showExtras, setShowExtras] = useState(false);
 
   if (loading) {
     return (
@@ -42,8 +45,6 @@ const Dashboard = () => {
           <Skeleton className="h-10 w-full rounded-lg" />
           <Skeleton className="h-32 rounded-xl" />
           <Skeleton className="h-24 rounded-xl" />
-          <Skeleton className="h-40 rounded-xl" />
-          <Skeleton className="h-28 rounded-xl" />
         </div>
       </div>
     );
@@ -94,48 +95,57 @@ const Dashboard = () => {
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto space-y-6">
+      <div className="max-w-4xl mx-auto space-y-5">
+        {/* Section 1: Header + Stats */}
         <div className="animate-fade-in" style={{ animationDelay: '0ms', animationFillMode: 'both' }}>
           <DashboardHeader user={user} winRate={winRate} pendingBetsCount={pendingBets.length} />
         </div>
+
+        {/* Section 2: Mode Switcher */}
         <div className="animate-fade-in" style={{ animationDelay: '50ms', animationFillMode: 'both' }}>
           <CurrencyModeSwitcher />
         </div>
+
+        {/* Section 3: Actions — moved up for quick access */}
+        <div className="animate-fade-in" style={{ animationDelay: '100ms', animationFillMode: 'both' }}>
+          <DashboardActions betsCount={bets.length} onViewChange={setActiveView} />
+        </div>
+
+        {/* Section 4: Active Bets Weather */}
         {bets.length > 0 && (
-          <div className="animate-fade-in" style={{ animationDelay: '100ms', animationFillMode: 'both' }}>
+          <div className="animate-fade-in" style={{ animationDelay: '150ms', animationFillMode: 'both' }}>
             <ActiveBetsWeather bets={bets} />
           </div>
         )}
-        <div className="animate-fade-in" style={{ animationDelay: '150ms', animationFillMode: 'both' }}>
-          <LevelDisplay />
-        </div>
-        <div className="animate-fade-in" style={{ animationDelay: '200ms', animationFillMode: 'both' }}>
-          <StreakDisplay />
-        </div>
-        <div className="animate-fade-in" style={{ animationDelay: '250ms', animationFillMode: 'both' }}>
+
+        {/* Section 5: Progress (Level + Streak + Challenges) */}
+        <div className="animate-fade-in space-y-4" style={{ animationDelay: '200ms', animationFillMode: 'both' }}>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <LevelDisplay />
+            <StreakDisplay />
+          </div>
           <DailyChallenges />
         </div>
-        <div className="animate-fade-in" style={{ animationDelay: '300ms', animationFillMode: 'both' }}>
-          <BonusTracker />
-        </div>
-        <div className="animate-fade-in" style={{ animationDelay: '350ms', animationFillMode: 'both' }}>
-          <TransactionHistory />
-        </div>
-        <div className="animate-fade-in" style={{ animationDelay: '400ms', animationFillMode: 'both' }}>
-          <Achievements />
-        </div>
-        <div className="animate-fade-in" style={{ animationDelay: '450ms', animationFillMode: 'both' }}>
-          <Perks />
-        </div>
-        <div className="animate-fade-in" style={{ animationDelay: '500ms', animationFillMode: 'both' }}>
-          <VolatilityChart />
-        </div>
-        <div className="animate-fade-in" style={{ animationDelay: '550ms', animationFillMode: 'both' }}>
-          <DashboardActions betsCount={bets.length} onViewChange={setActiveView} />
-        </div>
-        <div className="animate-fade-in" style={{ animationDelay: '600ms', animationFillMode: 'both' }}>
+
+        {/* Section 6: Recent Bets */}
+        <div className="animate-fade-in" style={{ animationDelay: '250ms', animationFillMode: 'both' }}>
           <RecentBets bets={bets} />
         </div>
+
+        {/* Section 7: Collapsible extras */}
+        <Collapsible open={showExtras} onOpenChange={setShowExtras}>
+          <CollapsibleTrigger className="flex items-center justify-center gap-2 w-full py-3 text-sm text-muted-foreground hover:text-foreground transition-colors">
+            <span>{showExtras ? 'Hide' : 'Show'} more details</span>
+            <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${showExtras ? 'rotate-180' : ''}`} />
+          </CollapsibleTrigger>
+          <CollapsibleContent className="space-y-4 animate-fade-in">
+            <BonusTracker />
+            <TransactionHistory />
+            <Achievements />
+            <Perks />
+            <VolatilityChart />
+          </CollapsibleContent>
+        </Collapsible>
       </div>
     </div>
   );
