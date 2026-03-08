@@ -476,10 +476,12 @@ const Leaderboard = ({ onBack }: LeaderboardProps) => {
                         transition={{ duration: 0.2, ease: 'easeInOut' }}
                         className="space-y-3"
                       >
-                         {paginatedUsers.map((user, i) => {
+                        {paginatedUsers.map((user, i) => {
                            const profile = profiles.get(user.username);
                            const followerCount = profile?.user_id ? followerCounts.get(profile.user_id) : undefined;
                            const followingCount = profile?.user_id ? followingCounts.get(profile.user_id) : undefined;
+                           // Check if user is in top 10 of current sort
+                           const isTop10 = sortBy !== 'points' && filteredUsers.slice(0, 10).some(u => u.username === user.username);
                            return (
                              <motion.div
                                key={`${user.username}-${user.rank}`}
@@ -494,6 +496,7 @@ const Leaderboard = ({ onBack }: LeaderboardProps) => {
                                  followerCount={followerCount}
                                  followingCount={followingCount}
                                  sortBy={sortBy}
+                                 isTop10={isTop10}
                                  onClick={() => setSelectedPlayer(user)}
                                />
                             </motion.div>
