@@ -1,16 +1,16 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserPreferences } from '@/contexts/UserPreferencesContext';
 import { useNavigate } from 'react-router-dom';
-import { getUser, updateUsername } from '@/lib/supabase-auth-storage';
+import { getUser, updateUsername, getProfile, updateProfile } from '@/lib/supabase-auth-storage';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
-import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, User, Bell, Volume2, Vibrate, Shield, LogOut, Save, Loader2, Check } from 'lucide-react';
+import { ArrowLeft, User, Bell, Volume2, Vibrate, Shield, LogOut, Save, Loader2, Camera } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 
@@ -26,22 +26,28 @@ const Profile = () => {
     setNotifyOnCashouts,
   } = useUserPreferences();
 
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [username, setUsername] = useState('');
   const [originalUsername, setOriginalUsername] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [points, setPoints] = useState(0);
   const [level, setLevel] = useState(1);
 
   useEffect(() => {
     const load = async () => {
       try {
-        const u = await getUser();
+        const [u, profile] = await Promise.all([getUser(), getProfile()]);
         if (u) {
           setUsername(u.username);
           setOriginalUsername(u.username);
           setPoints(u.points);
           setLevel(u.level);
+        }
+        if (profile?.avatar_url) {
+          setAvatarUrl(profile.avatar_url);
         }
       } catch (e) {
         console.error('Failed to load user:', e);
@@ -63,6 +69,54 @@ const Profile = () => {
       toast.error(e.message || 'Failed to update username');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+
+    // Validate
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error('Image must be under 2MB');
+      return;
+    }
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      toast.error('Only JPG, PNG and WebP are supported');
+      return;
+    }
+
+    setUploadingAvatar(true);
+    try {
+      const ext = file.name.split('.').pop();
+      const filePath = `${user.id}/avatar.${ext}`;
+
+      // Upload (upsert to replace existing)
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, file, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(filePath);
+
+      // Add cache-busting param
+      const urlWithCacheBust = `${publicUrl}?t=${Date.now()}`;
+
+      // Save to profile
+      await updateProfile({ avatar_url: urlWithCacheBust });
+      setAvatarUrl(urlWithCacheBust);
+      toast.success('Avatar updated!');
+    } catch (e: any) {
+      console.error('Avatar upload error:', e);
+      toast.error(e.message || 'Failed to upload avatar');
+    } finally {
+      setUploadingAvatar(false);
+      // Reset input so same file can be re-selected
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
@@ -102,14 +156,55 @@ const Profile = () => {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {/* Avatar / Initials */}
+            {/* Avatar */}
             <div className="flex items-center gap-3">
-              <div className="h-14 w-14 rounded-full bg-primary/10 flex items-center justify-center text-xl font-bold text-primary shrink-0">
-                {username.charAt(0).toUpperCase()}
-              </div>
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploadingAvatar}
+                className="relative h-16 w-16 rounded-full shrink-0 group focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              >
+                {avatarUrl ? (
+                  <img
+                    src={avatarUrl}
+                    alt="Avatar"
+                    className="h-16 w-16 rounded-full object-cover"
+                  />
+                ) : (
+                  <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center text-xl font-bold text-primary">
+                    {username.charAt(0).toUpperCase()}
+                  </div>
+                )}
+                {/* Overlay */}
+                <div className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                  {uploadingAvatar ? (
+                    <Loader2 className="h-5 w-5 text-white animate-spin" />
+                  ) : (
+                    <Camera className="h-5 w-5 text-white" />
+                  )}
+                </div>
+                {uploadingAvatar && (
+                  <div className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center">
+                    <Loader2 className="h-5 w-5 text-white animate-spin" />
+                  </div>
+                )}
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                className="hidden"
+                onChange={handleAvatarUpload}
+              />
               <div className="min-w-0">
                 <p className="font-semibold truncate">{username}</p>
                 <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploadingAvatar}
+                  className="text-xs text-primary font-medium mt-0.5 hover:underline"
+                >
+                  {uploadingAvatar ? 'Uploading…' : 'Change photo'}
+                </button>
               </div>
             </div>
 
