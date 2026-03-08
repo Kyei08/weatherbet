@@ -207,14 +207,18 @@ const Leaderboard = ({ onBack }: LeaderboardProps) => {
               </div>
             ) : (
               <div className="space-y-3">
-                {users.map((user) => (
-                  <PlayerRow
-                    key={`${user.username}-${user.rank}`}
-                    user={user}
-                    profile={profiles.get(user.username)}
-                    onClick={() => setSelectedPlayer(user)}
-                  />
-                ))}
+                {users.map((user) => {
+                  const profile = profiles.get(user.username);
+                  return (
+                    <PlayerRow
+                      key={`${user.username}-${user.rank}`}
+                      user={user}
+                      profile={profile}
+                      isFollowing={profile?.user_id ? followingUserIds.has(profile.user_id) : false}
+                      onClick={() => setSelectedPlayer(user)}
+                    />
+                  );
+                })}
               </div>
             )}
           </CardContent>
