@@ -20,6 +20,7 @@ const navItems: NavItem[] = [
 ];
 
 const moreItems = [
+  { label: '👤 Profile & Settings', path: '/profile' },
   { label: '💳 Banking', path: '/transactions' },
   { label: '🏙️ Cities', path: '/city-analytics' },
   { label: '📊 Compare', path: '/mode-comparison' },
