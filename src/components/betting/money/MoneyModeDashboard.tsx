@@ -27,6 +27,17 @@ const MoneyModeDashboard = () => {
   const [activeView, setActiveView] = useState<'dashboard' | 'betting' | 'parlay' | 'combined' | 'mybets' | 'analytics'>('dashboard');
   const [loading, setLoading] = useState(true);
 
+  // Listen for mobile bottom nav actions
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const action = (e as CustomEvent).detail;
+      if (action === 'mybets') setActiveView('mybets');
+      else if (action === 'analytics') setActiveView('analytics');
+    };
+    window.addEventListener('mobile-nav-action', handler);
+    return () => window.removeEventListener('mobile-nav-action', handler);
+  }, []);
+
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -162,17 +173,17 @@ const MoneyModeDashboard = () => {
         <WeatherAccuracy />
 
         {/* Quick Actions */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
           <Button 
             size="lg" 
-            className={`h-20 text-lg ${theme.buttonPrimary} border-2 ${theme.borderColor} ${theme.glowShadow} hover:scale-105 transition-all`}
+            className={`h-16 sm:h-20 text-base sm:text-lg ${theme.buttonPrimary} border-2 ${theme.borderColor} ${theme.glowShadow} hover:scale-105 active:scale-95 transition-all`}
             onClick={() => setActiveView('betting')}
           >
             🎯 Place Single Bet
           </Button>
           <Button 
             size="lg" 
-            className={`h-20 text-lg ${theme.buttonSecondary} border-2 ${theme.borderColor} ${theme.glowShadow} hover:scale-105 transition-all`}
+            className={`h-16 sm:h-20 text-base sm:text-lg ${theme.buttonSecondary} border-2 ${theme.borderColor} ${theme.glowShadow} hover:scale-105 active:scale-95 transition-all`}
             onClick={() => setActiveView('combined')}
           >
             <Activity className="mr-2 h-5 w-5" />
@@ -180,7 +191,7 @@ const MoneyModeDashboard = () => {
           </Button>
           <Button 
             size="lg" 
-            className={`h-20 text-lg ${theme.accent} ${theme.primaryForeground} border-2 ${theme.borderColor} ${theme.glowShadow} hover:scale-105 transition-all`}
+            className={`h-16 sm:h-20 text-base sm:text-lg ${theme.accent} ${theme.primaryForeground} border-2 ${theme.borderColor} ${theme.glowShadow} hover:scale-105 active:scale-95 transition-all`}
             onClick={() => setActiveView('parlay')}
           >
             <Coins className="mr-2 h-5 w-5" />
@@ -189,11 +200,11 @@ const MoneyModeDashboard = () => {
         </div>
 
         {/* Money Mode Specific Actions */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 sm:gap-4">
           <Button 
             variant="outline" 
             size="lg" 
-            className={`h-16 text-lg border-2 ${theme.borderColorHeavy} ${theme.hoverBg}`}
+            className={`h-14 sm:h-16 text-sm sm:text-lg border-2 ${theme.borderColorHeavy} ${theme.hoverBg} active:scale-95 transition-all`}
             onClick={() => setActiveView('mybets')}
           >
             📊 My Bets ({bets.length})
@@ -201,37 +212,37 @@ const MoneyModeDashboard = () => {
           <Button 
             variant="outline" 
             size="lg" 
-            className={`h-16 text-lg border-2 ${theme.borderColorHeavy} ${theme.hoverBg}`}
+            className={`h-14 sm:h-16 text-sm sm:text-lg border-2 ${theme.borderColorHeavy} ${theme.hoverBg} active:scale-95 transition-all`}
             onClick={() => navigate('/cashout')}
           >
-            <DollarSign className="mr-2 h-5 w-5" />
+            <DollarSign className="mr-1 sm:mr-2 h-4 w-4 sm:h-5 sm:w-5" />
             💰 Cash Out
           </Button>
           <Button 
             variant="outline" 
             size="lg" 
-            className={`h-16 text-lg border-2 ${theme.borderColorHeavy} ${theme.hoverBg}`}
+            className={`h-14 sm:h-16 text-sm sm:text-lg border-2 ${theme.borderColorHeavy} ${theme.hoverBg} active:scale-95 transition-all`}
             onClick={() => navigate('/transactions')}
           >
-            <CreditCard className="mr-2 h-5 w-5" />
+            <CreditCard className="mr-1 sm:mr-2 h-4 w-4 sm:h-5 sm:w-5" />
             💳 Banking
           </Button>
           <Button 
             variant="outline" 
             size="lg" 
-            className={`h-16 text-lg border-2 ${theme.borderColorHeavy} ${theme.hoverBg}`}
+            className={`h-14 sm:h-16 text-sm sm:text-lg border-2 ${theme.borderColorHeavy} ${theme.hoverBg} active:scale-95 transition-all`}
             onClick={() => setActiveView('analytics')}
           >
-            <TrendingUp className="mr-2 h-5 w-5" />
+            <TrendingUp className="mr-1 sm:mr-2 h-4 w-4 sm:h-5 sm:w-5" />
             📊 Analytics
           </Button>
           <Button 
             variant="outline" 
             size="lg" 
-            className={`h-16 text-lg border-2 ${theme.borderColorHeavy} ${theme.hoverBg}`}
+            className={`h-14 sm:h-16 text-sm sm:text-lg border-2 ${theme.borderColorHeavy} ${theme.hoverBg} active:scale-95 transition-all`}
             onClick={() => navigate('/city-analytics')}
           >
-            <MapPin className="mr-2 h-5 w-5" />
+            <MapPin className="mr-1 sm:mr-2 h-4 w-4 sm:h-5 sm:w-5" />
             🏙️ Cities
           </Button>
         </div>
@@ -240,7 +251,7 @@ const MoneyModeDashboard = () => {
           <Button 
             variant="default" 
             size="lg" 
-            className="w-full h-16 text-lg bg-gradient-to-r from-purple-600 to-blue-600"
+            className="w-full h-14 sm:h-16 text-base sm:text-lg bg-gradient-to-r from-primary to-accent active:scale-95 transition-all"
             onClick={() => navigate('/admin')}
           >
             <Shield className="mr-2 h-5 w-5" />
