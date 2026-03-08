@@ -1,8 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { getUser, getRecentBets } from '@/lib/supabase-auth-storage';
-import { User, Bet } from '@/types/supabase-betting';
+import { useDashboardData } from '@/hooks/useDashboardData';
 import { Coins, TrendingUp, Activity, Trophy, ShoppingCart, Layers, History, MapPin, Shield, Zap, Scale, DollarSign } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAdminCheck } from '@/hooks/useAdminCheck';
@@ -33,42 +32,8 @@ const Dashboard = () => {
   const { isAdminUser } = useAdminCheck();
   const { mode } = useCurrencyMode();
   const theme = useModeTheme();
-  const [user, setUser] = useState<User | null>(null);
-  const [bets, setBets] = useState<Bet[]>([]);
+  const { user, bets, loading, pendingBets, winRate, refreshData } = useDashboardData();
   const [activeView, setActiveView] = useState<'dashboard' | 'betting' | 'parlay' | 'combined' | 'multitime' | 'mybets' | 'leaderboard' | 'shop' | 'analytics'>('dashboard');
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [userData, betsData] = await Promise.all([
-          getUser(),
-          getRecentBets()
-        ]);
-        setUser(userData);
-        setBets(betsData);
-      } catch (error) {
-        console.error('Error fetching data:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
-  }, []);
-
-  const refreshData = async () => {
-    try {
-      const [userData, betsData] = await Promise.all([
-        getUser(),
-        getRecentBets()
-      ]);
-      setUser(userData);
-      setBets(betsData);
-    } catch (error) {
-      console.error('Error refreshing data:', error);
-    }
-  };
 
   if (loading) {
     return (
@@ -79,10 +44,6 @@ const Dashboard = () => {
   }
 
   if (!user) return null;
-
-  const pendingBets = bets.filter(bet => bet.result === 'pending');
-  const settledBets = bets.filter(bet => bet.result !== 'pending');
-  const winRate = settledBets.length > 0 ? (bets.filter(bet => bet.result === 'win').length / settledBets.length * 100).toFixed(1) : '0';
 
   if (activeView === 'betting') {
     return <BettingSlip onBack={() => setActiveView('dashboard')} onBetPlaced={refreshData} />;
