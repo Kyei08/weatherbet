@@ -55,6 +55,10 @@ const Profile = () => {
         if (profile?.avatar_url) {
           setAvatarUrl(profile.avatar_url);
         }
+        if (profile?.bio) {
+          setBio(profile.bio);
+          setOriginalBio(profile.bio);
+        }
       } catch (e) {
         console.error('Failed to load user:', e);
       } finally {
