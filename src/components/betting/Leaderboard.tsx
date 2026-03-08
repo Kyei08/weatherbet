@@ -140,7 +140,7 @@ function PlayerRow({ user, profile, isFollowing, followerCount, followingCount, 
       onClick={onClick}
       className={`flex items-center justify-between p-3 sm:p-4 rounded-lg border cursor-pointer transition-colors hover:bg-accent/50 ${
         user.rank <= 3 ? 'bg-muted/50' : ''
-      }`}
+      } ${isTop10 && sortBy !== 'points' ? 'leaderboard-top-10-glow' : ''}`}
     >
       <div className="flex items-center gap-2 sm:gap-3 min-w-0">
         <div className="flex items-center gap-1 sm:gap-2 min-w-[44px] sm:min-w-[60px] shrink-0">
