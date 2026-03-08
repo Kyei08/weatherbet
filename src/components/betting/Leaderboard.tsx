@@ -121,6 +121,19 @@ function RankChangeIndicator({ change }: { change: number | undefined }) {
   );
 }
 
+async function shareRank(username: string, rank: number, points: number) {
+  const text = `🏆 ${username} is ranked #${rank} with ${points.toLocaleString()} points on WeatherBet! Can you beat them?`;
+  const url = window.location.origin;
+  if (navigator.share) {
+    try {
+      await navigator.share({ title: 'WeatherBet Leaderboard', text, url });
+    } catch {}
+  } else {
+    await navigator.clipboard.writeText(`${text}\n${url}`);
+    sonnerToast.success('Copied to clipboard!');
+  }
+}
+
 function PlayerRow({ user, profile, isFollowing, followerCount, followingCount, sortBy, isTop10, isFirst, rankChange, onClick }: { user: LeaderboardEntry; profile?: ProfileInfo; isFollowing?: boolean; followerCount?: number; followingCount?: number; sortBy: 'points' | 'followers' | 'following'; isTop10: boolean; isFirst: boolean; rankChange?: number; onClick: () => void }) {
   const getSortIndicator = () => {
     if (sortBy === 'followers') {
