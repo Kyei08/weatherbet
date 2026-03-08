@@ -103,6 +103,10 @@ export function DashboardActions({ betsCount, onViewChange }: DashboardActionsPr
           <Trophy className="h-4 w-4" />
           Leaderboard
         </Button>
+        <Button variant="ghost" size="sm" className="h-12 flex-col gap-1 text-xs text-muted-foreground hover:text-foreground" onClick={() => navigate('/following')}>
+          <Users className="h-4 w-4" />
+          Following
+        </Button>
         {isAdminUser && (
           <Button
             variant="ghost"
