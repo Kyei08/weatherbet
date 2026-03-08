@@ -133,7 +133,14 @@ const Leaderboard = ({ onBack }: LeaderboardProps) => {
   const [groupInfo, setGroupInfo] = useState<LeaderboardGroupInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedPlayer, setSelectedPlayer] = useState<LeaderboardEntry | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
   const { toast } = useToast();
+
+  const filteredUsers = useMemo(() => {
+    if (!searchQuery.trim()) return users;
+    const q = searchQuery.toLowerCase();
+    return users.filter(u => u.username.toLowerCase().includes(q));
+  }, [users, searchQuery]);
 
   const fetchLeaderboard = useCallback(async () => {
     try {
