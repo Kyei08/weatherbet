@@ -18,7 +18,7 @@ import {
   PaginationEllipsis,
 } from '@/components/ui/pagination';
 import { getGroupLeaderboard, getUserLeaderboardGroup, assignUserToLeaderboardGroup, getProfilesByUsernames } from '@/lib/supabase-auth-storage';
-import { getFollowingIds } from '@/lib/supabase-follows';
+import { getFollowingIds, getFollowCounts } from '@/lib/supabase-follows';
 import { useToast } from '@/hooks/use-toast';
 import { usePullToRefresh } from '@/hooks/usePullToRefresh';
 import PlayerProfileModal from './PlayerProfileModal';
