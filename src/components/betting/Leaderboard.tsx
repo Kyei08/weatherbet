@@ -392,7 +392,7 @@ const Leaderboard = ({ onBack }: LeaderboardProps) => {
                                   <PaginationItem key={item}>
                                     <PaginationLink
                                       isActive={currentPage === item}
-                                      onClick={() => setCurrentPage(item as number)}
+                                      onClick={() => goToPage(item as number)}
                                       className="cursor-pointer"
                                     >
                                       {item}
