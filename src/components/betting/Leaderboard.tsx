@@ -371,7 +371,7 @@ const Leaderboard = ({ onBack }: LeaderboardProps) => {
                           <PaginationContent>
                             <PaginationItem>
                               <PaginationPrevious
-                                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                onClick={() => goToPage(p => Math.max(1, p - 1))}
                                 className={currentPage === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
                               />
                             </PaginationItem>
