@@ -700,7 +700,9 @@ const ParlayBettingSlip = ({ onBack, onBetPlaced }: ParlayBettingSlipProps) => {
                 )}
               </CardContent>
             </Card>
+            </motion.div>
           )}
+          </AnimatePresence>
 
           {/* Place Bet Button */}
           <Button
