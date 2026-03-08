@@ -100,6 +100,7 @@ const Leaderboard = ({ onBack }: LeaderboardProps) => {
   const [profiles, setProfiles] = useState<Map<string, ProfileInfo>>(new Map());
   const [groupInfo, setGroupInfo] = useState<LeaderboardGroupInfo | null>(null);
   const [loading, setLoading] = useState(true);
+  const [selectedPlayer, setSelectedPlayer] = useState<LeaderboardEntry | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
