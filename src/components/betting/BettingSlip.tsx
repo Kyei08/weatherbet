@@ -755,14 +755,20 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
         )}
 
         {/* Prediction Type - compact grid */}
-        <div className="space-y-2">
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.15, duration: 0.3 }}
+          className="space-y-2"
+        >
           <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">What to predict</Label>
           <div className="grid grid-cols-4 gap-2">
             {categoryConfig.map((cat) => {
               const isSelected = predictionType === cat.value;
               return (
-                <button
+                <motion.button
                   key={cat.value}
+                  whileTap={{ scale: 0.95 }}
                   onClick={() => setPredictionType(cat.value as any)}
                   className={`flex flex-col items-center gap-0.5 p-2.5 rounded-lg border text-center transition-all
                     ${isSelected ? 'border-primary bg-primary/10 ring-1 ring-primary' : 'border-border hover:border-primary/50 hover:bg-accent/30'}
@@ -771,11 +777,11 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
                   <span className="text-base">{cat.icon}</span>
                   <span className={`text-[10px] font-medium ${isSelected ? 'text-primary' : 'text-foreground'}`}>{cat.label}</span>
                   <span className="text-[9px] text-muted-foreground">{cat.desc}</span>
-                </button>
+                </motion.button>
               );
             })}
           </div>
-        </div>
+        </motion.div>
 
         {/* Timing info for selected category */}
         {predictionType && (
