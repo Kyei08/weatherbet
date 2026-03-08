@@ -72,5 +72,5 @@ export const getRankHistory = async (
     .limit(limit);
 
   if (error || !data) return [];
-  return data as RankHistoryEntry[];
+  return (data as unknown as RankHistoryEntry[]);
 };
