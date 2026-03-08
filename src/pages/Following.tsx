@@ -3,10 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Users, UserMinus, Loader2 } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ArrowLeft, Users, UserMinus, Loader2, Activity } from 'lucide-react';
 import { getFollowingList, unfollowUser } from '@/lib/supabase-follows';
 import { motion } from 'framer-motion';
 import PlayerProfileModal from '@/components/betting/PlayerProfileModal';
+import { ActivityFeed } from '@/components/betting/ActivityFeed';
 
 interface FollowedUser {
   user_id: string;
@@ -66,70 +68,90 @@ const Following = () => {
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
-        className="p-4 pb-24 max-w-lg mx-auto space-y-3"
+        className="p-4 pb-24 max-w-lg mx-auto"
       >
-        {loading ? (
-          <div className="flex justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          </div>
-        ) : users.length === 0 ? (
-          <Card>
-            <CardContent className="text-center py-12">
-              <Users className="h-12 w-12 mx-auto mb-3 text-muted-foreground/50" />
-              <p className="font-medium">Not following anyone yet</p>
-              <p className="text-sm text-muted-foreground mt-1">
-                Visit the Leaderboard and tap a player to follow them
-              </p>
-            </CardContent>
-          </Card>
-        ) : (
-          users.map((u) => (
-            <Card key={u.user_id} className="cursor-pointer hover:bg-accent/30 transition-colors">
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3">
-                  <button
-                    onClick={() => setSelectedPlayer(u)}
-                    className="flex items-center gap-3 flex-1 min-w-0 text-left"
-                  >
-                    <div className="h-10 w-10 rounded-full shrink-0 overflow-hidden bg-primary/10 flex items-center justify-center">
-                      {u.avatar_url ? (
-                        <img src={u.avatar_url} alt="" className="h-10 w-10 rounded-full object-cover" />
-                      ) : (
-                        <span className="text-sm font-bold text-primary">
-                          {u.username.charAt(0).toUpperCase()}
-                        </span>
-                      )}
+        <Tabs defaultValue="activity" className="w-full">
+          <TabsList className="w-full mb-3">
+            <TabsTrigger value="activity" className="flex-1 gap-1.5">
+              <Activity className="h-4 w-4" />
+              Activity
+            </TabsTrigger>
+            <TabsTrigger value="following" className="flex-1 gap-1.5">
+              <Users className="h-4 w-4" />
+              Following
+              <Badge variant="secondary" className="ml-1 text-xs h-5 px-1.5">{users.length}</Badge>
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="activity" className="space-y-3 mt-0">
+            <ActivityFeed />
+          </TabsContent>
+
+          <TabsContent value="following" className="space-y-3 mt-0">
+            {loading ? (
+              <div className="flex justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              </div>
+            ) : users.length === 0 ? (
+              <Card>
+                <CardContent className="text-center py-12">
+                  <Users className="h-12 w-12 mx-auto mb-3 text-muted-foreground/50" />
+                  <p className="font-medium">Not following anyone yet</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Visit the Leaderboard and tap a player to follow them
+                  </p>
+                </CardContent>
+              </Card>
+            ) : (
+              users.map((u) => (
+                <Card key={u.user_id} className="cursor-pointer hover:bg-accent/30 transition-colors">
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-3">
+                      <button
+                        onClick={() => setSelectedPlayer(u)}
+                        className="flex items-center gap-3 flex-1 min-w-0 text-left"
+                      >
+                        <div className="h-10 w-10 rounded-full shrink-0 overflow-hidden bg-primary/10 flex items-center justify-center">
+                          {u.avatar_url ? (
+                            <img src={u.avatar_url} alt="" className="h-10 w-10 rounded-full object-cover" />
+                          ) : (
+                            <span className="text-sm font-bold text-primary">
+                              {u.username.charAt(0).toUpperCase()}
+                            </span>
+                          )}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="font-semibold truncate">{u.username}</p>
+                          {u.bio ? (
+                            <p className="text-xs text-muted-foreground truncate">{u.bio}</p>
+                          ) : (
+                            <p className="text-xs text-muted-foreground">Level {u.level} • {u.points.toLocaleString()} pts</p>
+                          )}
+                        </div>
+                      </button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={(e) => { e.stopPropagation(); handleUnfollow(u.user_id); }}
+                        disabled={unfollowingId === u.user_id}
+                        className="shrink-0"
+                      >
+                        {unfollowingId === u.user_id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <>
+                            <UserMinus className="h-4 w-4 mr-1" />
+                            Unfollow
+                          </>
+                        )}
+                      </Button>
                     </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="font-semibold truncate">{u.username}</p>
-                      {u.bio ? (
-                        <p className="text-xs text-muted-foreground truncate">{u.bio}</p>
-                      ) : (
-                        <p className="text-xs text-muted-foreground">Level {u.level} • {u.points.toLocaleString()} pts</p>
-                      )}
-                    </div>
-                  </button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={(e) => { e.stopPropagation(); handleUnfollow(u.user_id); }}
-                    disabled={unfollowingId === u.user_id}
-                    className="shrink-0"
-                  >
-                    {unfollowingId === u.user_id ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <>
-                        <UserMinus className="h-4 w-4 mr-1" />
-                        Unfollow
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))
-        )}
+                  </CardContent>
+                </Card>
+              ))
+            )}
+          </TabsContent>
+        </Tabs>
       </motion.div>
 
       {selectedPlayer && (
