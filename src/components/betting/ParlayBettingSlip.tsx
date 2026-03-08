@@ -633,7 +633,14 @@ const ParlayBettingSlip = ({ onBack, onBetPlaced }: ParlayBettingSlipProps) => {
           )}
 
           {/* Bet Summary Card */}
+          <AnimatePresence>
           {predictions.length >= 2 && predictions.every(p => p.city && p.predictionValue) && stake && parseInt(stake) >= (mode === 'real' ? 100 : 10) && (
+            <motion.div
+              initial={{ opacity: 0, y: 16, scale: 0.97 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 8, scale: 0.97 }}
+              transition={{ duration: 0.3, ease: 'easeOut' }}
+            >
             <Card className="border-2 border-primary/20 bg-gradient-to-b from-primary/5 to-transparent">
               <CardContent className="pt-4 space-y-2">
                 <div className="flex items-center gap-2 mb-3">
