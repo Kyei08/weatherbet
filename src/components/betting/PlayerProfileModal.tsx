@@ -124,24 +124,24 @@ const PlayerProfileModal = ({
         </DialogHeader>
 
         {/* Header */}
-        <div className="flex items-center gap-4 pb-4 border-b border-border">
-          <div className="h-16 w-16 rounded-full shrink-0 overflow-hidden bg-primary/10 flex items-center justify-center">
+        <div className="flex items-center gap-3 sm:gap-4 pb-4 border-b border-border">
+          <div className="h-12 w-12 sm:h-16 sm:w-16 rounded-full shrink-0 overflow-hidden bg-primary/10 flex items-center justify-center">
             {avatarUrl ? (
-              <img src={avatarUrl} alt="" className="h-16 w-16 rounded-full object-cover" />
+              <img src={avatarUrl} alt="" className="h-12 w-12 sm:h-16 sm:w-16 rounded-full object-cover" />
             ) : (
-              <span className="text-2xl font-bold text-primary">
+              <span className="text-xl sm:text-2xl font-bold text-primary">
                 {username.charAt(0).toUpperCase()}
               </span>
             )}
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
-              <h2 className="text-xl font-bold truncate">{username}</h2>
+              <h2 className="text-lg sm:text-xl font-bold truncate">{username}</h2>
               {getRankIcon(rank)}
             </div>
-            <div className="flex gap-2 mt-1">
-              <Badge variant="secondary">Level {level}</Badge>
-              <Badge variant="outline">{xp} XP</Badge>
+            <div className="flex gap-1.5 sm:gap-2 mt-1 flex-wrap">
+              <Badge variant="secondary" className="text-[10px] sm:text-xs">Level {level}</Badge>
+              <Badge variant="outline" className="text-[10px] sm:text-xs">{xp} XP</Badge>
             </div>
           </div>
         </div>
