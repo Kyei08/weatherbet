@@ -404,6 +404,7 @@ const Leaderboard = ({ onBack }: LeaderboardProps) => {
                         {paginatedUsers.map((user, i) => {
                           const profile = profiles.get(user.username);
                           const followerCount = profile?.user_id ? followerCounts.get(profile.user_id) : undefined;
+                          const followingCount = profile?.user_id ? followingCounts.get(profile.user_id) : undefined;
                           return (
                             <motion.div
                               key={`${user.username}-${user.rank}`}
@@ -416,6 +417,7 @@ const Leaderboard = ({ onBack }: LeaderboardProps) => {
                                 profile={profile}
                                 isFollowing={profile?.user_id ? followingUserIds.has(profile.user_id) : false}
                                 followerCount={followerCount}
+                                followingCount={followingCount}
                                 onClick={() => setSelectedPlayer(user)}
                               />
                             </motion.div>
