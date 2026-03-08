@@ -1,9 +1,8 @@
 import { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Coins, TrendingUp, Activity } from 'lucide-react';
-import { RecentBets } from './RecentBets';
 import { useDashboardData } from '@/hooks/useDashboardData';
 import { DashboardActions } from './DashboardActions';
+import { DashboardHeader } from './DashboardHeader';
+import { RecentBets } from './RecentBets';
 import BettingSlip from './BettingSlip';
 import ParlayBettingSlip from './ParlayBettingSlip';
 import { CombinedBettingSlip } from './CombinedBettingSlip';
@@ -22,8 +21,6 @@ import { VolatilityChart } from './VolatilityChart';
 import { StreakDisplay } from './StreakDisplay';
 import { TransactionHistory } from './TransactionHistory';
 import { CurrencyModeSwitcher } from './CurrencyModeSwitcher';
-import { formatCurrency } from '@/lib/currency';
-import { useCurrencyMode } from '@/contexts/CurrencyModeContext';
 import { useModeTheme } from '@/hooks/useModeTheme';
 
 const Dashboard = () => {
