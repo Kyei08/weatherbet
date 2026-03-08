@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Coins, TrendingUp, Activity } from 'lucide-react';
+import { RecentBets } from './RecentBets';
 import { useDashboardData } from '@/hooks/useDashboardData';
 import { DashboardActions } from './DashboardActions';
 import BettingSlip from './BettingSlip';
@@ -160,38 +161,7 @@ const Dashboard = () => {
 
         <DashboardActions betsCount={bets.length} onViewChange={setActiveView} />
 
-        {/* Recent Activity */}
-        {bets.length > 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Recent Bets</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                {bets.slice(0, 3).map((bet) => (
-                  <div key={bet.id} className="flex justify-between items-center p-2 border rounded">
-                    <div>
-                      <span className="font-medium">{bet.city}</span>
-                      <span className="text-muted-foreground ml-2">
-                        {bet.prediction_type === 'rain' ? `Rain: ${bet.prediction_value}` : `Temp: ${bet.prediction_value}°C`}
-                      </span>
-                    </div>
-                    <div className="text-right">
-                      <div className="font-medium">{bet.stake} pts</div>
-                      <div className={`text-sm ${
-                        bet.result === 'win' ? 'text-success' : 
-                        bet.result === 'loss' ? 'text-destructive' : 
-                        'text-muted-foreground'
-                      }`}>
-                        {bet.result === 'pending' ? 'Pending' : bet.result.toUpperCase()}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
+        <RecentBets bets={bets} />
       </div>
     </div>
   );
