@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowLeft, Trophy, Medal, Award, Users, UserCheck, RefreshCw, Search, X, Heart, Zap, UserPlus, TrendingUp } from 'lucide-react';
+import { ArrowLeft, Trophy, Medal, Award, Users, UserCheck, RefreshCw, Search, X, Heart, Zap, UserPlus, TrendingUp, Crown, Flame } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -97,7 +97,7 @@ function PlayerRowSkeleton() {
   );
 }
 
-function PlayerRow({ user, profile, isFollowing, followerCount, followingCount, sortBy, isTop10, onClick }: { user: LeaderboardEntry; profile?: ProfileInfo; isFollowing?: boolean; followerCount?: number; followingCount?: number; sortBy: 'points' | 'followers' | 'following'; isTop10: boolean; onClick: () => void }) {
+function PlayerRow({ user, profile, isFollowing, followerCount, followingCount, sortBy, isTop10, isFirst, onClick }: { user: LeaderboardEntry; profile?: ProfileInfo; isFollowing?: boolean; followerCount?: number; followingCount?: number; sortBy: 'points' | 'followers' | 'following'; isTop10: boolean; isFirst: boolean; onClick: () => void }) {
   const getSortIndicator = () => {
     if (sortBy === 'followers') {
       return (
@@ -155,13 +155,30 @@ function PlayerRow({ user, profile, isFollowing, followerCount, followingCount, 
       </TooltipProvider>
     );
   };
+
+  const isCrownRow = isFirst && sortBy !== 'points';
+
   return (
     <div
       onClick={onClick}
       className={`flex items-center justify-between p-3 sm:p-4 rounded-lg border cursor-pointer transition-colors hover:bg-accent/50 ${
         user.rank <= 3 ? 'bg-muted/50' : ''
-      } ${isTop10 && sortBy !== 'points' ? 'leaderboard-top-10-glow' : ''}`}
+      } ${isTop10 && sortBy !== 'points' ? 'leaderboard-top-10-glow' : ''} ${isCrownRow ? 'leaderboard-crown-row' : ''}`}
     >
+      {/* Crown & flame decorations for #1 */}
+      {isCrownRow && (
+        <>
+          <div className="absolute -top-3 left-4 crown-float z-10">
+            <Crown className="h-6 w-6 text-warning drop-shadow-md" fill="hsl(var(--warning))" />
+          </div>
+          <div className="absolute -top-2 right-3 flame-flicker z-10 opacity-70">
+            <Flame className="h-5 w-5 text-destructive" />
+          </div>
+          <div className="absolute -top-2 right-8 flame-flicker z-10 opacity-50" style={{ animationDelay: '0.15s' }}>
+            <Flame className="h-4 w-4 text-warning" />
+          </div>
+        </>
+      )}
       <div className="flex items-center gap-2 sm:gap-3 min-w-0">
         <div className="flex items-center gap-1 sm:gap-2 min-w-[44px] sm:min-w-[60px] shrink-0">
           {getRankIcon(user.rank)}
@@ -503,6 +520,7 @@ const Leaderboard = ({ onBack }: LeaderboardProps) => {
                            const followingCount = profile?.user_id ? followingCounts.get(profile.user_id) : undefined;
                            // Check if user is in top 10 of current sort
                            const isTop10 = sortBy !== 'points' && filteredUsers.slice(0, 10).some(u => u.username === user.username);
+                           const isFirst = sortBy !== 'points' && filteredUsers[0]?.username === user.username;
                            return (
                              <motion.div
                                key={`${user.username}-${user.rank}`}
@@ -517,7 +535,8 @@ const Leaderboard = ({ onBack }: LeaderboardProps) => {
                                  followerCount={followerCount}
                                  followingCount={followingCount}
                                  sortBy={sortBy}
-                                 isTop10={isTop10}
+                                  isTop10={isTop10}
+                                  isFirst={isFirst}
                                  onClick={() => setSelectedPlayer(user)}
                                />
                             </motion.div>
