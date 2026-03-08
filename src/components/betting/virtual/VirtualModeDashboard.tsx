@@ -152,7 +152,7 @@ const VirtualModeDashboard = () => {
         <LevelDisplay />
 
         {/* User Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-3 gap-2 sm:gap-4">
           <Card className={`${theme.card} border-2 ${theme.glowShadow}`}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">🎮 Virtual Balance</CardTitle>
