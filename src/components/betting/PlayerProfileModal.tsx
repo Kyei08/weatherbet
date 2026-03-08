@@ -219,7 +219,23 @@ const PlayerProfileModal = ({
                 )}
               </Button>
             )}
-          </div>
+            <Button
+              size="sm"
+              variant="outline"
+              className="min-w-[40px]"
+              onClick={async () => {
+                const text = `🏆 ${username} is ranked #${rank} with ${points.toLocaleString()} points on WeatherBet!`;
+                const url = window.location.origin;
+                if (navigator.share) {
+                  try { await navigator.share({ title: 'WeatherBet', text, url }); } catch {}
+                } else {
+                  await navigator.clipboard.writeText(`${text}\n${url}`);
+                  sonnerToast.success('Copied to clipboard!');
+                }
+              }}
+            >
+              <Share2 className="h-4 w-4" />
+            </Button>
 
           {/* Bio */}
           {bio && (

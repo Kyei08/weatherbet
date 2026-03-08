@@ -296,9 +296,19 @@ function PlayerRow({ user, profile, isFollowing, followerCount, followingCount, 
           )}
         </div>
       </div>
-      <div className="text-right shrink-0 ml-2">
-        <p className="text-base sm:text-lg font-bold">{user.points.toLocaleString()}</p>
-        <p className="text-[10px] sm:text-xs text-muted-foreground">points</p>
+      <div className="flex items-center gap-1 shrink-0 ml-2">
+        <div className="text-right">
+          <p className="text-base sm:text-lg font-bold">{user.points.toLocaleString()}</p>
+          <p className="text-[10px] sm:text-xs text-muted-foreground">points</p>
+        </div>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7 shrink-0"
+          onClick={(e) => { e.stopPropagation(); shareRank(user.username, user.rank, user.points); }}
+        >
+          <Share2 className="h-3.5 w-3.5" />
+        </Button>
       </div>
     </div>
   );
