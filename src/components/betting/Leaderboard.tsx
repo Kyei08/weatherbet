@@ -10,6 +10,13 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
   Pagination,
   PaginationContent,
   PaginationItem,
@@ -175,6 +182,7 @@ const Leaderboard = ({ onBack }: LeaderboardProps) => {
   const [selectedPlayer, setSelectedPlayer] = useState<LeaderboardEntry | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [friendsOnly, setFriendsOnly] = useState(false);
+  const [sortBy, setSortBy] = useState<'points' | 'followers' | 'following'>('points');
   const [currentPage, setCurrentPage] = useState(1);
   const [pageDirection, setPageDirection] = useState(0);
   const PLAYERS_PER_PAGE = 20;
@@ -200,8 +208,24 @@ const Leaderboard = ({ onBack }: LeaderboardProps) => {
       const q = searchQuery.toLowerCase();
       result = result.filter(u => u.username.toLowerCase().includes(q));
     }
+    
+    // Apply sorting
+    result = [...result].sort((a, b) => {
+      if (sortBy === 'followers') {
+        const aFollowers = profiles.get(a.username)?.user_id ? followerCounts.get(profiles.get(a.username)?.user_id!) ?? 0 : 0;
+        const bFollowers = profiles.get(b.username)?.user_id ? followerCounts.get(profiles.get(b.username)?.user_id!) ?? 0 : 0;
+        return bFollowers - aFollowers;
+      } else if (sortBy === 'following') {
+        const aFollowing = profiles.get(a.username)?.user_id ? followingCounts.get(profiles.get(a.username)?.user_id!) ?? 0 : 0;
+        const bFollowing = profiles.get(b.username)?.user_id ? followingCounts.get(profiles.get(b.username)?.user_id!) ?? 0 : 0;
+        return bFollowing - aFollowing;
+      }
+      // Default: sort by points (descending)
+      return b.points - a.points;
+    });
+    
     return result;
-  }, [users, searchQuery, friendsOnly, profiles, followingUserIds]);
+  }, [users, searchQuery, friendsOnly, profiles, followingUserIds, sortBy, followerCounts, followingCounts]);
 
   const totalPages = Math.max(1, Math.ceil(filteredUsers.length / PLAYERS_PER_PAGE));
   const paginatedUsers = useMemo(() => {
@@ -209,10 +233,10 @@ const Leaderboard = ({ onBack }: LeaderboardProps) => {
     return filteredUsers.slice(start, start + PLAYERS_PER_PAGE);
   }, [filteredUsers, currentPage]);
 
-  // Reset to page 1 when filters change
+  // Reset to page 1 when filters or sort changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, friendsOnly]);
+  }, [searchQuery, friendsOnly, sortBy]);
 
   const fetchLeaderboard = useCallback(async () => {
     try {
@@ -377,6 +401,19 @@ const Leaderboard = ({ onBack }: LeaderboardProps) => {
                       <X className="h-4 w-4" />
                     </button>
                   )}
+                </div>
+                <div className="mt-2">
+                  <Label htmlFor="sort-by" className="text-sm text-muted-foreground mb-1 block">Sort by</Label>
+                  <Select value={sortBy} onValueChange={(value) => setSortBy(value as 'points' | 'followers' | 'following')}>
+                    <SelectTrigger id="sort-by" className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="points">Points (Highest)</SelectItem>
+                      <SelectItem value="followers">Followers (Most)</SelectItem>
+                      <SelectItem value="following">Following (Most)</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </CardHeader>
               <CardContent>
