@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Coins, TrendingUp, Activity } from 'lucide-react';
 import { useDashboardData } from '@/hooks/useDashboardData';
-import { useAdminCheck } from '@/hooks/useAdminCheck';
+import { DashboardActions } from './DashboardActions';
 import BettingSlip from './BettingSlip';
 import ParlayBettingSlip from './ParlayBettingSlip';
 import { CombinedBettingSlip } from './CombinedBettingSlip';
