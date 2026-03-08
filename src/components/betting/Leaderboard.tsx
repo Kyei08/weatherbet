@@ -5,6 +5,15 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ArrowLeft, Trophy, Medal, Award, Users, UserCheck, RefreshCw, Search, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+  PaginationEllipsis,
+} from '@/components/ui/pagination';
 import { getGroupLeaderboard, getUserLeaderboardGroup, assignUserToLeaderboardGroup, getProfilesByUsernames } from '@/lib/supabase-auth-storage';
 import { getFollowingIds } from '@/lib/supabase-follows';
 import { useToast } from '@/hooks/use-toast';
@@ -134,6 +143,8 @@ const Leaderboard = ({ onBack }: LeaderboardProps) => {
   const [loading, setLoading] = useState(true);
   const [selectedPlayer, setSelectedPlayer] = useState<LeaderboardEntry | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const PLAYERS_PER_PAGE = 20;
   const { toast } = useToast();
 
   const filteredUsers = useMemo(() => {
@@ -141,6 +152,17 @@ const Leaderboard = ({ onBack }: LeaderboardProps) => {
     const q = searchQuery.toLowerCase();
     return users.filter(u => u.username.toLowerCase().includes(q));
   }, [users, searchQuery]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredUsers.length / PLAYERS_PER_PAGE));
+  const paginatedUsers = useMemo(() => {
+    const start = (currentPage - 1) * PLAYERS_PER_PAGE;
+    return filteredUsers.slice(start, start + PLAYERS_PER_PAGE);
+  }, [filteredUsers, currentPage]);
+
+  // Reset to page 1 when search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery]);
 
   const fetchLeaderboard = useCallback(async () => {
     try {
@@ -298,25 +320,77 @@ const Leaderboard = ({ onBack }: LeaderboardProps) => {
                     )}
                   </div>
                 ) : (
-                  <div className="space-y-3">
-                    {filteredUsers.map((user, i) => {
-                      const profile = profiles.get(user.username);
-                      return (
-                        <div
-                          key={`${user.username}-${user.rank}`}
-                          className="animate-fade-in"
-                          style={{ animationDelay: `${100 + i * 30}ms`, animationFillMode: 'both' }}
-                        >
-                          <PlayerRow
-                            user={user}
-                            profile={profile}
-                            isFollowing={profile?.user_id ? followingUserIds.has(profile.user_id) : false}
-                            onClick={() => setSelectedPlayer(user)}
-                          />
+                  <>
+                    <div className="space-y-3">
+                      {paginatedUsers.map((user, i) => {
+                        const profile = profiles.get(user.username);
+                        return (
+                          <div
+                            key={`${user.username}-${user.rank}`}
+                            className="animate-fade-in"
+                            style={{ animationDelay: `${100 + i * 30}ms`, animationFillMode: 'both' }}
+                          >
+                            <PlayerRow
+                              user={user}
+                              profile={profile}
+                              isFollowing={profile?.user_id ? followingUserIds.has(profile.user_id) : false}
+                              onClick={() => setSelectedPlayer(user)}
+                            />
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {totalPages > 1 && (
+                      <div className="mt-6">
+                        <div className="text-xs text-muted-foreground text-center mb-2">
+                          Showing {(currentPage - 1) * PLAYERS_PER_PAGE + 1}–{Math.min(currentPage * PLAYERS_PER_PAGE, filteredUsers.length)} of {filteredUsers.length} players
                         </div>
-                      );
-                    })}
-                  </div>
+                        <Pagination>
+                          <PaginationContent>
+                            <PaginationItem>
+                              <PaginationPrevious
+                                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                className={currentPage === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                              />
+                            </PaginationItem>
+
+                            {Array.from({ length: totalPages }, (_, i) => i + 1)
+                              .filter(page => page === 1 || page === totalPages || Math.abs(page - currentPage) <= 1)
+                              .reduce<(number | 'ellipsis')[]>((acc, page, idx, arr) => {
+                                if (idx > 0 && page - (arr[idx - 1] as number) > 1) acc.push('ellipsis');
+                                acc.push(page);
+                                return acc;
+                              }, [])
+                              .map((item, idx) =>
+                                item === 'ellipsis' ? (
+                                  <PaginationItem key={`ellipsis-${idx}`}>
+                                    <PaginationEllipsis />
+                                  </PaginationItem>
+                                ) : (
+                                  <PaginationItem key={item}>
+                                    <PaginationLink
+                                      isActive={currentPage === item}
+                                      onClick={() => setCurrentPage(item as number)}
+                                      className="cursor-pointer"
+                                    >
+                                      {item}
+                                    </PaginationLink>
+                                  </PaginationItem>
+                                )
+                              )}
+
+                            <PaginationItem>
+                              <PaginationNext
+                                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                                className={currentPage === totalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                              />
+                            </PaginationItem>
+                          </PaginationContent>
+                        </Pagination>
+                      </div>
+                    )}
+                  </>
                 )}
               </CardContent>
             </Card>
