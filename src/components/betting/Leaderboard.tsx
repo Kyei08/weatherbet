@@ -403,7 +403,7 @@ const Leaderboard = ({ onBack }: LeaderboardProps) => {
 
                             <PaginationItem>
                               <PaginationNext
-                                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                                onClick={() => goToPage(p => Math.min(totalPages, p + 1))}
                                 className={currentPage === totalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
                               />
                             </PaginationItem>
