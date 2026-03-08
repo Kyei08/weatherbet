@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { ModeRouter } from '@/components/betting/ModeRouter';
 import { Button } from '@/components/ui/button';
@@ -7,6 +7,7 @@ import { Loader2, LogOut, BarChart3 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { NotificationCenter } from '@/components/notifications/NotificationCenter';
 import { MobileBottomNav } from '@/components/MobileBottomNav';
+import { getProfile } from '@/lib/supabase-auth-storage';
 
 const Index = () => {
   const { user, loading, signOut } = useAuth();
