@@ -97,7 +97,7 @@ function PlayerRowSkeleton() {
   );
 }
 
-function PlayerRow({ user, profile, isFollowing, followerCount, followingCount, sortBy, isTop10, onClick }: { user: LeaderboardEntry; profile?: ProfileInfo; isFollowing?: boolean; followerCount?: number; followingCount?: number; sortBy: 'points' | 'followers' | 'following'; isTop10: boolean; onClick: () => void }) {
+function PlayerRow({ user, profile, isFollowing, followerCount, followingCount, sortBy, isTop10, isFirst, onClick }: { user: LeaderboardEntry; profile?: ProfileInfo; isFollowing?: boolean; followerCount?: number; followingCount?: number; sortBy: 'points' | 'followers' | 'following'; isTop10: boolean; isFirst: boolean; onClick: () => void }) {
   const getSortIndicator = () => {
     if (sortBy === 'followers') {
       return (
