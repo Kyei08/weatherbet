@@ -161,10 +161,19 @@ const Leaderboard = ({ onBack }: LeaderboardProps) => {
   }, []);
 
   const filteredUsers = useMemo(() => {
-    if (!searchQuery.trim()) return users;
-    const q = searchQuery.toLowerCase();
-    return users.filter(u => u.username.toLowerCase().includes(q));
-  }, [users, searchQuery]);
+    let result = users;
+    if (friendsOnly) {
+      result = result.filter(u => {
+        const profile = profiles.get(u.username);
+        return profile?.user_id ? followingUserIds.has(profile.user_id) : false;
+      });
+    }
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter(u => u.username.toLowerCase().includes(q));
+    }
+    return result;
+  }, [users, searchQuery, friendsOnly, profiles, followingUserIds]);
 
   const totalPages = Math.max(1, Math.ceil(filteredUsers.length / PLAYERS_PER_PAGE));
   const paginatedUsers = useMemo(() => {
