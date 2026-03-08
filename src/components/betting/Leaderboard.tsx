@@ -397,6 +397,12 @@ const Leaderboard = ({ onBack }: LeaderboardProps) => {
         setFollowerCounts(followerCountsMap);
         setFollowingCounts(followingCountsMap);
 
+        // Fetch previous ranks for rank change indicators
+        if (groupData) {
+          const prevRanks = await getPreviousRanks(groupData.group_id, 'points');
+          setPreviousRanks(prevRanks);
+        }
+
         // Record rank snapshot for the current user
         if (currentUser && groupData) {
           const currentUserEntry = data.find((u: LeaderboardEntry) => {
