@@ -1,5 +1,5 @@
 import { Button } from '@/components/ui/button';
-import { Layers, Zap, ShoppingCart, History, TrendingUp, MapPin, Scale, Trophy, Shield, DollarSign, Target, BarChart3 } from 'lucide-react';
+import { Layers, Zap, ShoppingCart, History, TrendingUp, MapPin, Scale, Trophy, Shield, DollarSign, Target, BarChart3, Users } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAdminCheck } from '@/hooks/useAdminCheck';
 import { useModeTheme } from '@/hooks/useModeTheme';
