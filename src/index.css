@@ -192,6 +192,28 @@ All colors MUST be HSL.
   .flame-flicker {
     animation: flame-flicker 0.6s ease-in-out infinite;
   }
+
+  @keyframes confetti-burst {
+    0% {
+      opacity: 1;
+      transform: translateY(0) rotate(0deg) scale(1);
+    }
+    50% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 0;
+      transform: translateY(-40px) rotate(720deg) scale(0);
+    }
+  }
+
+  .confetti-particle {
+    width: 6px;
+    height: 6px;
+    border-radius: 1px;
+    top: 50%;
+    animation: confetti-burst 1.2s ease-out forwards;
+  }
 }
 
 /* Prevent horizontal overflow on mobile */

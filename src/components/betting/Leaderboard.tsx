@@ -165,9 +165,28 @@ function PlayerRow({ user, profile, isFollowing, followerCount, followingCount, 
         user.rank <= 3 ? 'bg-muted/50' : ''
       } ${isTop10 && sortBy !== 'points' ? 'leaderboard-top-10-glow' : ''} ${isCrownRow ? 'leaderboard-crown-row' : ''}`}
     >
-      {/* Crown & flame decorations for #1 */}
+      {/* Crown, flame & confetti decorations for #1 */}
       {isCrownRow && (
         <>
+          {/* Confetti burst */}
+          <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-lg z-0">
+            {Array.from({ length: 12 }).map((_, idx) => (
+              <div
+                key={idx}
+                className="confetti-particle absolute"
+                style={{
+                  left: `${8 + idx * 7.5}%`,
+                  animationDelay: `${idx * 0.08}s`,
+                  backgroundColor: [
+                    'hsl(var(--warning))',
+                    'hsl(var(--primary))',
+                    'hsl(var(--destructive))',
+                    'hsl(var(--success))',
+                  ][idx % 4],
+                }}
+              />
+            ))}
+          </div>
           <div className="absolute -top-3 left-4 crown-float z-10">
             <Crown className="h-6 w-6 text-warning drop-shadow-md" fill="hsl(var(--warning))" />
           </div>
