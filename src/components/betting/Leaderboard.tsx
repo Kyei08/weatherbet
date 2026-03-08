@@ -53,10 +53,11 @@ const getRankBadge = (rank: number) => {
   return 'outline';
 };
 
-function PlayerRow({ user, profile }: { user: LeaderboardEntry; profile?: ProfileInfo }) {
+function PlayerRow({ user, profile, onClick }: { user: LeaderboardEntry; profile?: ProfileInfo; onClick: () => void }) {
   return (
     <div
-      className={`flex items-center justify-between p-4 rounded-lg border ${
+      onClick={onClick}
+      className={`flex items-center justify-between p-4 rounded-lg border cursor-pointer transition-colors hover:bg-accent/50 ${
         user.rank <= 3 ? 'bg-muted/50' : ''
       }`}
     >
