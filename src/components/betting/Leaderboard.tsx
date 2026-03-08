@@ -97,7 +97,7 @@ function PlayerRowSkeleton() {
   );
 }
 
-function PlayerRow({ user, profile, isFollowing, followerCount, followingCount, sortBy, onClick }: { user: LeaderboardEntry; profile?: ProfileInfo; isFollowing?: boolean; followerCount?: number; followingCount?: number; sortBy: 'points' | 'followers' | 'following'; onClick: () => void }) {
+function PlayerRow({ user, profile, isFollowing, followerCount, followingCount, sortBy, isTop10, onClick }: { user: LeaderboardEntry; profile?: ProfileInfo; isFollowing?: boolean; followerCount?: number; followingCount?: number; sortBy: 'points' | 'followers' | 'following'; isTop10: boolean; onClick: () => void }) {
   const getSortIndicator = () => {
     if (sortBy === 'followers') {
       return (
@@ -140,7 +140,7 @@ function PlayerRow({ user, profile, isFollowing, followerCount, followingCount, 
       onClick={onClick}
       className={`flex items-center justify-between p-3 sm:p-4 rounded-lg border cursor-pointer transition-colors hover:bg-accent/50 ${
         user.rank <= 3 ? 'bg-muted/50' : ''
-      }`}
+      } ${isTop10 && sortBy !== 'points' ? 'leaderboard-top-10-glow' : ''}`}
     >
       <div className="flex items-center gap-2 sm:gap-3 min-w-0">
         <div className="flex items-center gap-1 sm:gap-2 min-w-[44px] sm:min-w-[60px] shrink-0">
@@ -476,10 +476,12 @@ const Leaderboard = ({ onBack }: LeaderboardProps) => {
                         transition={{ duration: 0.2, ease: 'easeInOut' }}
                         className="space-y-3"
                       >
-                         {paginatedUsers.map((user, i) => {
+                        {paginatedUsers.map((user, i) => {
                            const profile = profiles.get(user.username);
                            const followerCount = profile?.user_id ? followerCounts.get(profile.user_id) : undefined;
                            const followingCount = profile?.user_id ? followingCounts.get(profile.user_id) : undefined;
+                           // Check if user is in top 10 of current sort
+                           const isTop10 = sortBy !== 'points' && filteredUsers.slice(0, 10).some(u => u.username === user.username);
                            return (
                              <motion.div
                                key={`${user.username}-${user.rank}`}
@@ -494,6 +496,7 @@ const Leaderboard = ({ onBack }: LeaderboardProps) => {
                                  followerCount={followerCount}
                                  followingCount={followingCount}
                                  sortBy={sortBy}
+                                 isTop10={isTop10}
                                  onClick={() => setSelectedPlayer(user)}
                                />
                             </motion.div>
