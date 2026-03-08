@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, Trophy, Medal, Award, Users } from 'lucide-react';
 import { getGroupLeaderboard, getUserLeaderboardGroup, assignUserToLeaderboardGroup, getProfilesByUsernames } from '@/lib/supabase-auth-storage';
 import { useToast } from '@/hooks/use-toast';
+import PlayerProfileModal from './PlayerProfileModal';
 
 interface LeaderboardEntry {
   username: string;
@@ -52,10 +53,11 @@ const getRankBadge = (rank: number) => {
   return 'outline';
 };
 
-function PlayerRow({ user, profile }: { user: LeaderboardEntry; profile?: ProfileInfo }) {
+function PlayerRow({ user, profile, onClick }: { user: LeaderboardEntry; profile?: ProfileInfo; onClick: () => void }) {
   return (
     <div
-      className={`flex items-center justify-between p-4 rounded-lg border ${
+      onClick={onClick}
+      className={`flex items-center justify-between p-4 rounded-lg border cursor-pointer transition-colors hover:bg-accent/50 ${
         user.rank <= 3 ? 'bg-muted/50' : ''
       }`}
     >
@@ -98,6 +100,7 @@ const Leaderboard = ({ onBack }: LeaderboardProps) => {
   const [profiles, setProfiles] = useState<Map<string, ProfileInfo>>(new Map());
   const [groupInfo, setGroupInfo] = useState<LeaderboardGroupInfo | null>(null);
   const [loading, setLoading] = useState(true);
+  const [selectedPlayer, setSelectedPlayer] = useState<LeaderboardEntry | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -194,6 +197,7 @@ const Leaderboard = ({ onBack }: LeaderboardProps) => {
                     key={`${user.username}-${user.rank}`}
                     user={user}
                     profile={profiles.get(user.username)}
+                    onClick={() => setSelectedPlayer(user)}
                   />
                 ))}
               </div>
@@ -219,6 +223,20 @@ const Leaderboard = ({ onBack }: LeaderboardProps) => {
           </Card>
         )}
       </div>
+
+      {selectedPlayer && (
+        <PlayerProfileModal
+          open={!!selectedPlayer}
+          onOpenChange={(open) => !open && setSelectedPlayer(null)}
+          username={selectedPlayer.username}
+          points={selectedPlayer.points}
+          level={selectedPlayer.level}
+          xp={selectedPlayer.xp}
+          rank={selectedPlayer.rank}
+          bio={profiles.get(selectedPlayer.username)?.bio}
+          avatarUrl={profiles.get(selectedPlayer.username)?.avatar_url}
+        />
+      )}
     </div>
   );
 };
