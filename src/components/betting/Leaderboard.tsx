@@ -55,7 +55,7 @@ const getRankBadge = (rank: number) => {
   return 'outline';
 };
 
-function PlayerRow({ user, profile, onClick }: { user: LeaderboardEntry; profile?: ProfileInfo; onClick: () => void }) {
+function PlayerRow({ user, profile, isFollowing, onClick }: { user: LeaderboardEntry; profile?: ProfileInfo; isFollowing?: boolean; onClick: () => void }) {
   return (
     <div
       onClick={onClick}
@@ -79,7 +79,15 @@ function PlayerRow({ user, profile, onClick }: { user: LeaderboardEntry; profile
           )}
         </div>
         <div className="min-w-0">
-          <p className="font-semibold truncate">{user.username}</p>
+          <div className="flex items-center gap-1.5">
+            <p className="font-semibold truncate">{user.username}</p>
+            {isFollowing && (
+              <Badge variant="secondary" className="gap-0.5 text-[10px] px-1.5 py-0 h-4 shrink-0">
+                <UserCheck className="h-2.5 w-2.5" />
+                Following
+              </Badge>
+            )}
+          </div>
           {profile?.bio ? (
             <p className="text-xs text-muted-foreground truncate max-w-[180px]">{profile.bio}</p>
           ) : (
