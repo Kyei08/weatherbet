@@ -3,11 +3,13 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
 import { CurrencyModeProvider } from "./contexts/CurrencyModeContext";
 import { UserPreferencesProvider } from "./contexts/UserPreferencesContext";
 import { Loader2 } from "lucide-react";
+import { AnimatePresence } from "framer-motion";
+import { PageTransition } from "./components/PageTransition";
 
 // Lazy-loaded routes
 const Index = lazy(() => import("./pages/Index"));
