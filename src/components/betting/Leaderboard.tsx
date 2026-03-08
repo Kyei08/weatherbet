@@ -164,6 +164,15 @@ const Leaderboard = ({ onBack }: LeaderboardProps) => {
     setCurrentPage(1);
   }, [searchQuery]);
 
+  const fetchLeaderboard = useCallback(async () => {
+    try {
+      let groupData = await getUserLeaderboardGroup();
+      if (!groupData) {
+        await assignUserToLeaderboardGroup(100);
+        groupData = await getUserLeaderboardGroup();
+      }
+      setGroupInfo(groupData);
+
       const [data, followIds] = await Promise.all([
         getGroupLeaderboard(),
         getFollowingIds(),
