@@ -402,6 +402,19 @@ const Leaderboard = ({ onBack }: LeaderboardProps) => {
                     </button>
                   )}
                 </div>
+                <div className="mt-2">
+                  <Label htmlFor="sort-by" className="text-sm text-muted-foreground mb-1 block">Sort by</Label>
+                  <Select value={sortBy} onValueChange={(value) => setSortBy(value as 'points' | 'followers' | 'following')}>
+                    <SelectTrigger id="sort-by" className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="points">Points (Highest)</SelectItem>
+                      <SelectItem value="followers">Followers (Most)</SelectItem>
+                      <SelectItem value="following">Following (Most)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </CardHeader>
               <CardContent>
                 {filteredUsers.length === 0 ? (
