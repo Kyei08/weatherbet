@@ -180,6 +180,7 @@ function PlayerRow({ user, profile, isFollowing, followerCount, followingCount, 
           <div className="flex items-center gap-1 sm:gap-1.5 flex-wrap">
             <p className="font-semibold truncate text-sm">{user.username}</p>
             <div className="flex items-center gap-1 flex-wrap">
+              {getTop10Badge()}
               {getSortIndicator()}
               {followerCount !== undefined && (
                 <TooltipProvider>
