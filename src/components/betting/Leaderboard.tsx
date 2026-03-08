@@ -225,6 +225,7 @@ function PlayerRow({ user, profile, isFollowing, followerCount, followingCount, 
         <div className="flex items-center gap-1 sm:gap-2 min-w-[44px] sm:min-w-[60px] shrink-0">
           {getRankIcon(user.rank)}
           <Badge variant={getRankBadge(user.rank)} className="text-[10px] sm:text-xs">#{user.rank}</Badge>
+          <RankChangeIndicator change={rankChange} />
         </div>
         <div className="h-8 w-8 sm:h-9 sm:w-9 rounded-full shrink-0 overflow-hidden bg-primary/10 flex items-center justify-center">
           {profile?.avatar_url ? (
