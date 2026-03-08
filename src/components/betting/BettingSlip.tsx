@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -619,7 +620,12 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
 
   return (
     <div className="min-h-screen bg-background p-4 pb-8">
-      <div className="max-w-2xl mx-auto space-y-4">
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35, ease: 'easeOut' }}
+        className="max-w-2xl mx-auto space-y-4"
+      >
         {/* Header with balance */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -667,7 +673,12 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
         )}
 
         {/* Day Selection - compact horizontal scroll */}
-        <div className="space-y-2">
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.05, duration: 0.3 }}
+          className="space-y-2"
+        >
           <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Target Day</Label>
           <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
             {availableDays.map((day) => {
@@ -688,17 +699,23 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
               );
             })}
           </div>
-        </div>
+        </motion.div>
 
         {/* City Selection - visual grid */}
-        <div className="space-y-2">
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1, duration: 0.3 }}
+          className="space-y-2"
+        >
           <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">City</Label>
           <div className="grid grid-cols-5 gap-2">
             {CITIES.map((cityName) => {
               const isSelected = city === cityName;
               return (
-                <button
+                <motion.button
                   key={cityName}
+                  whileTap={{ scale: 0.95 }}
                   onClick={() => setCity(cityName as City)}
                   className={`flex flex-col items-center gap-1 p-2 rounded-lg border text-center transition-all
                     ${isSelected ? 'border-primary bg-primary/10 ring-1 ring-primary' : 'border-border hover:border-primary/50 hover:bg-accent/30'}
@@ -708,11 +725,11 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
                   <span className={`text-[10px] leading-tight ${isSelected ? 'text-primary font-semibold' : 'text-muted-foreground'}`}>
                     {cityName.split(' ')[0]}
                   </span>
-                </button>
+                </motion.button>
               );
             })}
           </div>
-        </div>
+        </motion.div>
 
         {/* Weather Display - only if city selected */}
         {city && <WeatherDisplay city={city} />}
@@ -738,14 +755,20 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
         )}
 
         {/* Prediction Type - compact grid */}
-        <div className="space-y-2">
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.15, duration: 0.3 }}
+          className="space-y-2"
+        >
           <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">What to predict</Label>
           <div className="grid grid-cols-4 gap-2">
             {categoryConfig.map((cat) => {
               const isSelected = predictionType === cat.value;
               return (
-                <button
+                <motion.button
                   key={cat.value}
+                  whileTap={{ scale: 0.95 }}
                   onClick={() => setPredictionType(cat.value as any)}
                   className={`flex flex-col items-center gap-0.5 p-2.5 rounded-lg border text-center transition-all
                     ${isSelected ? 'border-primary bg-primary/10 ring-1 ring-primary' : 'border-border hover:border-primary/50 hover:bg-accent/30'}
@@ -754,11 +777,11 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
                   <span className="text-base">{cat.icon}</span>
                   <span className={`text-[10px] font-medium ${isSelected ? 'text-primary' : 'text-foreground'}`}>{cat.label}</span>
                   <span className="text-[9px] text-muted-foreground">{cat.desc}</span>
-                </button>
+                </motion.button>
               );
             })}
           </div>
-        </div>
+        </motion.div>
 
         {/* Timing info for selected category */}
         {predictionType && (
@@ -1037,7 +1060,14 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
         )}
 
         {/* Bet Summary Card */}
+        <AnimatePresence>
         {city && predictionType && getCurrentPredictionValue() && stake && parseInt(stake) >= getMinStake() && (
+          <motion.div
+            initial={{ opacity: 0, y: 16, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 8, scale: 0.97 }}
+            transition={{ duration: 0.3, ease: 'easeOut' }}
+          >
           <Card className="border-2 border-primary/20 bg-gradient-to-b from-primary/5 to-transparent">
             <CardContent className="pt-4 space-y-2">
               <div className="flex items-center gap-2 mb-3">
@@ -1113,7 +1143,9 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
               )}
             </CardContent>
           </Card>
+          </motion.div>
         )}
+        </AnimatePresence>
 
         {/* Place Bet Button */}
         <Button 
@@ -1132,7 +1164,7 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
                 : 'Place Bet'
           }
         </Button>
-      </div>
+      </motion.div>
       
       <DuplicateBetDialog 
         open={showDuplicateDialog} 
