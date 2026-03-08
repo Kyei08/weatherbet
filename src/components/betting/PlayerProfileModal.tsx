@@ -4,7 +4,7 @@ import { motion, useMotionValue, useTransform, animate } from 'framer-motion';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Trophy, Medal, Award, Star, Target, Zap, UserPlus, UserMinus, Users, Loader2, Share2 } from 'lucide-react';
+import { Trophy, Medal, Award, Star, Target, Zap, UserPlus, UserMinus, Users, Loader2, Share2, Swords } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useFollow } from '@/hooks/useFollow';
 import { toast as sonnerToast } from 'sonner';
