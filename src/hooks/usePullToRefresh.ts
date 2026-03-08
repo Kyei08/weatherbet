@@ -20,6 +20,8 @@ export function usePullToRefresh({ onRefresh, threshold = 80, maxPull = 120 }: U
     isPulling.current = true;
   }, [isRefreshing]);
 
+  const hasTriggeredHaptic = useRef(false);
+
   const handleTouchMove = useCallback((e: TouchEvent) => {
     if (!isPulling.current || isRefreshing) return;
     const currentY = e.touches[0].clientY;
@@ -29,8 +31,16 @@ export function usePullToRefresh({ onRefresh, threshold = 80, maxPull = 120 }: U
       const distance = Math.min(diff * 0.5, maxPull);
       setPullDistance(distance);
       if (distance > 10) e.preventDefault();
+
+      // Haptic feedback when crossing threshold
+      if (distance >= threshold && !hasTriggeredHaptic.current) {
+        hasTriggeredHaptic.current = true;
+        try { navigator.vibrate?.(15); } catch {}
+      } else if (distance < threshold) {
+        hasTriggeredHaptic.current = false;
+      }
     }
-  }, [isRefreshing, maxPull]);
+  }, [isRefreshing, maxPull, threshold]);
 
   const handleTouchEnd = useCallback(async () => {
     if (!isPulling.current) return;
