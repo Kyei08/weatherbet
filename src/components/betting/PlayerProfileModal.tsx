@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { motion, useMotionValue, useTransform, animate } from 'framer-motion';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -115,143 +116,176 @@ const PlayerProfileModal = ({
     ? Math.round((stats.wins / stats.totalBets) * 100)
     : 0;
 
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-md max-h-[85vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="sr-only">{username}'s Profile</DialogTitle>
-          <DialogDescription className="sr-only">Player profile showing stats and achievements</DialogDescription>
-        </DialogHeader>
+  const y = useMotionValue(0);
+  const opacity = useTransform(y, [0, 200], [1, 0.3]);
+  const scale = useTransform(y, [0, 200], [1, 0.92]);
 
-        {/* Header */}
-        <div className="flex items-center gap-3 sm:gap-4 pb-4 border-b border-border">
-          <div className="h-12 w-12 sm:h-16 sm:w-16 rounded-full shrink-0 overflow-hidden bg-primary/10 flex items-center justify-center">
-            {avatarUrl ? (
-              <img src={avatarUrl} alt="" className="h-12 w-12 sm:h-16 sm:w-16 rounded-full object-cover" />
-            ) : (
-              <span className="text-xl sm:text-2xl font-bold text-primary">
-                {username.charAt(0).toUpperCase()}
-              </span>
+  const handleDragEnd = useCallback(
+    (_: any, info: { offset: { y: number }; velocity: { y: number } }) => {
+      if (info.offset.y > 80 || info.velocity.y > 400) {
+        animate(y, 400, { duration: 0.2 }).then(() => {
+          onOpenChange(false);
+          y.set(0);
+        });
+      } else {
+        animate(y, 0, { type: 'spring', stiffness: 400, damping: 30 });
+      }
+    },
+    [onOpenChange, y]
+  );
+
+
+  return (
+    <Dialog open={open} onOpenChange={(open) => { if (!open) y.set(0); onOpenChange(open); }}>
+      <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-md max-h-[85vh] overflow-hidden p-0 border-none bg-transparent shadow-none [&>button]:hidden">
+        <motion.div
+          style={{ y, opacity, scale }}
+          drag="y"
+          dragConstraints={{ top: 0, bottom: 0 }}
+          dragElastic={{ top: 0, bottom: 0.6 }}
+          onDragEnd={handleDragEnd}
+          className="bg-background border border-border rounded-lg shadow-lg p-6 overflow-y-auto max-h-[85vh] relative"
+        >
+          {/* Swipe indicator */}
+          <div className="flex justify-center mb-3">
+            <div className="w-10 h-1 rounded-full bg-muted-foreground/30" />
+          </div>
+
+          <DialogHeader>
+            <DialogTitle className="sr-only">{username}'s Profile</DialogTitle>
+            <DialogDescription className="sr-only">Player profile showing stats and achievements</DialogDescription>
+          </DialogHeader>
+
+          {/* Header */}
+          <div className="flex items-center gap-3 sm:gap-4 pb-4 border-b border-border">
+            <div className="h-12 w-12 sm:h-16 sm:w-16 rounded-full shrink-0 overflow-hidden bg-primary/10 flex items-center justify-center">
+              {avatarUrl ? (
+                <img src={avatarUrl} alt="" className="h-12 w-12 sm:h-16 sm:w-16 rounded-full object-cover" />
+              ) : (
+                <span className="text-xl sm:text-2xl font-bold text-primary">
+                  {username.charAt(0).toUpperCase()}
+                </span>
+              )}
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2">
+                <h2 className="text-lg sm:text-xl font-bold truncate">{username}</h2>
+                {getRankIcon(rank)}
+              </div>
+              <div className="flex gap-1.5 sm:gap-2 mt-1 flex-wrap">
+                <Badge variant="secondary" className="text-[10px] sm:text-xs">Level {level}</Badge>
+                <Badge variant="outline" className="text-[10px] sm:text-xs">{xp} XP</Badge>
+              </div>
+            </div>
+          </div>
+
+          {/* Follow Button & Counts */}
+          <div className="flex items-center justify-between mt-4">
+            <div className="flex gap-4 text-sm">
+              <div className="text-center">
+                <p className="font-bold">{counts.followers}</p>
+                <p className="text-xs text-muted-foreground">Followers</p>
+              </div>
+              <div className="text-center">
+                <p className="font-bold">{counts.following}</p>
+                <p className="text-xs text-muted-foreground">Following</p>
+              </div>
+            </div>
+            {!isSelf && !checking && (
+              <Button
+                size="sm"
+                variant={following ? 'outline' : 'default'}
+                onClick={toggleFollow}
+                disabled={followLoading}
+                className="min-w-[100px]"
+              >
+                {followLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : following ? (
+                  <>
+                    <UserMinus className="h-4 w-4 mr-1" />
+                    Unfollow
+                  </>
+                ) : (
+                  <>
+                    <UserPlus className="h-4 w-4 mr-1" />
+                    Follow
+                  </>
+                )}
+              </Button>
             )}
           </div>
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2">
-              <h2 className="text-lg sm:text-xl font-bold truncate">{username}</h2>
-              {getRankIcon(rank)}
-            </div>
-            <div className="flex gap-1.5 sm:gap-2 mt-1 flex-wrap">
-              <Badge variant="secondary" className="text-[10px] sm:text-xs">Level {level}</Badge>
-              <Badge variant="outline" className="text-[10px] sm:text-xs">{xp} XP</Badge>
-            </div>
-          </div>
-        </div>
 
-        {/* Follow Button & Counts */}
-        <div className="flex items-center justify-between">
-          <div className="flex gap-4 text-sm">
-            <div className="text-center">
-              <p className="font-bold">{counts.followers}</p>
-              <p className="text-xs text-muted-foreground">Followers</p>
+          {/* Bio */}
+          {bio && (
+            <div className="py-3 border-b border-border">
+              <p className="text-sm text-muted-foreground italic">"{bio}"</p>
             </div>
-            <div className="text-center">
-              <p className="font-bold">{counts.following}</p>
-              <p className="text-xs text-muted-foreground">Following</p>
-            </div>
-          </div>
-          {!isSelf && !checking && (
-            <Button
-              size="sm"
-              variant={following ? 'outline' : 'default'}
-              onClick={toggleFollow}
-              disabled={followLoading}
-              className="min-w-[100px]"
-            >
-              {followLoading ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : following ? (
-                <>
-                  <UserMinus className="h-4 w-4 mr-1" />
-                  Unfollow
-                </>
-              ) : (
-                <>
-                  <UserPlus className="h-4 w-4 mr-1" />
-                  Follow
-                </>
-              )}
-            </Button>
           )}
-        </div>
 
-        {/* Bio */}
-        {bio && (
-          <div className="py-3 border-b border-border">
-            <p className="text-sm text-muted-foreground italic">"{bio}"</p>
+          {/* Stats Grid */}
+          <div className="grid grid-cols-3 gap-2 sm:gap-3 mt-4">
+            <Card>
+              <CardContent className="p-2 sm:p-3 text-center">
+                <Star className="h-3 w-3 sm:h-4 sm:w-4 mx-auto mb-1 text-primary" />
+                <p className="text-sm sm:text-lg font-bold">{points.toLocaleString()}</p>
+                <p className="text-[10px] sm:text-xs text-muted-foreground">Points</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-2 sm:p-3 text-center">
+                <Target className="h-3 w-3 sm:h-4 sm:w-4 mx-auto mb-1 text-primary" />
+                <p className="text-sm sm:text-lg font-bold">{stats.totalBets}</p>
+                <p className="text-[10px] sm:text-xs text-muted-foreground">Bets</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-2 sm:p-3 text-center">
+                <Zap className="h-3 w-3 sm:h-4 sm:w-4 mx-auto mb-1 text-primary" />
+                <p className="text-sm sm:text-lg font-bold">{winRate}%</p>
+                <p className="text-[10px] sm:text-xs text-muted-foreground">Win Rate</p>
+              </CardContent>
+            </Card>
           </div>
-        )}
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-3 gap-2 sm:gap-3">
-          <Card>
-            <CardContent className="p-2 sm:p-3 text-center">
-              <Star className="h-3 w-3 sm:h-4 sm:w-4 mx-auto mb-1 text-primary" />
-              <p className="text-sm sm:text-lg font-bold">{points.toLocaleString()}</p>
-              <p className="text-[10px] sm:text-xs text-muted-foreground">Points</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-2 sm:p-3 text-center">
-              <Target className="h-3 w-3 sm:h-4 sm:w-4 mx-auto mb-1 text-primary" />
-              <p className="text-sm sm:text-lg font-bold">{stats.totalBets}</p>
-              <p className="text-[10px] sm:text-xs text-muted-foreground">Bets</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-2 sm:p-3 text-center">
-              <Zap className="h-3 w-3 sm:h-4 sm:w-4 mx-auto mb-1 text-primary" />
-              <p className="text-sm sm:text-lg font-bold">{winRate}%</p>
-              <p className="text-[10px] sm:text-xs text-muted-foreground">Win Rate</p>
-            </CardContent>
-          </Card>
-        </div>
+          {/* Win/Loss breakdown */}
+          {stats.totalBets > 0 && (
+            <div className="flex gap-4 text-sm mt-3">
+              <span className="text-green-500 font-medium">{stats.wins}W</span>
+              <span className="text-destructive font-medium">{stats.losses}L</span>
+              <span className="text-muted-foreground">
+                {stats.totalBets - stats.wins - stats.losses} pending
+              </span>
+            </div>
+          )}
 
-        {/* Win/Loss breakdown */}
-        {stats.totalBets > 0 && (
-          <div className="flex gap-4 text-sm">
-            <span className="text-green-500 font-medium">{stats.wins}W</span>
-            <span className="text-destructive font-medium">{stats.losses}L</span>
-            <span className="text-muted-foreground">
-              {stats.totalBets - stats.wins - stats.losses} pending
-            </span>
-          </div>
-        )}
-
-        {/* Achievements */}
-        <div>
-          <h3 className="text-sm font-semibold mb-2">
-            Achievements ({achievements.length})
-          </h3>
-          {loading ? (
-            <p className="text-sm text-muted-foreground">Loading...</p>
-          ) : achievements.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No achievements yet</p>
-          ) : (
-            <div className="grid grid-cols-2 gap-2">
-              {achievements.map((a) => (
-                <div
-                  key={a.id}
-                  className="flex items-center gap-2 p-2 rounded-lg border border-border bg-muted/30"
-                >
-                  <span className="text-lg">{a.badge_icon}</span>
-                  <div className="min-w-0">
-                    <p className="text-xs font-medium truncate">{a.title}</p>
-                    <p className="text-xs text-muted-foreground">+{a.points_reward} pts</p>
+          {/* Achievements */}
+          <div className="mt-4">
+            <h3 className="text-sm font-semibold mb-2">
+              Achievements ({achievements.length})
+            </h3>
+            {loading ? (
+              <p className="text-sm text-muted-foreground">Loading...</p>
+            ) : achievements.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No achievements yet</p>
+            ) : (
+              <div className="grid grid-cols-2 gap-2">
+                {achievements.map((a) => (
+                  <div
+                    key={a.id}
+                    className="flex items-center gap-2 p-2 rounded-lg border border-border bg-muted/30"
+                  >
+                    <span className="text-lg">{a.badge_icon}</span>
+                    <div className="min-w-0">
+                      <p className="text-xs font-medium truncate">{a.title}</p>
+                      <p className="text-xs text-muted-foreground">+{a.points_reward} pts</p>
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </motion.div>
       </DialogContent>
     </Dialog>
   );
