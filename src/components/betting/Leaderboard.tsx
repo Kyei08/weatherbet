@@ -29,7 +29,7 @@ import { getGroupLeaderboard, getUserLeaderboardGroup, assignUserToLeaderboardGr
 import { getFollowingIds, getFollowCounts } from '@/lib/supabase-follows';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
-import { recordRankSnapshot } from '@/lib/supabase-rank-history';
+import { recordRankSnapshot, getPreviousRanks } from '@/lib/supabase-rank-history';
 import { usePullToRefresh } from '@/hooks/usePullToRefresh';
 import PlayerProfileModal from './PlayerProfileModal';
 import SeasonHistory from './SeasonHistory';
