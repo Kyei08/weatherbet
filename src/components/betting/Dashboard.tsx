@@ -15,30 +15,31 @@ import { TransactionHistory } from './TransactionHistory';
 import { CurrencyModeSwitcher } from './CurrencyModeSwitcher';
 import { useModeTheme } from '@/hooks/useModeTheme';
 import { Skeleton } from '@/components/ui/skeleton';
+import { usePullToRefresh } from '@/hooks/usePullToRefresh';
+import { RefreshCw } from 'lucide-react';
 
 const Dashboard = () => {
   const theme = useModeTheme();
   const { user, bets, loading, error, pendingBets, winRate, refreshData } = useDashboardData();
   const { activeView, setActiveView, renderSubView } = useDashboardView();
+  const { containerRef, pullDistance, isRefreshing, isTriggered, progress } = usePullToRefresh({
+    onRefresh: refreshData,
+  });
 
   if (loading) {
     return (
       <div className="min-h-screen bg-background p-4">
         <div className="max-w-4xl mx-auto space-y-6">
-          {/* Header skeleton */}
           <div className="space-y-2">
             <Skeleton className="h-8 w-48" />
             <Skeleton className="h-4 w-32" />
           </div>
-          {/* Stats cards skeleton */}
           <div className="grid grid-cols-3 gap-4">
             <Skeleton className="h-24 rounded-xl" />
             <Skeleton className="h-24 rounded-xl" />
             <Skeleton className="h-24 rounded-xl" />
           </div>
-          {/* Currency switcher skeleton */}
           <Skeleton className="h-10 w-full rounded-lg" />
-          {/* Content sections skeleton */}
           <Skeleton className="h-32 rounded-xl" />
           <Skeleton className="h-24 rounded-xl" />
           <Skeleton className="h-40 rounded-xl" />
@@ -70,7 +71,29 @@ const Dashboard = () => {
   if (subView) return <>{subView}</>;
 
   return (
-    <div className={`min-h-screen p-4 transition-colors duration-300 ${theme.gradient}`}>
+    <div
+      ref={containerRef}
+      className={`min-h-screen p-4 transition-colors duration-300 ${theme.gradient} overflow-auto`}
+      style={{ overscrollBehavior: 'contain' }}
+    >
+      {/* Pull-to-refresh indicator */}
+      <div
+        className="flex justify-center items-center overflow-hidden transition-[height] duration-200 ease-out"
+        style={{ height: pullDistance > 0 ? `${pullDistance}px` : '0px' }}
+      >
+        <div
+          className={`flex flex-col items-center gap-1 transition-opacity ${pullDistance > 10 ? 'opacity-100' : 'opacity-0'}`}
+        >
+          <RefreshCw
+            className={`h-5 w-5 text-primary transition-transform duration-200 ${isRefreshing ? 'animate-spin' : ''}`}
+            style={{ transform: isRefreshing ? undefined : `rotate(${progress * 360}deg)` }}
+          />
+          <span className="text-xs text-muted-foreground">
+            {isRefreshing ? 'Refreshing…' : isTriggered ? 'Release to refresh' : 'Pull to refresh'}
+          </span>
+        </div>
+      </div>
+
       <div className="max-w-4xl mx-auto space-y-6">
         <div className="animate-fade-in" style={{ animationDelay: '0ms', animationFillMode: 'both' }}>
           <DashboardHeader user={user} winRate={winRate} pendingBetsCount={pendingBets.length} />
