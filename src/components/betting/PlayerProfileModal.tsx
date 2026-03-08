@@ -233,6 +233,21 @@ const PlayerProfileModal = ({
             >
               <Share2 className="h-4 w-4" />
             </Button>
+            {!isSelf && !checking && (
+              <Button
+                size="sm"
+                variant="secondary"
+                className="min-w-[40px]"
+                onClick={() => {
+                  sonnerToast.success(`Challenge sent to ${username}!`, {
+                    description: 'They will be notified to accept your challenge.',
+                  });
+                }}
+              >
+                <Swords className="h-4 w-4 mr-1" />
+                Challenge
+              </Button>
+            )}
           </div>
 
           {/* Bio */}
