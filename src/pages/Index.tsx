@@ -13,9 +13,15 @@ const Index = () => {
   const { user, loading, signOut } = useAuth();
   const navigate = useNavigate();
   const [mobileAction, setMobileAction] = useState<string | null>(null);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (user) {
+      getProfile().then(p => setAvatarUrl(p?.avatar_url ?? null)).catch(() => {});
+    }
+  }, [user]);
 
   const handleMobileAction = useCallback((action: string) => {
-    // Broadcast action to dashboards via a custom event
     window.dispatchEvent(new CustomEvent('mobile-nav-action', { detail: action }));
   }, []);
 
