@@ -4,7 +4,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowLeft, Trophy, Medal, Award, Users, UserCheck, RefreshCw, Search, X } from 'lucide-react';
+import { ArrowLeft, Trophy, Medal, Award, Users, UserCheck, RefreshCw, Search, X, Heart } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import {
   Pagination,
@@ -144,6 +146,7 @@ const Leaderboard = ({ onBack }: LeaderboardProps) => {
   const [loading, setLoading] = useState(true);
   const [selectedPlayer, setSelectedPlayer] = useState<LeaderboardEntry | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [friendsOnly, setFriendsOnly] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageDirection, setPageDirection] = useState(0);
   const PLAYERS_PER_PAGE = 20;
@@ -158,10 +161,19 @@ const Leaderboard = ({ onBack }: LeaderboardProps) => {
   }, []);
 
   const filteredUsers = useMemo(() => {
-    if (!searchQuery.trim()) return users;
-    const q = searchQuery.toLowerCase();
-    return users.filter(u => u.username.toLowerCase().includes(q));
-  }, [users, searchQuery]);
+    let result = users;
+    if (friendsOnly) {
+      result = result.filter(u => {
+        const profile = profiles.get(u.username);
+        return profile?.user_id ? followingUserIds.has(profile.user_id) : false;
+      });
+    }
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter(u => u.username.toLowerCase().includes(q));
+    }
+    return result;
+  }, [users, searchQuery, friendsOnly, profiles, followingUserIds]);
 
   const totalPages = Math.max(1, Math.ceil(filteredUsers.length / PLAYERS_PER_PAGE));
   const paginatedUsers = useMemo(() => {
@@ -169,10 +181,10 @@ const Leaderboard = ({ onBack }: LeaderboardProps) => {
     return filteredUsers.slice(start, start + PLAYERS_PER_PAGE);
   }, [filteredUsers, currentPage]);
 
-  // Reset to page 1 when search changes
+  // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery]);
+  }, [searchQuery, friendsOnly]);
 
   const fetchLeaderboard = useCallback(async () => {
     try {
@@ -301,6 +313,13 @@ const Leaderboard = ({ onBack }: LeaderboardProps) => {
               <CardHeader>
                 <CardTitle>Top Players</CardTitle>
                 <p className="text-muted-foreground">Compete with players in your league</p>
+                <div className="flex items-center gap-2 mt-2">
+                  <Switch id="friends-only" checked={friendsOnly} onCheckedChange={setFriendsOnly} />
+                  <Label htmlFor="friends-only" className="flex items-center gap-1.5 text-sm cursor-pointer">
+                    <Heart className={`h-3.5 w-3.5 ${friendsOnly ? 'text-primary fill-primary' : 'text-muted-foreground'}`} />
+                    Friends only
+                  </Label>
+                </div>
                 <div className="relative mt-2">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
