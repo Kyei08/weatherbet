@@ -520,6 +520,7 @@ const Leaderboard = ({ onBack }: LeaderboardProps) => {
                            const followingCount = profile?.user_id ? followingCounts.get(profile.user_id) : undefined;
                            // Check if user is in top 10 of current sort
                            const isTop10 = sortBy !== 'points' && filteredUsers.slice(0, 10).some(u => u.username === user.username);
+                           const isFirst = sortBy !== 'points' && filteredUsers[0]?.username === user.username;
                            return (
                              <motion.div
                                key={`${user.username}-${user.rank}`}
