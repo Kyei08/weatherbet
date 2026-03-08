@@ -135,6 +135,26 @@ function PlayerRow({ user, profile, isFollowing, followerCount, followingCount, 
     // Default points - no indicator needed
     return null;
   };
+
+  const getTop10Badge = () => {
+    if (!isTop10 || sortBy === 'points') return null;
+    const sortLabel = sortBy === 'followers' ? 'Followers' : 'Following';
+    return (
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Badge className="gap-1 text-[10px] px-1.5 py-0 h-4 shrink-0 bg-primary text-primary-foreground animate-pulse">
+              <Trophy className="h-2.5 w-2.5" />
+              Top 10
+            </Badge>
+          </TooltipTrigger>
+          <TooltipContent side="top" className="bg-popover border border-border text-xs">
+            Top 10 by {sortLabel} count
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    );
+  };
   return (
     <div
       onClick={onClick}
