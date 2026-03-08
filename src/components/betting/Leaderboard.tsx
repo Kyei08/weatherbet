@@ -300,6 +300,7 @@ const Leaderboard = ({ onBack }: LeaderboardProps) => {
   const [groupInfo, setGroupInfo] = useState<LeaderboardGroupInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedPlayer, setSelectedPlayer] = useState<LeaderboardEntry | null>(null);
+  const [previousRanks, setPreviousRanks] = useState<Map<string, number>>(new Map());
   const [searchQuery, setSearchQuery] = useState('');
   const [friendsOnly, setFriendsOnly] = useState(false);
   const [sortBy, setSortBy] = useState<'points' | 'followers' | 'following'>('points');
