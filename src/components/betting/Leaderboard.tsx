@@ -475,25 +475,26 @@ const Leaderboard = ({ onBack }: LeaderboardProps) => {
                         transition={{ duration: 0.2, ease: 'easeInOut' }}
                         className="space-y-3"
                       >
-                        {paginatedUsers.map((user, i) => {
-                          const profile = profiles.get(user.username);
-                          const followerCount = profile?.user_id ? followerCounts.get(profile.user_id) : undefined;
-                          const followingCount = profile?.user_id ? followingCounts.get(profile.user_id) : undefined;
-                          return (
-                            <motion.div
-                              key={`${user.username}-${user.rank}`}
-                              initial={{ opacity: 0, y: 8 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              transition={{ delay: i * 0.025, duration: 0.2 }}
-                            >
-                              <PlayerRow
-                                user={user}
-                                profile={profile}
-                                isFollowing={profile?.user_id ? followingUserIds.has(profile.user_id) : false}
-                                followerCount={followerCount}
-                                followingCount={followingCount}
-                                onClick={() => setSelectedPlayer(user)}
-                              />
+                         {paginatedUsers.map((user, i) => {
+                           const profile = profiles.get(user.username);
+                           const followerCount = profile?.user_id ? followerCounts.get(profile.user_id) : undefined;
+                           const followingCount = profile?.user_id ? followingCounts.get(profile.user_id) : undefined;
+                           return (
+                             <motion.div
+                               key={`${user.username}-${user.rank}`}
+                               initial={{ opacity: 0, y: 8 }}
+                               animate={{ opacity: 1, y: 0 }}
+                               transition={{ delay: i * 0.025, duration: 0.2 }}
+                             >
+                               <PlayerRow
+                                 user={user}
+                                 profile={profile}
+                                 isFollowing={profile?.user_id ? followingUserIds.has(profile.user_id) : false}
+                                 followerCount={followerCount}
+                                 followingCount={followingCount}
+                                 sortBy={sortBy}
+                                 onClick={() => setSelectedPlayer(user)}
+                               />
                             </motion.div>
                           );
                         })}
