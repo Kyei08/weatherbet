@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, Trophy, XCircle, Clock, CloudRain, Thermometer, Wind, Droplets, Gauge, Cloud, Snowflake } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { formatDistanceToNow } from 'date-fns';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface ActivityItem {
   bet_id: string;
@@ -44,23 +45,46 @@ const getResultDisplay = (result: string) => {
 };
 
 export function ActivityFeed() {
+  const { user } = useAuth();
   const [items, setItems] = useState<ActivityItem[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchActivity = async () => {
-      try {
-        const { data, error } = await supabase.rpc('get_following_activity', { _limit: 20 });
-        if (error) throw error;
-        setItems((data as ActivityItem[]) || []);
-      } catch (e) {
-        console.error('Error loading activity feed:', e);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchActivity();
+  const fetchActivity = useCallback(async () => {
+    try {
+      const { data, error } = await supabase.rpc('get_following_activity', { _limit: 20 });
+      if (error) throw error;
+      setItems((data as ActivityItem[]) || []);
+    } catch (e) {
+      console.error('Error loading activity feed:', e);
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchActivity();
+  }, [fetchActivity]);
+
+  // Real-time: listen for new/updated bets from followed users
+  useEffect(() => {
+    if (!user) return;
+
+    const channel = supabase
+      .channel('activity-feed-realtime')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'bets' },
+        () => {
+          // Refetch via RPC since we can't filter by followed users in the subscription
+          fetchActivity();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user, fetchActivity]);
 
   if (loading) {
     return (
