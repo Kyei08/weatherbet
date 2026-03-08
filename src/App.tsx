@@ -12,6 +12,7 @@ import { Loader2 } from "lucide-react";
 // Lazy-loaded routes
 const Index = lazy(() => import("./pages/Index"));
 const Auth = lazy(() => import("./pages/Auth"));
+const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const PurchaseHistory = lazy(() => import("./pages/PurchaseHistory"));
 const CityAnalytics = lazy(() => import("./pages/CityAnalytics"));
 const CityComparisonPage = lazy(() => import("./pages/CityComparisonPage"));
@@ -42,6 +43,7 @@ const App = () => (
                 <Routes>
                   <Route path="/" element={<Index />} />
                   <Route path="/auth" element={<Auth />} />
+                  <Route path="/reset-password" element={<ResetPassword />} />
                   <Route path="/purchase-history" element={<PurchaseHistory />} />
                   <Route path="/city-analytics" element={<CityAnalytics />} />
                   <Route path="/city-comparison" element={<CityComparisonPage />} />
