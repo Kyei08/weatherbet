@@ -8,6 +8,7 @@ import { ArrowLeft, Trophy, Medal, Award, Users, UserCheck, RefreshCw, Search, X
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   Pagination,
   PaginationContent,
@@ -89,7 +90,7 @@ function PlayerRowSkeleton() {
   );
 }
 
-function PlayerRow({ user, profile, isFollowing, followerCount, onClick }: { user: LeaderboardEntry; profile?: ProfileInfo; isFollowing?: boolean; followerCount?: number; onClick: () => void }) {
+function PlayerRow({ user, profile, isFollowing, followerCount, followingCount, onClick }: { user: LeaderboardEntry; profile?: ProfileInfo; isFollowing?: boolean; followerCount?: number; followingCount?: number; onClick: () => void }) {
   return (
     <div
       onClick={onClick}
@@ -116,9 +117,27 @@ function PlayerRow({ user, profile, isFollowing, followerCount, onClick }: { use
             <p className="font-semibold truncate text-sm">{user.username}</p>
             <div className="flex items-center gap-1">
               {followerCount !== undefined && (
-                <Badge variant="outline" className="gap-0.5 text-[10px] px-1.5 py-0 h-4 shrink-0">
-                  👥 {followerCount}
-                </Badge>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Badge variant="outline" className="gap-0.5 text-[10px] px-1.5 py-0 h-4 shrink-0 cursor-help">
+                        👥 {followerCount}
+                      </Badge>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="bg-popover border border-border">
+                      <div className="space-y-1 text-sm">
+                        <div className="flex justify-between gap-4">
+                          <span className="text-muted-foreground">Followers:</span>
+                          <span className="font-semibold">{followerCount}</span>
+                        </div>
+                        <div className="flex justify-between gap-4">
+                          <span className="text-muted-foreground">Following:</span>
+                          <span className="font-semibold">{followingCount ?? 0}</span>
+                        </div>
+                      </div>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
               )}
               {isFollowing && (
                 <Badge variant="secondary" className="gap-0.5 text-[10px] px-1.5 py-0 h-4 shrink-0">
@@ -149,6 +168,7 @@ const Leaderboard = ({ onBack }: LeaderboardProps) => {
   const [users, setUsers] = useState<LeaderboardEntry[]>([]);
   const [profiles, setProfiles] = useState<Map<string, ProfileInfo>>(new Map());
   const [followerCounts, setFollowerCounts] = useState<Map<string, number>>(new Map());
+  const [followingCounts, setFollowingCounts] = useState<Map<string, number>>(new Map());
   const [followingUserIds, setFollowingUserIds] = useState<Set<string>>(new Set());
   const [groupInfo, setGroupInfo] = useState<LeaderboardGroupInfo | null>(null);
   const [loading, setLoading] = useState(true);
@@ -219,15 +239,18 @@ const Leaderboard = ({ onBack }: LeaderboardProps) => {
         });
         setProfiles(map);
 
-        // Fetch follower counts for all players
+        // Fetch follower and following counts for all players
         const followerCountsMap = new Map<string, number>();
+        const followingCountsMap = new Map<string, number>();
         for (const profile of profilesList) {
           if (profile.user_id) {
             const counts = await getFollowCounts(profile.user_id);
             followerCountsMap.set(profile.user_id, counts.followers);
+            followingCountsMap.set(profile.user_id, counts.following);
           }
         }
         setFollowerCounts(followerCountsMap);
+        setFollowingCounts(followingCountsMap);
       }
     } catch (error) {
       console.error('Error fetching leaderboard:', error);
@@ -381,6 +404,7 @@ const Leaderboard = ({ onBack }: LeaderboardProps) => {
                         {paginatedUsers.map((user, i) => {
                           const profile = profiles.get(user.username);
                           const followerCount = profile?.user_id ? followerCounts.get(profile.user_id) : undefined;
+                          const followingCount = profile?.user_id ? followingCounts.get(profile.user_id) : undefined;
                           return (
                             <motion.div
                               key={`${user.username}-${user.rank}`}
@@ -393,6 +417,7 @@ const Leaderboard = ({ onBack }: LeaderboardProps) => {
                                 profile={profile}
                                 isFollowing={profile?.user_id ? followingUserIds.has(profile.user_id) : false}
                                 followerCount={followerCount}
+                                followingCount={followingCount}
                                 onClick={() => setSelectedPlayer(user)}
                               />
                             </motion.div>
