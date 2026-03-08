@@ -70,7 +70,7 @@ const Dashboard = () => {
   if (subView) return <>{subView}</>;
 
   return (
-    <div className={`min-h-screen p-4 transition-colors duration-300 ${theme.gradient}`}>
+    <div className={`min-h-screen p-4 transition-colors duration-300 ${theme.gradient} animate-fade-in`}>
       <div className="max-w-4xl mx-auto space-y-6">
         <DashboardHeader user={user} winRate={winRate} pendingBetsCount={pendingBets.length} />
         <CurrencyModeSwitcher />
