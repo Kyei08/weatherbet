@@ -347,6 +347,35 @@ const Profile = () => {
   );
 };
 
+/* Theme selector */
+function ThemeSelector() {
+  const { theme, setTheme } = useTheme();
+  const options = [
+    { value: 'light', icon: <Sun className="h-4 w-4" />, label: 'Light' },
+    { value: 'dark', icon: <Moon className="h-4 w-4" />, label: 'Dark' },
+    { value: 'system', icon: <Monitor className="h-4 w-4" />, label: 'System' },
+  ];
+
+  return (
+    <div className="grid grid-cols-3 gap-2">
+      {options.map((opt) => (
+        <button
+          key={opt.value}
+          onClick={() => setTheme(opt.value)}
+          className={`flex flex-col items-center gap-1.5 rounded-lg p-3 min-h-[44px] transition-colors border ${
+            theme === opt.value
+              ? 'border-primary bg-primary/10 text-primary'
+              : 'border-border bg-muted/50 text-muted-foreground hover:bg-muted'
+          }`}
+        >
+          {opt.icon}
+          <span className="text-xs font-medium">{opt.label}</span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
 /* Reusable toggle row */
 function SettingToggle({
   icon,
