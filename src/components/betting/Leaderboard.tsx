@@ -143,6 +143,8 @@ const Leaderboard = ({ onBack }: LeaderboardProps) => {
   const [loading, setLoading] = useState(true);
   const [selectedPlayer, setSelectedPlayer] = useState<LeaderboardEntry | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const PLAYERS_PER_PAGE = 20;
   const { toast } = useToast();
 
   const filteredUsers = useMemo(() => {
@@ -151,14 +153,16 @@ const Leaderboard = ({ onBack }: LeaderboardProps) => {
     return users.filter(u => u.username.toLowerCase().includes(q));
   }, [users, searchQuery]);
 
-  const fetchLeaderboard = useCallback(async () => {
-    try {
-      let groupData = await getUserLeaderboardGroup();
-      if (!groupData) {
-        await assignUserToLeaderboardGroup(100);
-        groupData = await getUserLeaderboardGroup();
-      }
-      setGroupInfo(groupData);
+  const totalPages = Math.max(1, Math.ceil(filteredUsers.length / PLAYERS_PER_PAGE));
+  const paginatedUsers = useMemo(() => {
+    const start = (currentPage - 1) * PLAYERS_PER_PAGE;
+    return filteredUsers.slice(start, start + PLAYERS_PER_PAGE);
+  }, [filteredUsers, currentPage]);
+
+  // Reset to page 1 when search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery]);
 
       const [data, followIds] = await Promise.all([
         getGroupLeaderboard(),
