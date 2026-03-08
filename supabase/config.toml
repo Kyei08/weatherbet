@@ -29,3 +29,6 @@ verify_jwt = false
 
 [functions.create-yoco-deposit]
 verify_jwt = false
+
+[functions.weekly-leaderboard-reset]
+verify_jwt = false
