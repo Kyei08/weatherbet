@@ -17,11 +17,11 @@ export function DashboardHeader({ user, winRate, pendingBetsCount }: DashboardHe
 
   return (
     <>
-      <div className={`text-center p-6 rounded-xl border-2 ${theme.borderColor} ${theme.cardBg} backdrop-blur-sm ${theme.glowShadow}`}>
-        <h1 className={`text-4xl font-bold mb-2 ${theme.primaryText}`}>
+      <div className={`text-center p-4 sm:p-6 rounded-xl border-2 ${theme.borderColor} ${theme.cardBg} backdrop-blur-sm ${theme.glowShadow}`}>
+        <h1 className={`text-2xl sm:text-4xl font-bold mb-1 sm:mb-2 ${theme.primaryText}`}>
           🌦️ Weather Betting
         </h1>
-        <p className="text-muted-foreground">
+        <p className="text-xs sm:text-sm text-muted-foreground">
           {theme.isVirtual ? 'Practice mode - Predict the weather, win virtual points!' : 'Real money mode - Predict the weather, win real prizes!'}
         </p>
       </div>
