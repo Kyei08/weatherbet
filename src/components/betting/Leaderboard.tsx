@@ -108,6 +108,7 @@ function PlayerRow({ user, profile, isFollowing, onClick }: { user: LeaderboardE
 const Leaderboard = ({ onBack }: LeaderboardProps) => {
   const [users, setUsers] = useState<LeaderboardEntry[]>([]);
   const [profiles, setProfiles] = useState<Map<string, ProfileInfo>>(new Map());
+  const [followingUserIds, setFollowingUserIds] = useState<Set<string>>(new Set());
   const [groupInfo, setGroupInfo] = useState<LeaderboardGroupInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedPlayer, setSelectedPlayer] = useState<LeaderboardEntry | null>(null);
@@ -123,8 +124,12 @@ const Leaderboard = ({ onBack }: LeaderboardProps) => {
         }
         setGroupInfo(groupData);
 
-        const data = await getGroupLeaderboard();
+        const [data, followIds] = await Promise.all([
+          getGroupLeaderboard(),
+          getFollowingIds(),
+        ]);
         setUsers(data);
+        setFollowingUserIds(followIds);
 
         // Fetch profiles for all leaderboard users
         if (data.length > 0) {
