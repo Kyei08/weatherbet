@@ -1,5 +1,5 @@
 import { Button } from '@/components/ui/button';
-import { Layers, Zap, ShoppingCart, History, TrendingUp, MapPin, Scale, Trophy, Shield, DollarSign, Target, BarChart3 } from 'lucide-react';
+import { Layers, Zap, ShoppingCart, History, TrendingUp, MapPin, Scale, Trophy, Shield, DollarSign, Target, BarChart3, Users } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAdminCheck } from '@/hooks/useAdminCheck';
 import { useModeTheme } from '@/hooks/useModeTheme';
@@ -102,6 +102,10 @@ export function DashboardActions({ betsCount, onViewChange }: DashboardActionsPr
         <Button variant="ghost" size="sm" className="h-12 flex-col gap-1 text-xs text-muted-foreground hover:text-foreground" onClick={() => onViewChange('leaderboard')}>
           <Trophy className="h-4 w-4" />
           Leaderboard
+        </Button>
+        <Button variant="ghost" size="sm" className="h-12 flex-col gap-1 text-xs text-muted-foreground hover:text-foreground" onClick={() => navigate('/following')}>
+          <Users className="h-4 w-4" />
+          Following
         </Button>
         {isAdminUser && (
           <Button
