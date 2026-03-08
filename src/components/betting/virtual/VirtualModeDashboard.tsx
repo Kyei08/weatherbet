@@ -208,34 +208,32 @@ const VirtualModeDashboard = () => {
         <WeatherAccuracy />
 
         {/* Quick Actions */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
           <Button 
             size="lg" 
-            className={`h-20 text-lg ${theme.buttonPrimary} border-2 ${theme.borderColor} ${theme.glowShadow} hover:scale-105 transition-all`}
+            className={`h-14 sm:h-20 text-sm sm:text-lg ${theme.buttonPrimary} border-2 ${theme.borderColor} ${theme.glowShadow} hover:scale-105 active:scale-95 transition-all`}
             onClick={() => setActiveView('betting')}
           >
             🎯 Single Bet
           </Button>
           <Button 
             size="lg" 
-            className={`h-20 text-lg ${theme.buttonSecondary} border-2 ${theme.borderColor} ${theme.glowShadow} hover:scale-105 transition-all`}
+            className={`h-14 sm:h-20 text-sm sm:text-lg ${theme.buttonSecondary} border-2 ${theme.borderColor} ${theme.glowShadow} hover:scale-105 active:scale-95 transition-all`}
             onClick={() => setActiveView('combined')}
           >
-            <Activity className="mr-2 h-5 w-5" />
             ⚡ Combined Bet
           </Button>
           <Button 
             size="lg" 
-            className={`h-20 text-lg ${theme.accent} ${theme.primaryForeground} border-2 ${theme.borderColor} ${theme.glowShadow} hover:scale-105 transition-all`}
+            className={`h-14 sm:h-20 text-sm sm:text-lg ${theme.accent} ${theme.primaryForeground} border-2 ${theme.borderColor} ${theme.glowShadow} hover:scale-105 active:scale-95 transition-all`}
             onClick={() => setActiveView('parlay')}
           >
-            <Layers className="mr-2 h-5 w-5" />
             💰 Parlay Bet
           </Button>
           <Button 
             variant="outline" 
             size="lg" 
-            className={`h-20 text-lg border-2 ${theme.borderColorHeavy} ${theme.hoverBg} hover:scale-105 transition-all`}
+            className={`h-14 sm:h-20 text-sm sm:text-lg border-2 ${theme.borderColorHeavy} ${theme.hoverBg} hover:scale-105 active:scale-95 transition-all`}
             onClick={() => setActiveView('mybets')}
           >
             📊 My Bets ({bets.length})
@@ -243,64 +241,60 @@ const VirtualModeDashboard = () => {
         </div>
 
         {/* Virtual Mode Specific Actions */}
-        <div className={`grid grid-cols-2 gap-4 ${isAdminUser ? 'md:grid-cols-6' : 'md:grid-cols-5'}`}>
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 sm:gap-4">
           <Button 
             variant="outline" 
             size="lg" 
-            className="h-16 text-lg"
+            className={`h-12 sm:h-16 text-xs sm:text-lg active:scale-95 transition-all`}
             onClick={() => setActiveView('shop')}
           >
-            <ShoppingCart className="mr-2 h-5 w-5" />
             🛍️ Shop
           </Button>
           <Button 
             variant="outline" 
             size="lg" 
-            className="h-16 text-lg"
+            className={`h-12 sm:h-16 text-xs sm:text-lg active:scale-95 transition-all`}
             onClick={() => navigate('/purchase-history')}
           >
-            <History className="mr-2 h-5 w-5" />
             📜 History
           </Button>
           <Button 
             variant="outline" 
             size="lg" 
-            className="h-16 text-lg"
+            className={`h-12 sm:h-16 text-xs sm:text-lg active:scale-95 transition-all`}
             onClick={() => setActiveView('analytics')}
           >
-            <TrendingUp className="mr-2 h-5 w-5" />
             📊 Analytics
           </Button>
           <Button 
             variant="outline" 
             size="lg" 
-            className="h-16 text-lg"
+            className={`h-12 sm:h-16 text-xs sm:text-lg active:scale-95 transition-all`}
             onClick={() => navigate('/city-analytics')}
           >
-            <MapPin className="mr-2 h-5 w-5" />
             🏙️ Cities
           </Button>
           <Button 
             variant="outline" 
             size="lg" 
-            className="h-16 text-lg"
+            className={`h-12 sm:h-16 text-xs sm:text-lg active:scale-95 transition-all`}
             onClick={() => setActiveView('leaderboard')}
           >
-            <Trophy className="mr-2 h-5 w-5" />
             🏆 Leaderboard
           </Button>
-          {isAdminUser && (
-            <Button 
-              variant="default" 
-              size="lg" 
-              className="h-16 text-lg bg-gradient-to-r from-purple-600 to-blue-600"
-              onClick={() => navigate('/admin')}
-            >
-              <Shield className="mr-2 h-5 w-5" />
-              ⚡ Admin
-            </Button>
-          )}
         </div>
+
+        {isAdminUser && (
+          <Button 
+            variant="default" 
+            size="lg" 
+            className="w-full h-12 sm:h-16 text-sm sm:text-lg bg-gradient-to-r from-primary to-accent active:scale-95 transition-all"
+            onClick={() => navigate('/admin')}
+          >
+            <Shield className="mr-2 h-5 w-5" />
+            ⚡ Admin Panel
+          </Button>
+        )}
 
         {/* Recent Activity */}
         {bets.length > 0 && (
