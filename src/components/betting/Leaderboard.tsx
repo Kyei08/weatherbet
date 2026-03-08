@@ -59,28 +59,28 @@ function PlayerRow({ user, profile, isFollowing, onClick }: { user: LeaderboardE
   return (
     <div
       onClick={onClick}
-      className={`flex items-center justify-between p-4 rounded-lg border cursor-pointer transition-colors hover:bg-accent/50 ${
+      className={`flex items-center justify-between p-3 sm:p-4 rounded-lg border cursor-pointer transition-colors hover:bg-accent/50 ${
         user.rank <= 3 ? 'bg-muted/50' : ''
       }`}
     >
-      <div className="flex items-center gap-3 min-w-0">
-        <div className="flex items-center gap-2 min-w-[60px] shrink-0">
+      <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+        <div className="flex items-center gap-1 sm:gap-2 min-w-[44px] sm:min-w-[60px] shrink-0">
           {getRankIcon(user.rank)}
-          <Badge variant={getRankBadge(user.rank)}>#{user.rank}</Badge>
+          <Badge variant={getRankBadge(user.rank)} className="text-[10px] sm:text-xs">#{user.rank}</Badge>
         </div>
         {/* Avatar */}
-        <div className="h-9 w-9 rounded-full shrink-0 overflow-hidden bg-primary/10 flex items-center justify-center">
+        <div className="h-8 w-8 sm:h-9 sm:w-9 rounded-full shrink-0 overflow-hidden bg-primary/10 flex items-center justify-center">
           {profile?.avatar_url ? (
-            <img src={profile.avatar_url} alt="" className="h-9 w-9 rounded-full object-cover" />
+            <img src={profile.avatar_url} alt="" className="h-8 w-8 sm:h-9 sm:w-9 rounded-full object-cover" />
           ) : (
-            <span className="text-sm font-bold text-primary">
+            <span className="text-xs sm:text-sm font-bold text-primary">
               {user.username.charAt(0).toUpperCase()}
             </span>
           )}
         </div>
         <div className="min-w-0">
-          <div className="flex items-center gap-1.5">
-            <p className="font-semibold truncate">{user.username}</p>
+          <div className="flex items-center gap-1 sm:gap-1.5">
+            <p className="font-semibold truncate text-sm">{user.username}</p>
             {isFollowing && (
               <Badge variant="secondary" className="gap-0.5 text-[10px] px-1.5 py-0 h-4 shrink-0">
                 <UserCheck className="h-2.5 w-2.5" />
@@ -97,9 +97,9 @@ function PlayerRow({ user, profile, isFollowing, onClick }: { user: LeaderboardE
           )}
         </div>
       </div>
-      <div className="text-right shrink-0">
-        <p className="text-lg font-bold">{user.points.toLocaleString()}</p>
-        <p className="text-xs text-muted-foreground">points</p>
+      <div className="text-right shrink-0 ml-2">
+        <p className="text-base sm:text-lg font-bold">{user.points.toLocaleString()}</p>
+        <p className="text-[10px] sm:text-xs text-muted-foreground">points</p>
       </div>
     </div>
   );
@@ -167,7 +167,7 @@ const Leaderboard = ({ onBack }: LeaderboardProps) => {
 
   return (
     <div className="min-h-screen bg-background p-4">
-      <div className="max-w-2xl mx-auto space-y-6">
+      <div className="max-w-2xl mx-auto space-y-4 sm:space-y-6 pb-20 md:pb-6">
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="sm" onClick={onBack}><ArrowLeft className="h-4 w-4" /></Button>
           <h1 className="text-2xl font-bold">🏆 Leaderboard</h1>

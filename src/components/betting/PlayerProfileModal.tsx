@@ -117,31 +117,31 @@ const PlayerProfileModal = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
+      <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-md max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="sr-only">{username}'s Profile</DialogTitle>
           <DialogDescription className="sr-only">Player profile showing stats and achievements</DialogDescription>
         </DialogHeader>
 
         {/* Header */}
-        <div className="flex items-center gap-4 pb-4 border-b border-border">
-          <div className="h-16 w-16 rounded-full shrink-0 overflow-hidden bg-primary/10 flex items-center justify-center">
+        <div className="flex items-center gap-3 sm:gap-4 pb-4 border-b border-border">
+          <div className="h-12 w-12 sm:h-16 sm:w-16 rounded-full shrink-0 overflow-hidden bg-primary/10 flex items-center justify-center">
             {avatarUrl ? (
-              <img src={avatarUrl} alt="" className="h-16 w-16 rounded-full object-cover" />
+              <img src={avatarUrl} alt="" className="h-12 w-12 sm:h-16 sm:w-16 rounded-full object-cover" />
             ) : (
-              <span className="text-2xl font-bold text-primary">
+              <span className="text-xl sm:text-2xl font-bold text-primary">
                 {username.charAt(0).toUpperCase()}
               </span>
             )}
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
-              <h2 className="text-xl font-bold truncate">{username}</h2>
+              <h2 className="text-lg sm:text-xl font-bold truncate">{username}</h2>
               {getRankIcon(rank)}
             </div>
-            <div className="flex gap-2 mt-1">
-              <Badge variant="secondary">Level {level}</Badge>
-              <Badge variant="outline">{xp} XP</Badge>
+            <div className="flex gap-1.5 sm:gap-2 mt-1 flex-wrap">
+              <Badge variant="secondary" className="text-[10px] sm:text-xs">Level {level}</Badge>
+              <Badge variant="outline" className="text-[10px] sm:text-xs">{xp} XP</Badge>
             </div>
           </div>
         </div>
@@ -191,26 +191,26 @@ const PlayerProfileModal = ({
         )}
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-3 gap-2 sm:gap-3">
           <Card>
-            <CardContent className="p-3 text-center">
-              <Star className="h-4 w-4 mx-auto mb-1 text-primary" />
-              <p className="text-lg font-bold">{points.toLocaleString()}</p>
-              <p className="text-xs text-muted-foreground">Points</p>
+            <CardContent className="p-2 sm:p-3 text-center">
+              <Star className="h-3 w-3 sm:h-4 sm:w-4 mx-auto mb-1 text-primary" />
+              <p className="text-sm sm:text-lg font-bold">{points.toLocaleString()}</p>
+              <p className="text-[10px] sm:text-xs text-muted-foreground">Points</p>
             </CardContent>
           </Card>
           <Card>
-            <CardContent className="p-3 text-center">
-              <Target className="h-4 w-4 mx-auto mb-1 text-primary" />
-              <p className="text-lg font-bold">{stats.totalBets}</p>
-              <p className="text-xs text-muted-foreground">Bets</p>
+            <CardContent className="p-2 sm:p-3 text-center">
+              <Target className="h-3 w-3 sm:h-4 sm:w-4 mx-auto mb-1 text-primary" />
+              <p className="text-sm sm:text-lg font-bold">{stats.totalBets}</p>
+              <p className="text-[10px] sm:text-xs text-muted-foreground">Bets</p>
             </CardContent>
           </Card>
           <Card>
-            <CardContent className="p-3 text-center">
-              <Zap className="h-4 w-4 mx-auto mb-1 text-primary" />
-              <p className="text-lg font-bold">{winRate}%</p>
-              <p className="text-xs text-muted-foreground">Win Rate</p>
+            <CardContent className="p-2 sm:p-3 text-center">
+              <Zap className="h-3 w-3 sm:h-4 sm:w-4 mx-auto mb-1 text-primary" />
+              <p className="text-sm sm:text-lg font-bold">{winRate}%</p>
+              <p className="text-[10px] sm:text-xs text-muted-foreground">Win Rate</p>
             </CardContent>
           </Card>
         </div>

@@ -26,37 +26,37 @@ export function DashboardActions({ betsCount, onViewChange }: DashboardActionsPr
             Place a Bet
           </CardTitle>
         </CardHeader>
-        <CardContent className="grid grid-cols-2 gap-3">
+        <CardContent className="grid grid-cols-2 gap-2 sm:gap-3">
           <Button
             size="lg"
-            className={`h-14 ${theme.buttonPrimary} border ${theme.borderColor} hover:scale-[1.02] transition-all`}
+            className={`h-12 sm:h-14 text-xs sm:text-sm ${theme.buttonPrimary} border ${theme.borderColor} hover:scale-[1.02] transition-all`}
             onClick={() => onViewChange('betting')}
           >
-            <Target className="mr-2 h-4 w-4" />
+            <Target className="mr-1.5 h-4 w-4" />
             Single Bet
           </Button>
           <Button
             size="lg"
-            className={`h-14 ${theme.buttonSecondary} border ${theme.borderColor} hover:scale-[1.02] transition-all`}
+            className={`h-12 sm:h-14 text-xs sm:text-sm ${theme.buttonSecondary} border ${theme.borderColor} hover:scale-[1.02] transition-all`}
             onClick={() => onViewChange('combined')}
           >
-            <BarChart3 className="mr-2 h-4 w-4" />
+            <BarChart3 className="mr-1.5 h-4 w-4" />
             Combined
           </Button>
           <Button
             size="lg"
-            className={`h-14 ${theme.accent} ${theme.primaryForeground} border ${theme.borderColor} hover:scale-[1.02] transition-all`}
+            className={`h-12 sm:h-14 text-xs sm:text-sm ${theme.accent} ${theme.primaryForeground} border ${theme.borderColor} hover:scale-[1.02] transition-all`}
             onClick={() => onViewChange('parlay')}
           >
-            <Layers className="mr-2 h-4 w-4" />
+            <Layers className="mr-1.5 h-4 w-4" />
             Parlay
           </Button>
           <Button
             size="lg"
-            className={`h-14 ${theme.secondary} text-foreground border ${theme.borderColor} hover:scale-[1.02] transition-all`}
+            className={`h-12 sm:h-14 text-xs sm:text-sm ${theme.secondary} text-foreground border ${theme.borderColor} hover:scale-[1.02] transition-all`}
             onClick={() => onViewChange('multitime')}
           >
-            <Zap className="mr-2 h-4 w-4" />
+            <Zap className="mr-1.5 h-4 w-4" />
             Multi-Time
           </Button>
         </CardContent>
@@ -66,7 +66,7 @@ export function DashboardActions({ betsCount, onViewChange }: DashboardActionsPr
       <Button
         variant="outline"
         size="lg"
-        className={`w-full h-12 text-base border-2 ${theme.borderColorHeavy} ${theme.hoverBg} hover:scale-[1.01] transition-all`}
+        className={`w-full h-11 sm:h-12 text-sm sm:text-base border-2 ${theme.borderColorHeavy} ${theme.hoverBg} hover:scale-[1.01] transition-all`}
         onClick={() => onViewChange('mybets')}
       >
         <BarChart3 className="mr-2 h-4 w-4" />
@@ -74,7 +74,7 @@ export function DashboardActions({ betsCount, onViewChange }: DashboardActionsPr
       </Button>
 
       {/* Secondary Navigation */}
-      <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+      <div className="grid grid-cols-4 gap-1 sm:gap-2">
         <Button variant="ghost" size="sm" className="h-12 flex-col gap-1 text-xs text-muted-foreground hover:text-foreground" onClick={() => navigate('/cashout')}>
           <DollarSign className="h-4 w-4" />
           Cash Out
