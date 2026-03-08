@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserPreferences } from '@/contexts/UserPreferencesContext';
 import { useNavigate } from 'react-router-dom';
+import { useTheme } from 'next-themes';
 import { getUser, updateUsername, getProfile, updateProfile } from '@/lib/supabase-auth-storage';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -10,7 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
-import { ArrowLeft, User, Bell, Volume2, Vibrate, Shield, LogOut, Save, Loader2, Camera } from 'lucide-react';
+import { ArrowLeft, User, Bell, Volume2, Vibrate, Shield, LogOut, Save, Loader2, Camera, Sun, Moon, Monitor } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 
@@ -248,6 +249,19 @@ const Profile = () => {
           </CardContent>
         </Card>
 
+        {/* Appearance */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Sun className="h-4 w-4 text-primary" />
+              Appearance
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ThemeSelector />
+          </CardContent>
+        </Card>
+
         {/* Notification Preferences */}
         <Card>
           <CardHeader className="pb-3">
@@ -332,6 +346,35 @@ const Profile = () => {
     </div>
   );
 };
+
+/* Theme selector */
+function ThemeSelector() {
+  const { theme, setTheme } = useTheme();
+  const options = [
+    { value: 'light', icon: <Sun className="h-4 w-4" />, label: 'Light' },
+    { value: 'dark', icon: <Moon className="h-4 w-4" />, label: 'Dark' },
+    { value: 'system', icon: <Monitor className="h-4 w-4" />, label: 'System' },
+  ];
+
+  return (
+    <div className="grid grid-cols-3 gap-2">
+      {options.map((opt) => (
+        <button
+          key={opt.value}
+          onClick={() => setTheme(opt.value)}
+          className={`flex flex-col items-center gap-1.5 rounded-lg p-3 min-h-[44px] transition-colors border ${
+            theme === opt.value
+              ? 'border-primary bg-primary/10 text-primary'
+              : 'border-border bg-muted/50 text-muted-foreground hover:bg-muted'
+          }`}
+        >
+          {opt.icon}
+          <span className="text-xs font-medium">{opt.label}</span>
+        </button>
+      ))}
+    </div>
+  );
+}
 
 /* Reusable toggle row */
 function SettingToggle({
