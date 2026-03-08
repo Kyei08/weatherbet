@@ -14,6 +14,7 @@ import { Separator } from '@/components/ui/separator';
 import { ArrowLeft, User, Bell, Volume2, Vibrate, Shield, LogOut, Save, Loader2, Camera, Sun, Moon, Monitor } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
+import { Textarea } from '@/components/ui/textarea';
 import { ChangePasswordForm } from '@/components/profile/ChangePasswordForm';
 
 const Profile = () => {
@@ -35,6 +36,9 @@ const Profile = () => {
   const [saving, setSaving] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [bio, setBio] = useState('');
+  const [originalBio, setOriginalBio] = useState('');
+  const [savingBio, setSavingBio] = useState(false);
   const [points, setPoints] = useState(0);
   const [level, setLevel] = useState(1);
 
@@ -50,6 +54,10 @@ const Profile = () => {
         }
         if (profile?.avatar_url) {
           setAvatarUrl(profile.avatar_url);
+        }
+        if (profile?.bio) {
+          setBio(profile.bio);
+          setOriginalBio(profile.bio);
         }
       } catch (e) {
         console.error('Failed to load user:', e);
@@ -122,6 +130,22 @@ const Profile = () => {
     }
   };
 
+  const handleSaveBio = async () => {
+    if (bio === originalBio) return;
+    setSavingBio(true);
+    try {
+      await updateProfile({ bio: bio.trim() });
+      setOriginalBio(bio.trim());
+      setBio(bio.trim());
+      toast.success('Bio updated!');
+    } catch (e: any) {
+      toast.error(e.message || 'Failed to update bio');
+    } finally {
+      setSavingBio(false);
+    }
+  };
+
+  const hasBioChanged = bio.trim() !== originalBio;
   const hasUsernameChanged = username.trim() !== originalUsername;
 
   if (loading) {
@@ -244,6 +268,30 @@ const Profile = () => {
                   className="min-h-[44px] min-w-[44px] shrink-0"
                 >
                   {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                </Button>
+              </div>
+            </div>
+            {/* Bio */}
+            <div className="space-y-2">
+              <Label htmlFor="bio" className="text-sm">About Me</Label>
+              <Textarea
+                id="bio"
+                value={bio}
+                onChange={(e) => setBio(e.target.value)}
+                placeholder="Tell others a bit about yourself…"
+                className="min-h-[80px] resize-none"
+                maxLength={300}
+              />
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-muted-foreground">{bio.length}/300</p>
+                <Button
+                  size="sm"
+                  onClick={handleSaveBio}
+                  disabled={!hasBioChanged || savingBio}
+                  className="min-h-[36px]"
+                >
+                  {savingBio ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Save className="h-4 w-4 mr-1" />}
+                  Save Bio
                 </Button>
               </div>
             </div>
