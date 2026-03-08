@@ -2,8 +2,9 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Trophy, Medal, Award, Users } from 'lucide-react';
+import { ArrowLeft, Trophy, Medal, Award, Users, UserCheck } from 'lucide-react';
 import { getGroupLeaderboard, getUserLeaderboardGroup, assignUserToLeaderboardGroup, getProfilesByUsernames } from '@/lib/supabase-auth-storage';
+import { getFollowingIds } from '@/lib/supabase-follows';
 import { useToast } from '@/hooks/use-toast';
 import PlayerProfileModal from './PlayerProfileModal';
 
