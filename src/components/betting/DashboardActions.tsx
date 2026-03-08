@@ -1,8 +1,9 @@
 import { Button } from '@/components/ui/button';
-import { Activity, Layers, Zap, ShoppingCart, History, TrendingUp, MapPin, Scale, Trophy, Shield, DollarSign } from 'lucide-react';
+import { Layers, Zap, ShoppingCart, History, TrendingUp, MapPin, Scale, Trophy, Shield, DollarSign, Target, BarChart3 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAdminCheck } from '@/hooks/useAdminCheck';
 import { useModeTheme } from '@/hooks/useModeTheme';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 type ActiveView = 'dashboard' | 'betting' | 'parlay' | 'combined' | 'multitime' | 'mybets' | 'leaderboard' | 'shop' | 'analytics';
 
@@ -17,92 +18,103 @@ export function DashboardActions({ betsCount, onViewChange }: DashboardActionsPr
   const theme = useModeTheme();
 
   return (
-    <>
-      {/* Quick Actions */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        <Button
-          size="lg"
-          className={`h-20 text-lg ${theme.buttonPrimary} border-2 ${theme.borderColor} ${theme.glowShadow} hover:scale-105 transition-all`}
-          onClick={() => onViewChange('betting')}
-        >
-          🎯 Single Bet
-        </Button>
-        <Button
-          size="lg"
-          className={`h-20 text-lg ${theme.buttonSecondary} border-2 ${theme.borderColor} ${theme.glowShadow} hover:scale-105 transition-all`}
-          onClick={() => onViewChange('combined')}
-        >
-          <Activity className="mr-2 h-5 w-5" />
-          ⚡ Combined Bet
-        </Button>
-        <Button
-          size="lg"
-          className={`h-20 text-lg ${theme.accent} ${theme.primaryForeground} border-2 ${theme.borderColor} ${theme.glowShadow} hover:scale-105 transition-all`}
-          onClick={() => onViewChange('parlay')}
-        >
-          <Layers className="mr-2 h-5 w-5" />
-          💰 Parlay Bet
-        </Button>
-        <Button
-          size="lg"
-          className={`h-20 text-lg bg-gradient-to-r from-amber-500 to-orange-500 text-white border-2 ${theme.borderColor} ${theme.glowShadow} hover:scale-105 transition-all`}
-          onClick={() => onViewChange('multitime')}
-        >
-          <Zap className="mr-2 h-5 w-5" />
-          ⏰ Multi-Time Combo
-        </Button>
-        <Button
-          variant="outline"
-          size="lg"
-          className={`h-20 text-lg border-2 ${theme.borderColorHeavy} ${theme.hoverBg} hover:scale-105 transition-all md:col-span-2 lg:col-span-2`}
-          onClick={() => onViewChange('mybets')}
-        >
-          📊 My Bets ({betsCount})
-        </Button>
-      </div>
+    <div className="space-y-4">
+      {/* Primary Betting Actions */}
+      <Card className={`${theme.card} border-2 ${theme.glowShadow}`}>
+        <CardHeader className="pb-3">
+          <CardTitle className={`text-sm font-semibold uppercase tracking-wider ${theme.primaryText}`}>
+            Place a Bet
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="grid grid-cols-2 gap-3">
+          <Button
+            size="lg"
+            className={`h-14 ${theme.buttonPrimary} border ${theme.borderColor} hover:scale-[1.02] transition-all`}
+            onClick={() => onViewChange('betting')}
+          >
+            <Target className="mr-2 h-4 w-4" />
+            Single Bet
+          </Button>
+          <Button
+            size="lg"
+            className={`h-14 ${theme.buttonSecondary} border ${theme.borderColor} hover:scale-[1.02] transition-all`}
+            onClick={() => onViewChange('combined')}
+          >
+            <BarChart3 className="mr-2 h-4 w-4" />
+            Combined
+          </Button>
+          <Button
+            size="lg"
+            className={`h-14 ${theme.accent} ${theme.primaryForeground} border ${theme.borderColor} hover:scale-[1.02] transition-all`}
+            onClick={() => onViewChange('parlay')}
+          >
+            <Layers className="mr-2 h-4 w-4" />
+            Parlay
+          </Button>
+          <Button
+            size="lg"
+            className={`h-14 ${theme.secondary} text-foreground border ${theme.borderColor} hover:scale-[1.02] transition-all`}
+            onClick={() => onViewChange('multitime')}
+          >
+            <Zap className="mr-2 h-4 w-4" />
+            Multi-Time
+          </Button>
+        </CardContent>
+      </Card>
 
-      {/* Action Buttons */}
-      <div className={`grid grid-cols-2 gap-4 ${isAdminUser ? 'md:grid-cols-8' : 'md:grid-cols-7'}`}>
-        <Button variant="outline" size="lg" className="h-16 text-lg" onClick={() => navigate('/cashout')}>
-          <DollarSign className="mr-2 h-5 w-5" />
-          💰 Cash Out
+      {/* My Bets - Prominent */}
+      <Button
+        variant="outline"
+        size="lg"
+        className={`w-full h-12 text-base border-2 ${theme.borderColorHeavy} ${theme.hoverBg} hover:scale-[1.01] transition-all`}
+        onClick={() => onViewChange('mybets')}
+      >
+        <BarChart3 className="mr-2 h-4 w-4" />
+        My Bets ({betsCount})
+      </Button>
+
+      {/* Secondary Navigation */}
+      <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+        <Button variant="ghost" size="sm" className="h-12 flex-col gap-1 text-xs text-muted-foreground hover:text-foreground" onClick={() => navigate('/cashout')}>
+          <DollarSign className="h-4 w-4" />
+          Cash Out
         </Button>
-        <Button variant="outline" size="lg" className="h-16 text-lg" onClick={() => onViewChange('shop')}>
-          <ShoppingCart className="mr-2 h-5 w-5" />
-          🛍️ Shop
+        <Button variant="ghost" size="sm" className="h-12 flex-col gap-1 text-xs text-muted-foreground hover:text-foreground" onClick={() => onViewChange('shop')}>
+          <ShoppingCart className="h-4 w-4" />
+          Shop
         </Button>
-        <Button variant="outline" size="lg" className="h-16 text-lg" onClick={() => navigate('/purchase-history')}>
-          <History className="mr-2 h-5 w-5" />
-          📜 History
+        <Button variant="ghost" size="sm" className="h-12 flex-col gap-1 text-xs text-muted-foreground hover:text-foreground" onClick={() => navigate('/purchase-history')}>
+          <History className="h-4 w-4" />
+          History
         </Button>
-        <Button variant="outline" size="lg" className="h-16 text-lg" onClick={() => onViewChange('analytics')}>
-          <TrendingUp className="mr-2 h-5 w-5" />
-          📊 Analytics
+        <Button variant="ghost" size="sm" className="h-12 flex-col gap-1 text-xs text-muted-foreground hover:text-foreground" onClick={() => onViewChange('analytics')}>
+          <TrendingUp className="h-4 w-4" />
+          Analytics
         </Button>
-        <Button variant="outline" size="lg" className="h-16 text-lg" onClick={() => navigate('/city-analytics')}>
-          <MapPin className="mr-2 h-5 w-5" />
-          🏙️ Cities
+        <Button variant="ghost" size="sm" className="h-12 flex-col gap-1 text-xs text-muted-foreground hover:text-foreground" onClick={() => navigate('/city-analytics')}>
+          <MapPin className="h-4 w-4" />
+          Cities
         </Button>
-        <Button variant="outline" size="lg" className="h-16 text-lg" onClick={() => navigate('/city-comparison')}>
-          <Scale className="mr-2 h-5 w-5" />
-          ⚖️ Compare
+        <Button variant="ghost" size="sm" className="h-12 flex-col gap-1 text-xs text-muted-foreground hover:text-foreground" onClick={() => navigate('/city-comparison')}>
+          <Scale className="h-4 w-4" />
+          Compare
         </Button>
-        <Button variant="outline" size="lg" className="h-16 text-lg" onClick={() => onViewChange('leaderboard')}>
-          <Trophy className="mr-2 h-5 w-5" />
-          🏆 Leaderboard
+        <Button variant="ghost" size="sm" className="h-12 flex-col gap-1 text-xs text-muted-foreground hover:text-foreground" onClick={() => onViewChange('leaderboard')}>
+          <Trophy className="h-4 w-4" />
+          Leaderboard
         </Button>
         {isAdminUser && (
           <Button
-            variant="default"
-            size="lg"
-            className="h-16 text-lg bg-gradient-to-r from-purple-600 to-blue-600"
+            variant="ghost"
+            size="sm"
+            className={`h-12 flex-col gap-1 text-xs ${theme.primaryText} hover:text-foreground`}
             onClick={() => navigate('/admin')}
           >
-            <Shield className="mr-2 h-5 w-5" />
-            ⚡ Admin
+            <Shield className="h-4 w-4" />
+            Admin
           </Button>
         )}
       </div>
-    </>
+    </div>
   );
 }
