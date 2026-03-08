@@ -145,8 +145,17 @@ const Leaderboard = ({ onBack }: LeaderboardProps) => {
   const [selectedPlayer, setSelectedPlayer] = useState<LeaderboardEntry | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
+  const [pageDirection, setPageDirection] = useState(0);
   const PLAYERS_PER_PAGE = 20;
   const { toast } = useToast();
+
+  const goToPage = useCallback((page: number | ((prev: number) => number)) => {
+    setCurrentPage(prev => {
+      const next = typeof page === 'function' ? page(prev) : page;
+      setPageDirection(next > prev ? 1 : -1);
+      return next;
+    });
+  }, []);
 
   const filteredUsers = useMemo(() => {
     if (!searchQuery.trim()) return users;
