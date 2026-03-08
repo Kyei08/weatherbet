@@ -12,6 +12,7 @@ import { Loader2 } from "lucide-react";
 // Lazy-loaded routes
 const Index = lazy(() => import("./pages/Index"));
 const Auth = lazy(() => import("./pages/Auth"));
+const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const PurchaseHistory = lazy(() => import("./pages/PurchaseHistory"));
 const CityAnalytics = lazy(() => import("./pages/CityAnalytics"));
 const CityComparisonPage = lazy(() => import("./pages/CityComparisonPage"));
