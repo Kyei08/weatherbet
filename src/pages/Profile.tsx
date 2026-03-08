@@ -130,6 +130,22 @@ const Profile = () => {
     }
   };
 
+  const handleSaveBio = async () => {
+    if (bio === originalBio) return;
+    setSavingBio(true);
+    try {
+      await updateProfile({ bio: bio.trim() });
+      setOriginalBio(bio.trim());
+      setBio(bio.trim());
+      toast.success('Bio updated!');
+    } catch (e: any) {
+      toast.error(e.message || 'Failed to update bio');
+    } finally {
+      setSavingBio(false);
+    }
+  };
+
+  const hasBioChanged = bio.trim() !== originalBio;
   const hasUsernameChanged = username.trim() !== originalUsername;
 
   if (loading) {
