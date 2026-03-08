@@ -197,6 +197,7 @@ const Leaderboard = ({ onBack }: LeaderboardProps) => {
                     key={`${user.username}-${user.rank}`}
                     user={user}
                     profile={profiles.get(user.username)}
+                    onClick={() => setSelectedPlayer(user)}
                   />
                 ))}
               </div>
