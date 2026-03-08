@@ -22,6 +22,7 @@ const Admin = lazy(() => import("./pages/Admin"));
 const Transactions = lazy(() => import("./pages/Transactions"));
 const ModeComparison = lazy(() => import("./pages/ModeComparison"));
 const CashoutManagement = lazy(() => import("./pages/CashoutManagement"));
+const Profile = lazy(() => import("./pages/Profile"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient();
