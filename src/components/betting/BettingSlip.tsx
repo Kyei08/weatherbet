@@ -1155,7 +1155,7 @@ const BettingSlip = ({ onBack, onBetPlaced }: BettingSlipProps) => {
                 : 'Place Bet'
           }
         </Button>
-      </div>
+      </motion.div>
       
       <DuplicateBetDialog 
         open={showDuplicateDialog} 
