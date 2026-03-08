@@ -590,6 +590,9 @@ const Leaderboard = ({ onBack }: LeaderboardProps) => {
                            // Check if user is in top 10 of current sort
                            const isTop10 = sortBy !== 'points' && filteredUsers.slice(0, 10).some(u => u.username === user.username);
                            const isFirst = sortBy !== 'points' && filteredUsers[0]?.username === user.username;
+                           // Rank change: previousRank - currentRank (positive = moved up)
+                           const prevRank = profile?.user_id ? previousRanks.get(profile.user_id) : undefined;
+                           const rankChange = prevRank !== undefined ? prevRank - user.rank : undefined;
                            return (
                              <motion.div
                                key={`${user.username}-${user.rank}`}
@@ -604,8 +607,9 @@ const Leaderboard = ({ onBack }: LeaderboardProps) => {
                                  followerCount={followerCount}
                                  followingCount={followingCount}
                                  sortBy={sortBy}
-                                  isTop10={isTop10}
-                                  isFirst={isFirst}
+                                 isTop10={isTop10}
+                                 isFirst={isFirst}
+                                 rankChange={rankChange}
                                  onClick={() => setSelectedPlayer(user)}
                                />
                             </motion.div>
