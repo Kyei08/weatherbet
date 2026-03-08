@@ -2,8 +2,10 @@ import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
-import { Trophy, Medal, Award, Star, Target, Zap } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Trophy, Medal, Award, Star, Target, Zap, UserPlus, UserMinus, Users, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { useFollow } from '@/hooks/useFollow';
 
 interface PlayerProfileModalProps {
   open: boolean;
@@ -54,6 +56,9 @@ const PlayerProfileModal = ({
   const [achievements, setAchievements] = useState<Achievement[]>([]);
   const [stats, setStats] = useState<PlayerStats>({ totalBets: 0, wins: 0, losses: 0 });
   const [loading, setLoading] = useState(false);
+  const [targetUserId, setTargetUserId] = useState<string | null>(null);
+
+  const { following, counts, loading: followLoading, checking, isSelf, toggleFollow } = useFollow(targetUserId);
 
   useEffect(() => {
     if (!open) return;
@@ -61,7 +66,6 @@ const PlayerProfileModal = ({
     const fetchPlayerData = async () => {
       setLoading(true);
       try {
-        // Get user ID from username via users table
         const { data: userData } = await supabase
           .from('users')
           .select('id')
@@ -69,7 +73,8 @@ const PlayerProfileModal = ({
           .maybeSingle();
 
         if (userData?.id) {
-          // Fetch achievements and bet stats in parallel
+          setTargetUserId(userData.id);
+
           const [achievementsRes, betsRes] = await Promise.all([
             supabase
               .from('user_achievements')
@@ -139,6 +144,43 @@ const PlayerProfileModal = ({
               <Badge variant="outline">{xp} XP</Badge>
             </div>
           </div>
+        </div>
+
+        {/* Follow Button & Counts */}
+        <div className="flex items-center justify-between">
+          <div className="flex gap-4 text-sm">
+            <div className="text-center">
+              <p className="font-bold">{counts.followers}</p>
+              <p className="text-xs text-muted-foreground">Followers</p>
+            </div>
+            <div className="text-center">
+              <p className="font-bold">{counts.following}</p>
+              <p className="text-xs text-muted-foreground">Following</p>
+            </div>
+          </div>
+          {!isSelf && !checking && (
+            <Button
+              size="sm"
+              variant={following ? 'outline' : 'default'}
+              onClick={toggleFollow}
+              disabled={followLoading}
+              className="min-w-[100px]"
+            >
+              {followLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : following ? (
+                <>
+                  <UserMinus className="h-4 w-4 mr-1" />
+                  Unfollow
+                </>
+              ) : (
+                <>
+                  <UserPlus className="h-4 w-4 mr-1" />
+                  Follow
+                </>
+              )}
+            </Button>
+          )}
         </div>
 
         {/* Bio */}
