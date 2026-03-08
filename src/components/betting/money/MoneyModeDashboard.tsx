@@ -319,6 +319,7 @@ const MoneyModeDashboard = () => {
         )}
       </div>
     </div>
+    </motion.div>
   );
 };
 
