@@ -1112,6 +1112,22 @@ export type Database = {
         }
         Returns: string
       }
+      get_following_activity: {
+        Args: { _limit?: number }
+        Returns: {
+          bet_id: string
+          city: string
+          created_at: string
+          odds: number
+          prediction_type: string
+          prediction_value: string
+          result: string
+          stake: number
+          updated_at: string
+          user_id: string
+          username: string
+        }[]
+      }
       get_group_leaderboard: {
         Args: { _user_id: string }
         Returns: {
