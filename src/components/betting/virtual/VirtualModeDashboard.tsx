@@ -1,4 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useSwipeNavigation } from '@/hooks/useSwipeNavigation';
+import { SwipeIndicator } from '@/components/SwipeIndicator';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { getUser, getRecentBets } from '@/lib/supabase-auth-storage';
@@ -80,6 +83,14 @@ const VirtualModeDashboard = () => {
     }
   };
 
+  const swipeViews = useMemo(() => ['dashboard', 'mybets', 'analytics'] as const, []);
+  
+  const { currentIndex, totalViews, dragProps } = useSwipeNavigation({
+    views: swipeViews as unknown as string[],
+    activeView: activeView as string,
+    setActiveView: (v) => setActiveView(v as any),
+  });
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -94,37 +105,47 @@ const VirtualModeDashboard = () => {
   const settledBets = bets.filter(bet => bet.result !== 'pending');
   const winRate = settledBets.length > 0 ? (bets.filter(bet => bet.result === 'win').length / settledBets.length * 100).toFixed(1) : '0';
 
+  // Non-swipeable full-screen views
   if (activeView === 'betting') {
     return <BettingSlip onBack={() => setActiveView('dashboard')} onBetPlaced={refreshData} />;
   }
-
   if (activeView === 'parlay') {
     return <ParlayBettingSlip onBack={() => setActiveView('dashboard')} onBetPlaced={refreshData} />;
   }
-
   if (activeView === 'combined') {
     return <CombinedBettingSlip onBack={() => setActiveView('dashboard')} onBetPlaced={refreshData} />;
   }
-
-  if (activeView === 'mybets') {
-    return <MyBets onBack={() => setActiveView('dashboard')} onRefresh={refreshData} />;
-  }
-
   if (activeView === 'leaderboard') {
     return <Leaderboard onBack={() => setActiveView('dashboard')} />;
   }
-
   if (activeView === 'shop') {
     return <Shop onBack={() => setActiveView('dashboard')} />;
   }
 
+  // Swipeable views
+  if (activeView === 'mybets') {
+    return (
+      <motion.div {...dragProps} className="touch-pan-y">
+        <SwipeIndicator currentIndex={currentIndex} totalViews={totalViews} />
+        <MyBets onBack={() => setActiveView('dashboard')} onRefresh={refreshData} />
+      </motion.div>
+    );
+  }
+
   if (activeView === 'analytics') {
-    return <Analytics onBack={() => setActiveView('dashboard')} />;
+    return (
+      <motion.div {...dragProps} className="touch-pan-y">
+        <SwipeIndicator currentIndex={currentIndex} totalViews={totalViews} />
+        <Analytics onBack={() => setActiveView('dashboard')} />
+      </motion.div>
+    );
   }
 
   return (
-    <div className={`min-h-screen p-3 sm:p-4 transition-colors duration-300 ${theme.gradient}`}>
-      <div className="max-w-4xl mx-auto space-y-4 sm:space-y-6">
+    <motion.div {...dragProps} className="touch-pan-y">
+      <SwipeIndicator currentIndex={currentIndex} totalViews={totalViews} />
+      <div className={`min-h-screen p-3 sm:p-4 transition-colors duration-300 ${theme.gradient}`}>
+        <div className="max-w-4xl mx-auto space-y-4 sm:space-y-6">
         {/* Header */}
         <div className={`text-center p-4 sm:p-6 rounded-xl border-2 ${theme.borderColor} ${theme.cardBg} backdrop-blur-sm ${theme.glowShadow}`}>
           <div className="flex items-center justify-center gap-2 sm:gap-3 mb-2">
@@ -332,6 +353,7 @@ const VirtualModeDashboard = () => {
         )}
       </div>
     </div>
+    </motion.div>
   );
 };
 
