@@ -69,14 +69,15 @@ export const getFollowingList = async (): Promise<Array<{ user_id: string; usern
   if (!user) return [];
 
   // Get follow records
-  const { data: follows, error } = await supabase
+  const { data: followsRaw, error } = await supabase
     .from('user_follows' as any)
     .select('following_id, created_at')
     .eq('follower_id', user.id)
     .order('created_at', { ascending: false });
 
-  if (error || !follows || follows.length === 0) return [];
+  if (error || !followsRaw || (followsRaw as any[]).length === 0) return [];
 
+  const follows = followsRaw as any[];
   const followingIds = follows.map((f: any) => f.following_id);
 
   // Get user data and profiles in parallel
