@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { getUser, getRecentBets } from '@/lib/supabase-auth-storage';
 import { User, Bet } from '@/types/supabase-betting';
 
@@ -49,11 +49,11 @@ export function useDashboardData(): DashboardData {
     }
   }, []);
 
-  const pendingBets = bets.filter(bet => bet.result === 'pending');
-  const settledBets = bets.filter(bet => bet.result !== 'pending');
-  const winRate = settledBets.length > 0
+  const pendingBets = useMemo(() => bets.filter(bet => bet.result === 'pending'), [bets]);
+  const settledBets = useMemo(() => bets.filter(bet => bet.result !== 'pending'), [bets]);
+  const winRate = useMemo(() => settledBets.length > 0
     ? (bets.filter(bet => bet.result === 'win').length / settledBets.length * 100).toFixed(1)
-    : '0';
+    : '0', [bets, settledBets]);
 
   return {
     user,
