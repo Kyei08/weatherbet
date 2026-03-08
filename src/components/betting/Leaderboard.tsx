@@ -313,6 +313,13 @@ const Leaderboard = ({ onBack }: LeaderboardProps) => {
               <CardHeader>
                 <CardTitle>Top Players</CardTitle>
                 <p className="text-muted-foreground">Compete with players in your league</p>
+                <div className="flex items-center gap-2 mt-2">
+                  <Switch id="friends-only" checked={friendsOnly} onCheckedChange={setFriendsOnly} />
+                  <Label htmlFor="friends-only" className="flex items-center gap-1.5 text-sm cursor-pointer">
+                    <Heart className={`h-3.5 w-3.5 ${friendsOnly ? 'text-primary fill-primary' : 'text-muted-foreground'}`} />
+                    Friends only
+                  </Label>
+                </div>
                 <div className="relative mt-2">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
