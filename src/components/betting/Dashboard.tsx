@@ -25,13 +25,29 @@ import { useModeTheme } from '@/hooks/useModeTheme';
 
 const Dashboard = () => {
   const theme = useModeTheme();
-  const { user, bets, loading, pendingBets, winRate, refreshData } = useDashboardData();
+  const { user, bets, loading, error, pendingBets, winRate, refreshData } = useDashboardData();
   const [activeView, setActiveView] = useState<'dashboard' | 'betting' | 'parlay' | 'combined' | 'multitime' | 'mybets' | 'leaderboard' | 'shop' | 'analytics'>('dashboard');
 
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <p className="text-muted-foreground">Loading...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <p className="text-destructive font-medium">{error}</p>
+          <button
+            onClick={refreshData}
+            className="px-4 py-2 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+          >
+            Try Again
+          </button>
+        </div>
       </div>
     );
   }
