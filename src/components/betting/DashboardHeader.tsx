@@ -45,13 +45,13 @@ export function DashboardHeader({ user, winRate, pendingBetsCount }: DashboardHe
         </Card>
 
         <Card className={`${theme.card} border-2 ${theme.glowShadow}`}>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Win Rate</CardTitle>
-            <TrendingUp className={`h-4 w-4 ${theme.accentText}`} />
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 sm:pb-2 px-3 pt-3 sm:px-6 sm:pt-6">
+            <CardTitle className="text-[10px] sm:text-sm font-medium">Win Rate</CardTitle>
+            <TrendingUp className={`h-3 w-3 sm:h-4 sm:w-4 ${theme.accentText} shrink-0`} />
           </CardHeader>
-          <CardContent>
-            <div className={`text-2xl font-bold ${theme.secondaryText}`}>{winRate}%</div>
-            <p className="text-xs text-muted-foreground">Success Rate</p>
+          <CardContent className="px-3 pb-3 sm:px-6 sm:pb-6">
+            <div className={`text-lg sm:text-2xl font-bold ${theme.secondaryText}`}>{winRate}%</div>
+            <p className="text-[10px] sm:text-xs text-muted-foreground hidden sm:block">Success Rate</p>
           </CardContent>
         </Card>
 
