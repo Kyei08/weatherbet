@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, Trophy, Medal, Award, Users } from 'lucide-react';
 import { getGroupLeaderboard, getUserLeaderboardGroup, assignUserToLeaderboardGroup, getProfilesByUsernames } from '@/lib/supabase-auth-storage';
 import { useToast } from '@/hooks/use-toast';
+import PlayerProfileModal from './PlayerProfileModal';
 
 interface LeaderboardEntry {
   username: string;
