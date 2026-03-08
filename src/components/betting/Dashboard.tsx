@@ -14,6 +14,7 @@ import { StreakDisplay } from './StreakDisplay';
 import { TransactionHistory } from './TransactionHistory';
 import { CurrencyModeSwitcher } from './CurrencyModeSwitcher';
 import { useModeTheme } from '@/hooks/useModeTheme';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const Dashboard = () => {
   const theme = useModeTheme();
