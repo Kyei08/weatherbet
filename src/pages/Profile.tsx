@@ -309,6 +309,9 @@ const Profile = () => {
           </CardContent>
         </Card>
 
+        {/* Change Password */}
+        <ChangePasswordForm />
+
         {/* Account Actions */}
         <Card>
           <CardHeader className="pb-3">
