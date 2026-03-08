@@ -271,6 +271,30 @@ const Profile = () => {
                 </Button>
               </div>
             </div>
+            {/* Bio */}
+            <div className="space-y-2">
+              <Label htmlFor="bio" className="text-sm">About Me</Label>
+              <Textarea
+                id="bio"
+                value={bio}
+                onChange={(e) => setBio(e.target.value)}
+                placeholder="Tell others a bit about yourself…"
+                className="min-h-[80px] resize-none"
+                maxLength={300}
+              />
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-muted-foreground">{bio.length}/300</p>
+                <Button
+                  size="sm"
+                  onClick={handleSaveBio}
+                  disabled={!hasBioChanged || savingBio}
+                  className="min-h-[36px]"
+                >
+                  {savingBio ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Save className="h-4 w-4 mr-1" />}
+                  Save Bio
+                </Button>
+              </div>
+            </div>
           </CardContent>
         </Card>
 
