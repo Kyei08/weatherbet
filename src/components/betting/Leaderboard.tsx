@@ -2,8 +2,9 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Trophy, Medal, Award, Users } from 'lucide-react';
+import { ArrowLeft, Trophy, Medal, Award, Users, UserCheck } from 'lucide-react';
 import { getGroupLeaderboard, getUserLeaderboardGroup, assignUserToLeaderboardGroup, getProfilesByUsernames } from '@/lib/supabase-auth-storage';
+import { getFollowingIds } from '@/lib/supabase-follows';
 import { useToast } from '@/hooks/use-toast';
 import PlayerProfileModal from './PlayerProfileModal';
 
@@ -16,6 +17,7 @@ interface LeaderboardEntry {
 }
 
 interface ProfileInfo {
+  user_id: string;
   username: string | null;
   avatar_url: string | null;
   bio: string | null;
@@ -53,7 +55,7 @@ const getRankBadge = (rank: number) => {
   return 'outline';
 };
 
-function PlayerRow({ user, profile, onClick }: { user: LeaderboardEntry; profile?: ProfileInfo; onClick: () => void }) {
+function PlayerRow({ user, profile, isFollowing, onClick }: { user: LeaderboardEntry; profile?: ProfileInfo; isFollowing?: boolean; onClick: () => void }) {
   return (
     <div
       onClick={onClick}
@@ -77,7 +79,15 @@ function PlayerRow({ user, profile, onClick }: { user: LeaderboardEntry; profile
           )}
         </div>
         <div className="min-w-0">
-          <p className="font-semibold truncate">{user.username}</p>
+          <div className="flex items-center gap-1.5">
+            <p className="font-semibold truncate">{user.username}</p>
+            {isFollowing && (
+              <Badge variant="secondary" className="gap-0.5 text-[10px] px-1.5 py-0 h-4 shrink-0">
+                <UserCheck className="h-2.5 w-2.5" />
+                Following
+              </Badge>
+            )}
+          </div>
           {profile?.bio ? (
             <p className="text-xs text-muted-foreground truncate max-w-[180px]">{profile.bio}</p>
           ) : (
@@ -98,6 +108,7 @@ function PlayerRow({ user, profile, onClick }: { user: LeaderboardEntry; profile
 const Leaderboard = ({ onBack }: LeaderboardProps) => {
   const [users, setUsers] = useState<LeaderboardEntry[]>([]);
   const [profiles, setProfiles] = useState<Map<string, ProfileInfo>>(new Map());
+  const [followingUserIds, setFollowingUserIds] = useState<Set<string>>(new Set());
   const [groupInfo, setGroupInfo] = useState<LeaderboardGroupInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedPlayer, setSelectedPlayer] = useState<LeaderboardEntry | null>(null);
@@ -113,8 +124,12 @@ const Leaderboard = ({ onBack }: LeaderboardProps) => {
         }
         setGroupInfo(groupData);
 
-        const data = await getGroupLeaderboard();
+        const [data, followIds] = await Promise.all([
+          getGroupLeaderboard(),
+          getFollowingIds(),
+        ]);
         setUsers(data);
+        setFollowingUserIds(followIds);
 
         // Fetch profiles for all leaderboard users
         if (data.length > 0) {
@@ -192,14 +207,18 @@ const Leaderboard = ({ onBack }: LeaderboardProps) => {
               </div>
             ) : (
               <div className="space-y-3">
-                {users.map((user) => (
-                  <PlayerRow
-                    key={`${user.username}-${user.rank}`}
-                    user={user}
-                    profile={profiles.get(user.username)}
-                    onClick={() => setSelectedPlayer(user)}
-                  />
-                ))}
+                {users.map((user) => {
+                  const profile = profiles.get(user.username);
+                  return (
+                    <PlayerRow
+                      key={`${user.username}-${user.rank}`}
+                      user={user}
+                      profile={profile}
+                      isFollowing={profile?.user_id ? followingUserIds.has(profile.user_id) : false}
+                      onClick={() => setSelectedPlayer(user)}
+                    />
+                  );
+                })}
               </div>
             )}
           </CardContent>

@@ -103,3 +103,17 @@ export const getFollowingList = async (): Promise<Array<{ user_id: string; usern
     };
   });
 };
+
+// Get set of user IDs the current user follows
+export const getFollowingIds = async (): Promise<Set<string>> => {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return new Set();
+
+  const { data, error } = await supabase
+    .from('user_follows' as any)
+    .select('following_id')
+    .eq('follower_id', user.id);
+
+  if (error || !data) return new Set();
+  return new Set((data as any[]).map((f: any) => f.following_id));
+};
