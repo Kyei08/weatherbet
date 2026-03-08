@@ -97,7 +97,44 @@ function PlayerRowSkeleton() {
   );
 }
 
-function PlayerRow({ user, profile, isFollowing, followerCount, followingCount, onClick }: { user: LeaderboardEntry; profile?: ProfileInfo; isFollowing?: boolean; followerCount?: number; followingCount?: number; onClick: () => void }) {
+function PlayerRow({ user, profile, isFollowing, followerCount, followingCount, sortBy, onClick }: { user: LeaderboardEntry; profile?: ProfileInfo; isFollowing?: boolean; followerCount?: number; followingCount?: number; sortBy: 'points' | 'followers' | 'following'; onClick: () => void }) {
+  const getSortIndicator = () => {
+    if (sortBy === 'followers') {
+      return (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Badge variant="secondary" className="gap-1 text-[10px] px-1.5 py-0 h-4 shrink-0 bg-accent/50">
+                <Users className="h-2.5 w-2.5" />
+                Ranked by followers
+              </Badge>
+            </TooltipTrigger>
+            <TooltipContent side="top" className="bg-popover border border-border text-xs">
+              Ranking position based on follower count
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      );
+    } else if (sortBy === 'following') {
+      return (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Badge variant="secondary" className="gap-1 text-[10px] px-1.5 py-0 h-4 shrink-0 bg-accent/50">
+                <UserPlus className="h-2.5 w-2.5" />
+                Ranked by following
+              </Badge>
+            </TooltipTrigger>
+            <TooltipContent side="top" className="bg-popover border border-border text-xs">
+              Ranking position based on following count
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      );
+    }
+    // Default points - no indicator needed
+    return null;
+  };
   return (
     <div
       onClick={onClick}
