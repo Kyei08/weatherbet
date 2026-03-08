@@ -36,6 +36,9 @@ const Profile = () => {
   const [saving, setSaving] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [bio, setBio] = useState('');
+  const [originalBio, setOriginalBio] = useState('');
+  const [savingBio, setSavingBio] = useState(false);
   const [points, setPoints] = useState(0);
   const [level, setLevel] = useState(1);
 
