@@ -1,11 +1,13 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Trophy, Medal, Award, Users, UserCheck } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
+import { ArrowLeft, Trophy, Medal, Award, Users, UserCheck, RefreshCw } from 'lucide-react';
 import { getGroupLeaderboard, getUserLeaderboardGroup, assignUserToLeaderboardGroup, getProfilesByUsernames } from '@/lib/supabase-auth-storage';
 import { getFollowingIds } from '@/lib/supabase-follows';
 import { useToast } from '@/hooks/use-toast';
+import { usePullToRefresh } from '@/hooks/usePullToRefresh';
 import PlayerProfileModal from './PlayerProfileModal';
 
 interface LeaderboardEntry {
@@ -55,6 +57,25 @@ const getRankBadge = (rank: number) => {
   return 'outline';
 };
 
+function PlayerRowSkeleton() {
+  return (
+    <div className="flex items-center justify-between p-3 sm:p-4 rounded-lg border">
+      <div className="flex items-center gap-2 sm:gap-3">
+        <Skeleton className="h-6 w-10 rounded-full" />
+        <Skeleton className="h-8 w-8 sm:h-9 sm:w-9 rounded-full" />
+        <div className="space-y-1.5">
+          <Skeleton className="h-4 w-24" />
+          <Skeleton className="h-3 w-16" />
+        </div>
+      </div>
+      <div className="space-y-1.5 text-right">
+        <Skeleton className="h-5 w-14 ml-auto" />
+        <Skeleton className="h-3 w-10 ml-auto" />
+      </div>
+    </div>
+  );
+}
+
 function PlayerRow({ user, profile, isFollowing, onClick }: { user: LeaderboardEntry; profile?: ProfileInfo; isFollowing?: boolean; onClick: () => void }) {
   return (
     <div
@@ -68,7 +89,6 @@ function PlayerRow({ user, profile, isFollowing, onClick }: { user: LeaderboardE
           {getRankIcon(user.rank)}
           <Badge variant={getRankBadge(user.rank)} className="text-[10px] sm:text-xs">#{user.rank}</Badge>
         </div>
-        {/* Avatar */}
         <div className="h-8 w-8 sm:h-9 sm:w-9 rounded-full shrink-0 overflow-hidden bg-primary/10 flex items-center justify-center">
           {profile?.avatar_url ? (
             <img src={profile.avatar_url} alt="" className="h-8 w-8 sm:h-9 sm:w-9 rounded-full object-cover" />
@@ -114,132 +134,182 @@ const Leaderboard = ({ onBack }: LeaderboardProps) => {
   const [selectedPlayer, setSelectedPlayer] = useState<LeaderboardEntry | null>(null);
   const { toast } = useToast();
 
-  useEffect(() => {
-    const fetchLeaderboard = async () => {
-      try {
-        let groupData = await getUserLeaderboardGroup();
-        if (!groupData) {
-          await assignUserToLeaderboardGroup(100);
-          groupData = await getUserLeaderboardGroup();
-        }
-        setGroupInfo(groupData);
-
-        const [data, followIds] = await Promise.all([
-          getGroupLeaderboard(),
-          getFollowingIds(),
-        ]);
-        setUsers(data);
-        setFollowingUserIds(followIds);
-
-        // Fetch profiles for all leaderboard users
-        if (data.length > 0) {
-          const usernames = data.map((u: LeaderboardEntry) => u.username);
-          const profilesList = await getProfilesByUsernames(usernames);
-          const map = new Map<string, ProfileInfo>();
-          profilesList.forEach((p) => {
-            if (p.username) map.set(p.username, p);
-          });
-          setProfiles(map);
-        }
-      } catch (error) {
-        console.error('Error fetching leaderboard:', error);
-        toast({ variant: "destructive", title: "Error", description: "Failed to load leaderboard data" });
-      } finally {
-        setLoading(false);
+  const fetchLeaderboard = useCallback(async () => {
+    try {
+      let groupData = await getUserLeaderboardGroup();
+      if (!groupData) {
+        await assignUserToLeaderboardGroup(100);
+        groupData = await getUserLeaderboardGroup();
       }
-    };
-    fetchLeaderboard();
+      setGroupInfo(groupData);
+
+      const [data, followIds] = await Promise.all([
+        getGroupLeaderboard(),
+        getFollowingIds(),
+      ]);
+      setUsers(data);
+      setFollowingUserIds(followIds);
+
+      if (data.length > 0) {
+        const usernames = data.map((u: LeaderboardEntry) => u.username);
+        const profilesList = await getProfilesByUsernames(usernames);
+        const map = new Map<string, ProfileInfo>();
+        profilesList.forEach((p) => {
+          if (p.username) map.set(p.username, p);
+        });
+        setProfiles(map);
+      }
+    } catch (error) {
+      console.error('Error fetching leaderboard:', error);
+      toast({ variant: "destructive", title: "Error", description: "Failed to load leaderboard data" });
+    } finally {
+      setLoading(false);
+    }
   }, [toast]);
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-background p-4">
-        <div className="max-w-2xl mx-auto">
-          <div className="flex items-center gap-4 mb-6">
-            <Button variant="ghost" size="sm" onClick={onBack}><ArrowLeft className="h-4 w-4" /></Button>
-            <h1 className="text-2xl font-bold">Leaderboard</h1>
-          </div>
-          <Card><CardContent className="text-center py-12"><p className="text-muted-foreground">Loading leaderboard...</p></CardContent></Card>
-        </div>
-      </div>
-    );
-  }
+  useEffect(() => {
+    fetchLeaderboard();
+  }, [fetchLeaderboard]);
+
+  const { containerRef, pullDistance, isRefreshing, isTriggered, progress } = usePullToRefresh({
+    onRefresh: fetchLeaderboard,
+  });
 
   return (
-    <div className="min-h-screen bg-background p-4">
+    <div
+      ref={containerRef}
+      className="min-h-screen bg-background p-4 overflow-auto"
+      style={{ overscrollBehavior: 'contain' }}
+    >
+      {/* Pull-to-refresh indicator */}
+      <div
+        className="flex justify-center items-center overflow-hidden transition-[height] duration-200 ease-out"
+        style={{ height: pullDistance > 0 ? `${pullDistance}px` : '0px' }}
+      >
+        <div className={`flex flex-col items-center gap-1 transition-opacity ${pullDistance > 10 ? 'opacity-100' : 'opacity-0'}`}>
+          <RefreshCw
+            className={`h-5 w-5 text-primary transition-transform duration-200 ${isRefreshing ? 'animate-spin' : ''}`}
+            style={{ transform: isRefreshing ? undefined : `rotate(${progress * 360}deg)` }}
+          />
+          <span className="text-xs text-muted-foreground">
+            {isRefreshing ? 'Refreshing…' : isTriggered ? 'Release to refresh' : 'Pull to refresh'}
+          </span>
+        </div>
+      </div>
+
       <div className="max-w-2xl mx-auto space-y-4 sm:space-y-6 pb-20 md:pb-6">
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="sm" onClick={onBack}><ArrowLeft className="h-4 w-4" /></Button>
           <h1 className="text-2xl font-bold">🏆 Leaderboard</h1>
         </div>
 
-        {groupInfo && (
-          <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-background">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
-                    <Users className="h-6 w-6 text-primary" />
+        {loading ? (
+          <>
+            {/* Group info skeleton */}
+            <Card className="border-primary/20">
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <Skeleton className="h-12 w-12 rounded-full" />
+                    <div className="space-y-2">
+                      <Skeleton className="h-5 w-28" />
+                      <Skeleton className="h-3 w-20" />
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="text-lg font-bold">{groupInfo.leaderboard_groups.name}</h3>
-                    <p className="text-sm text-muted-foreground">
-                      {groupInfo.current_size} / {groupInfo.leaderboard_groups.max_size} players
-                    </p>
-                  </div>
+                  <Skeleton className="h-6 w-20 rounded-full" />
                 </div>
-                <Badge variant="secondary" className="text-sm">Your League</Badge>
-              </div>
-            </CardContent>
-          </Card>
-        )}
+              </CardContent>
+            </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Top Players</CardTitle>
-            <p className="text-muted-foreground">Compete with players in your league</p>
-          </CardHeader>
-          <CardContent>
-            {users.length === 0 ? (
-              <div className="text-center py-8">
-                <p className="text-muted-foreground">No players yet!</p>
-                <p className="text-sm text-muted-foreground mt-2">Be the first to place a bet</p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {users.map((user) => {
-                  const profile = profiles.get(user.username);
-                  return (
-                    <PlayerRow
-                      key={`${user.username}-${user.rank}`}
-                      user={user}
-                      profile={profile}
-                      isFollowing={profile?.user_id ? followingUserIds.has(profile.user_id) : false}
-                      onClick={() => setSelectedPlayer(user)}
-                    />
-                  );
-                })}
-              </div>
+            {/* Player list skeleton */}
+            <Card>
+              <CardHeader>
+                <Skeleton className="h-6 w-28" />
+                <Skeleton className="h-4 w-48" />
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <PlayerRowSkeleton key={i} />
+                ))}
+              </CardContent>
+            </Card>
+          </>
+        ) : (
+          <>
+            {groupInfo && (
+              <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-background animate-fade-in">
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
+                        <Users className="h-6 w-6 text-primary" />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-bold">{groupInfo.leaderboard_groups.name}</h3>
+                        <p className="text-sm text-muted-foreground">
+                          {groupInfo.current_size} / {groupInfo.leaderboard_groups.max_size} players
+                        </p>
+                      </div>
+                    </div>
+                    <Badge variant="secondary" className="text-sm">Your League</Badge>
+                  </div>
+                </CardContent>
+              </Card>
             )}
-          </CardContent>
-        </Card>
 
-        {users.length > 0 && (
-          <Card>
-            <CardHeader><CardTitle>Competition Stats</CardTitle></CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 gap-4 text-center">
-                <div>
-                  <p className="text-2xl font-bold">{users.length}</p>
-                  <p className="text-sm text-muted-foreground">Total Players</p>
-                </div>
-                <div>
-                  <p className="text-2xl font-bold">{Math.max(...users.map(u => u.points)).toLocaleString()}</p>
-                  <p className="text-sm text-muted-foreground">Highest Score</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+            <Card className="animate-fade-in" style={{ animationDelay: '50ms', animationFillMode: 'both' }}>
+              <CardHeader>
+                <CardTitle>Top Players</CardTitle>
+                <p className="text-muted-foreground">Compete with players in your league</p>
+              </CardHeader>
+              <CardContent>
+                {users.length === 0 ? (
+                  <div className="text-center py-8">
+                    <p className="text-muted-foreground">No players yet!</p>
+                    <p className="text-sm text-muted-foreground mt-2">Be the first to place a bet</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {users.map((user, i) => {
+                      const profile = profiles.get(user.username);
+                      return (
+                        <div
+                          key={`${user.username}-${user.rank}`}
+                          className="animate-fade-in"
+                          style={{ animationDelay: `${100 + i * 30}ms`, animationFillMode: 'both' }}
+                        >
+                          <PlayerRow
+                            user={user}
+                            profile={profile}
+                            isFollowing={profile?.user_id ? followingUserIds.has(profile.user_id) : false}
+                            onClick={() => setSelectedPlayer(user)}
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {users.length > 0 && (
+              <Card className="animate-fade-in" style={{ animationDelay: '150ms', animationFillMode: 'both' }}>
+                <CardHeader><CardTitle>Competition Stats</CardTitle></CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 gap-4 text-center">
+                    <div>
+                      <p className="text-2xl font-bold">{users.length}</p>
+                      <p className="text-sm text-muted-foreground">Total Players</p>
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold">{Math.max(...users.map(u => u.points)).toLocaleString()}</p>
+                      <p className="text-sm text-muted-foreground">Highest Score</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </>
         )}
       </div>
 
