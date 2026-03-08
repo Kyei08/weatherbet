@@ -97,9 +97,9 @@ function PlayerRow({ user, profile, isFollowing, onClick }: { user: LeaderboardE
           )}
         </div>
       </div>
-      <div className="text-right shrink-0">
-        <p className="text-lg font-bold">{user.points.toLocaleString()}</p>
-        <p className="text-xs text-muted-foreground">points</p>
+      <div className="text-right shrink-0 ml-2">
+        <p className="text-base sm:text-lg font-bold">{user.points.toLocaleString()}</p>
+        <p className="text-[10px] sm:text-xs text-muted-foreground">points</p>
       </div>
     </div>
   );

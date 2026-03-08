@@ -74,7 +74,7 @@ export function DashboardActions({ betsCount, onViewChange }: DashboardActionsPr
       </Button>
 
       {/* Secondary Navigation */}
-      <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+      <div className="grid grid-cols-4 gap-1 sm:gap-2">
         <Button variant="ghost" size="sm" className="h-12 flex-col gap-1 text-xs text-muted-foreground hover:text-foreground" onClick={() => navigate('/cashout')}>
           <DollarSign className="h-4 w-4" />
           Cash Out

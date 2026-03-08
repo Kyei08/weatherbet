@@ -191,26 +191,26 @@ const PlayerProfileModal = ({
         )}
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-3 gap-2 sm:gap-3">
           <Card>
-            <CardContent className="p-3 text-center">
-              <Star className="h-4 w-4 mx-auto mb-1 text-primary" />
-              <p className="text-lg font-bold">{points.toLocaleString()}</p>
-              <p className="text-xs text-muted-foreground">Points</p>
+            <CardContent className="p-2 sm:p-3 text-center">
+              <Star className="h-3 w-3 sm:h-4 sm:w-4 mx-auto mb-1 text-primary" />
+              <p className="text-sm sm:text-lg font-bold">{points.toLocaleString()}</p>
+              <p className="text-[10px] sm:text-xs text-muted-foreground">Points</p>
             </CardContent>
           </Card>
           <Card>
-            <CardContent className="p-3 text-center">
-              <Target className="h-4 w-4 mx-auto mb-1 text-primary" />
-              <p className="text-lg font-bold">{stats.totalBets}</p>
-              <p className="text-xs text-muted-foreground">Bets</p>
+            <CardContent className="p-2 sm:p-3 text-center">
+              <Target className="h-3 w-3 sm:h-4 sm:w-4 mx-auto mb-1 text-primary" />
+              <p className="text-sm sm:text-lg font-bold">{stats.totalBets}</p>
+              <p className="text-[10px] sm:text-xs text-muted-foreground">Bets</p>
             </CardContent>
           </Card>
           <Card>
-            <CardContent className="p-3 text-center">
-              <Zap className="h-4 w-4 mx-auto mb-1 text-primary" />
-              <p className="text-lg font-bold">{winRate}%</p>
-              <p className="text-xs text-muted-foreground">Win Rate</p>
+            <CardContent className="p-2 sm:p-3 text-center">
+              <Zap className="h-3 w-3 sm:h-4 sm:w-4 mx-auto mb-1 text-primary" />
+              <p className="text-sm sm:text-lg font-bold">{winRate}%</p>
+              <p className="text-[10px] sm:text-xs text-muted-foreground">Win Rate</p>
             </CardContent>
           </Card>
         </div>
