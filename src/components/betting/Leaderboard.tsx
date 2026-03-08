@@ -79,7 +79,7 @@ function PlayerRow({ user, profile, isFollowing, onClick }: { user: LeaderboardE
           )}
         </div>
         <div className="min-w-0">
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1 sm:gap-1.5">
             <p className="font-semibold truncate">{user.username}</p>
             {isFollowing && (
               <Badge variant="secondary" className="gap-0.5 text-[10px] px-1.5 py-0 h-4 shrink-0">
