@@ -167,7 +167,7 @@ const Leaderboard = ({ onBack }: LeaderboardProps) => {
 
   return (
     <div className="min-h-screen bg-background p-4">
-      <div className="max-w-2xl mx-auto space-y-6">
+      <div className="max-w-2xl mx-auto space-y-4 sm:space-y-6 pb-20 md:pb-6">
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="sm" onClick={onBack}><ArrowLeft className="h-4 w-4" /></Button>
           <h1 className="text-2xl font-bold">🏆 Leaderboard</h1>
