@@ -6,6 +6,7 @@ interface DashboardData {
   user: User | null;
   bets: Bet[];
   loading: boolean;
+  error: string | null;
   pendingBets: Bet[];
   settledBets: Bet[];
   winRate: string;
@@ -16,17 +17,21 @@ export function useDashboardData(): DashboardData {
   const [user, setUser] = useState<User | null>(null);
   const [bets, setBets] = useState<Bet[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
     try {
+      setError(null);
       const [userData, betsData] = await Promise.all([
         getUser(),
         getRecentBets(),
       ]);
       setUser(userData);
       setBets(betsData);
-    } catch (error) {
-      console.error('Error fetching dashboard data:', error);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to load dashboard data';
+      console.error('Error fetching dashboard data:', err);
+      setError(message);
     } finally {
       setLoading(false);
     }
@@ -50,6 +55,7 @@ export function useDashboardData(): DashboardData {
     user,
     bets,
     loading,
+    error,
     pendingBets,
     settledBets,
     winRate,
