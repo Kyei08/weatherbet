@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Trophy, Lock } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 import { getAchievementsWithProgress, AchievementWithProgress } from '@/lib/supabase-achievements';
 import { toast } from 'sonner';
 
@@ -33,10 +34,36 @@ export const Achievements = () => {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Achievements & Badges</CardTitle>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <Trophy className="h-5 w-5" />
+                Achievements & Badges
+              </CardTitle>
+              <CardDescription>Unlock achievements to earn bonus points</CardDescription>
+            </div>
+            <Skeleton className="h-10 w-16 rounded-full" />
+          </div>
         </CardHeader>
         <CardContent>
-          <p className="text-muted-foreground">Loading achievements...</p>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <Card key={i} className="relative overflow-hidden">
+                <CardHeader className="pb-3">
+                  <Skeleton className="h-10 w-10 rounded" />
+                  <Skeleton className="h-5 w-32 mt-2" />
+                  <Skeleton className="h-3 w-full mt-1" />
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <Skeleton className="h-2 w-full rounded-full" />
+                  <div className="flex justify-between">
+                    <Skeleton className="h-4 w-12" />
+                    <Skeleton className="h-4 w-16" />
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
         </CardContent>
       </Card>
     );

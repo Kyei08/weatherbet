@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { getBonusStats, getBonusEarningsOverTime, BonusStats } from '@/lib/supabase-bonus-tracker';
 import { TrendingUp, Zap, Gift, Award, DollarSign } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { ChartContainer, ChartTooltipContent } from '@/components/ui/chart';
 
@@ -38,8 +39,27 @@ export const BonusTracker = () => {
             <Zap className="h-5 w-5 text-primary" />
             Bonus Tracker
           </CardTitle>
-          <CardDescription>Loading bonus statistics...</CardDescription>
+          <CardDescription>Track your extra earnings</CardDescription>
         </CardHeader>
+        <CardContent>
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="space-y-2">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-8 w-20" />
+                <Skeleton className="h-3 w-16" />
+              </div>
+            ))}
+          </div>
+          <div className="mt-6 space-y-4">
+            <Skeleton className="h-4 w-32" />
+            <div className="grid gap-3 md:grid-cols-3">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <Skeleton key={i} className="h-20 rounded-lg" />
+              ))}
+            </div>
+          </div>
+        </CardContent>
       </Card>
     );
   }
