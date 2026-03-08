@@ -32,6 +32,28 @@ const PageLoader = () => (
   </div>
 );
 
+const AnimatedRoutes = () => {
+  const location = useLocation();
+  return (
+    <AnimatePresence mode="wait">
+      <Routes location={location} key={location.pathname}>
+        <Route path="/" element={<PageTransition><Index /></PageTransition>} />
+        <Route path="/auth" element={<PageTransition><Auth /></PageTransition>} />
+        <Route path="/reset-password" element={<PageTransition><ResetPassword /></PageTransition>} />
+        <Route path="/purchase-history" element={<PageTransition><PurchaseHistory /></PageTransition>} />
+        <Route path="/city-analytics" element={<PageTransition><CityAnalytics /></PageTransition>} />
+        <Route path="/city-comparison" element={<PageTransition><CityComparisonPage /></PageTransition>} />
+        <Route path="/admin" element={<PageTransition><Admin /></PageTransition>} />
+        <Route path="/transactions" element={<PageTransition><Transactions /></PageTransition>} />
+        <Route path="/mode-comparison" element={<PageTransition><ModeComparison /></PageTransition>} />
+        <Route path="/cashout" element={<PageTransition><CashoutManagement /></PageTransition>} />
+        {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+        <Route path="*" element={<PageTransition><NotFound /></PageTransition>} />
+      </Routes>
+    </AnimatePresence>
+  );
+};
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
@@ -42,20 +64,7 @@ const App = () => (
           <CurrencyModeProvider>
             <UserPreferencesProvider>
               <Suspense fallback={<PageLoader />}>
-                <Routes>
-                  <Route path="/" element={<Index />} />
-                  <Route path="/auth" element={<Auth />} />
-                  <Route path="/reset-password" element={<ResetPassword />} />
-                  <Route path="/purchase-history" element={<PurchaseHistory />} />
-                  <Route path="/city-analytics" element={<CityAnalytics />} />
-                  <Route path="/city-comparison" element={<CityComparisonPage />} />
-                  <Route path="/admin" element={<Admin />} />
-                  <Route path="/transactions" element={<Transactions />} />
-                  <Route path="/mode-comparison" element={<ModeComparison />} />
-                  <Route path="/cashout" element={<CashoutManagement />} />
-                  {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-                  <Route path="*" element={<NotFound />} />
-                </Routes>
+                <AnimatedRoutes />
               </Suspense>
             </UserPreferencesProvider>
           </CurrencyModeProvider>
