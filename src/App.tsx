@@ -43,6 +43,7 @@ const App = () => (
                 <Routes>
                   <Route path="/" element={<Index />} />
                   <Route path="/auth" element={<Auth />} />
+                  <Route path="/reset-password" element={<ResetPassword />} />
                   <Route path="/purchase-history" element={<PurchaseHistory />} />
                   <Route path="/city-analytics" element={<CityAnalytics />} />
                   <Route path="/city-comparison" element={<CityComparisonPage />} />
