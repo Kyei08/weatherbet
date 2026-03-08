@@ -700,7 +700,9 @@ export function CombinedBettingSlip({ onBack, onBetPlaced }: CombinedBettingSlip
                 )}
               </CardContent>
             </Card>
+            </motion.div>
           )}
+          </AnimatePresence>
 
           {/* Place Bet Button */}
           <Button
