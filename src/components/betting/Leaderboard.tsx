@@ -233,10 +233,10 @@ const Leaderboard = ({ onBack }: LeaderboardProps) => {
     return filteredUsers.slice(start, start + PLAYERS_PER_PAGE);
   }, [filteredUsers, currentPage]);
 
-  // Reset to page 1 when filters change
+  // Reset to page 1 when filters or sort changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, friendsOnly]);
+  }, [searchQuery, friendsOnly, sortBy]);
 
   const fetchLeaderboard = useCallback(async () => {
     try {
