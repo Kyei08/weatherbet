@@ -9,9 +9,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { useFollow } from '@/hooks/useFollow';
 import { toast as sonnerToast } from 'sonner';
 import RankHistoryChart from './RankHistoryChart';
-import { supabase } from '@/integrations/supabase/client';
-import { useFollow } from '@/hooks/useFollow';
-import RankHistoryChart from './RankHistoryChart';
 
 interface PlayerProfileModalProps {
   open: boolean;
