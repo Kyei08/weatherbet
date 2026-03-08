@@ -155,13 +155,30 @@ function PlayerRow({ user, profile, isFollowing, followerCount, followingCount, 
       </TooltipProvider>
     );
   };
+
+  const isCrownRow = isFirst && sortBy !== 'points';
+
   return (
     <div
       onClick={onClick}
       className={`flex items-center justify-between p-3 sm:p-4 rounded-lg border cursor-pointer transition-colors hover:bg-accent/50 ${
         user.rank <= 3 ? 'bg-muted/50' : ''
-      } ${isTop10 && sortBy !== 'points' ? 'leaderboard-top-10-glow' : ''}`}
+      } ${isTop10 && sortBy !== 'points' ? 'leaderboard-top-10-glow' : ''} ${isCrownRow ? 'leaderboard-crown-row' : ''}`}
     >
+      {/* Crown & flame decorations for #1 */}
+      {isCrownRow && (
+        <>
+          <div className="absolute -top-3 left-4 crown-float z-10">
+            <Crown className="h-6 w-6 text-warning drop-shadow-md" fill="hsl(var(--warning))" />
+          </div>
+          <div className="absolute -top-2 right-3 flame-flicker z-10 opacity-70">
+            <Flame className="h-5 w-5 text-destructive" />
+          </div>
+          <div className="absolute -top-2 right-8 flame-flicker z-10 opacity-50" style={{ animationDelay: '0.15s' }}>
+            <Flame className="h-4 w-4 text-warning" />
+          </div>
+        </>
+      )}
       <div className="flex items-center gap-2 sm:gap-3 min-w-0">
         <div className="flex items-center gap-1 sm:gap-2 min-w-[44px] sm:min-w-[60px] shrink-0">
           {getRankIcon(user.rank)}
