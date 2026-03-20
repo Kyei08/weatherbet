@@ -29,6 +29,7 @@ const Dashboard = () => {
     onRefresh: refreshData,
   });
   const [showExtras, setShowExtras] = useState(false);
+  useChallengeNotifications();
 
   if (loading) {
     return (
