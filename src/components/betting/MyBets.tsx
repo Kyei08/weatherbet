@@ -636,16 +636,18 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
             <h1 className="text-2xl font-bold">My Bets</h1>
           </div>
           <div className="flex items-center gap-2">
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={handleResolveBets}
-              disabled={resolvingBets}
-              className="bg-primary/10 border-primary/30 hover:bg-primary/20"
-            >
-              <Zap className={`h-4 w-4 mr-2 ${resolvingBets ? 'animate-pulse' : ''}`} />
-              {resolvingBets ? 'Resolving...' : 'Resolve Bets'}
-            </Button>
+            {isAdminUser && (
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handleResolveBets}
+                disabled={resolvingBets}
+                className="bg-primary/10 border-primary/30 hover:bg-primary/20"
+              >
+                <Zap className={`h-4 w-4 mr-2 ${resolvingBets ? 'animate-pulse' : ''}`} />
+                {resolvingBets ? 'Resolving...' : 'Resolve Bets'}
+              </Button>
+            )}
             <Button variant="outline" size="sm" onClick={refreshBets}>
               <RefreshCw className="h-4 w-4 mr-2" />
               Refresh
