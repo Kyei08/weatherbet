@@ -107,6 +107,10 @@ export function DashboardActions({ betsCount, onViewChange }: DashboardActionsPr
           <Users className="h-4 w-4" />
           Following
         </Button>
+        <Button variant="ghost" size="sm" className="h-12 flex-col gap-1 text-xs text-muted-foreground hover:text-foreground" onClick={() => navigate('/challenges')}>
+          <Swords className="h-4 w-4" />
+          Challenges
+        </Button>
         {isAdminUser && (
           <Button
             variant="ghost"
