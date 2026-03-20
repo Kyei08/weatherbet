@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, RefreshCw, Shield, TrendingUp, Zap, Clock, CheckCircle2, Circle, XCircle, Timer, ChevronDown, ChevronUp } from 'lucide-react';
+import { useAdminCheck } from '@/hooks/useAdminCheck';
 import { supabase } from '@/integrations/supabase/client';
 import { getBets, getUser, cashOutBet } from '@/lib/supabase-auth-storage';
 import { getParlays, ParlayWithLegs, cashOutParlay } from '@/lib/supabase-parlays';
