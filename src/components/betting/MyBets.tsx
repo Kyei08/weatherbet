@@ -72,6 +72,7 @@ interface MyBetsProps {
 
 const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
   const { mode } = useCurrencyMode();
+  const { isAdminUser } = useAdminCheck();
   const [bets, setBets] = useState<Bet[]>([]);
   const [parlays, setParlays] = useState<ParlayWithLegs[]>([]);
   const [combinedBets, setCombinedBets] = useState<any[]>([]);
