@@ -666,6 +666,60 @@ export type Database = {
         }
         Relationships: []
       }
+      player_challenges: {
+        Row: {
+          challenged_id: string
+          challenged_prediction: string | null
+          challenger_id: string
+          challenger_prediction: string
+          city: string
+          created_at: string
+          expires_at: string
+          id: string
+          prediction_type: string
+          resolved_at: string | null
+          stake: number
+          status: string
+          target_date: string
+          updated_at: string
+          winner_id: string | null
+        }
+        Insert: {
+          challenged_id: string
+          challenged_prediction?: string | null
+          challenger_id: string
+          challenger_prediction: string
+          city: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          prediction_type?: string
+          resolved_at?: string | null
+          stake?: number
+          status?: string
+          target_date: string
+          updated_at?: string
+          winner_id?: string | null
+        }
+        Update: {
+          challenged_id?: string
+          challenged_prediction?: string | null
+          challenger_id?: string
+          challenger_prediction?: string
+          city?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          prediction_type?: string
+          resolved_at?: string | null
+          stake?: number
+          status?: string
+          target_date?: string
+          updated_at?: string
+          winner_id?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
