@@ -25,6 +25,7 @@ const ModeComparison = lazy(() => import("./pages/ModeComparison"));
 const CashoutManagement = lazy(() => import("./pages/CashoutManagement"));
 const Profile = lazy(() => import("./pages/Profile"));
 const Following = lazy(() => import("./pages/Following"));
+const Challenges = lazy(() => import("./pages/Challenges"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient();
