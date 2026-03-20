@@ -19,6 +19,7 @@ import { usePullToRefresh } from '@/hooks/usePullToRefresh';
 import { RefreshCw, ChevronDown } from 'lucide-react';
 import { useState } from 'react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { useChallengeNotifications } from '@/hooks/useChallengeNotifications';
 
 const Dashboard = () => {
   const theme = useModeTheme();
