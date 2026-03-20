@@ -9,6 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useFollow } from '@/hooks/useFollow';
 import { toast as sonnerToast } from 'sonner';
 import RankHistoryChart from './RankHistoryChart';
+import CreateChallengeDialog from './CreateChallengeDialog';
 
 interface PlayerProfileModalProps {
   open: boolean;
@@ -60,6 +61,7 @@ const PlayerProfileModal = ({
   const [stats, setStats] = useState<PlayerStats>({ totalBets: 0, wins: 0, losses: 0 });
   const [loading, setLoading] = useState(false);
   const [targetUserId, setTargetUserId] = useState<string | null>(null);
+  const [challengeOpen, setChallengeOpen] = useState(false);
 
   const { following, counts, loading: followLoading, checking, isSelf, toggleFollow } = useFollow(targetUserId);
 
@@ -238,11 +240,7 @@ const PlayerProfileModal = ({
                 size="sm"
                 variant="secondary"
                 className="min-w-[40px]"
-                onClick={() => {
-                  sonnerToast.success(`Challenge sent to ${username}!`, {
-                    description: 'They will be notified to accept your challenge.',
-                  });
-                }}
+                onClick={() => setChallengeOpen(true)}
               >
                 <Swords className="h-4 w-4 mr-1" />
                 Challenge
@@ -325,6 +323,16 @@ const PlayerProfileModal = ({
             <RankHistoryChart userId={targetUserId} username={username} />
           )}
         </motion.div>
+
+        {/* Challenge Dialog */}
+        {targetUserId && (
+          <CreateChallengeDialog
+            open={challengeOpen}
+            onOpenChange={setChallengeOpen}
+            targetUserId={targetUserId}
+            targetUsername={username}
+          />
+        )}
       </DialogContent>
     </Dialog>
   );
