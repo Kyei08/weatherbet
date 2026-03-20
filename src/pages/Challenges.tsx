@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { ArrowLeft, Swords } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import ChallengesList from '@/components/betting/ChallengesList';
-import MobileBottomNav from '@/components/MobileBottomNav';
+import { MobileBottomNav } from '@/components/MobileBottomNav';
 
 const Challenges = () => {
   const navigate = useNavigate();

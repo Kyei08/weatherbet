@@ -53,6 +53,7 @@ const AnimatedRoutes = () => {
         <Route path="/cashout" element={<PageTransition><CashoutManagement /></PageTransition>} />
         <Route path="/profile" element={<PageTransition><Profile /></PageTransition>} />
         <Route path="/following" element={<PageTransition><Following /></PageTransition>} />
+        <Route path="/challenges" element={<PageTransition><Challenges /></PageTransition>} />
         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
         <Route path="*" element={<PageTransition><NotFound /></PageTransition>} />
       </Routes>
