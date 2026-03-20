@@ -323,6 +323,16 @@ const PlayerProfileModal = ({
             <RankHistoryChart userId={targetUserId} username={username} />
           )}
         </motion.div>
+
+        {/* Challenge Dialog */}
+        {targetUserId && (
+          <CreateChallengeDialog
+            open={challengeOpen}
+            onOpenChange={setChallengeOpen}
+            targetUserId={targetUserId}
+            targetUsername={username}
+          />
+        )}
       </DialogContent>
     </Dialog>
   );
