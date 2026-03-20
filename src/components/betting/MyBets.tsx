@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, RefreshCw, Shield, TrendingUp, Zap, Clock, CheckCircle2, Circle, XCircle, Timer, ChevronDown, ChevronUp } from 'lucide-react';
+import { useAdminCheck } from '@/hooks/useAdminCheck';
 import { supabase } from '@/integrations/supabase/client';
 import { getBets, getUser, cashOutBet } from '@/lib/supabase-auth-storage';
 import { getParlays, ParlayWithLegs, cashOutParlay } from '@/lib/supabase-parlays';
@@ -71,6 +72,7 @@ interface MyBetsProps {
 
 const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
   const { mode } = useCurrencyMode();
+  const { isAdminUser } = useAdminCheck();
   const [bets, setBets] = useState<Bet[]>([]);
   const [parlays, setParlays] = useState<ParlayWithLegs[]>([]);
   const [combinedBets, setCombinedBets] = useState<any[]>([]);
@@ -634,16 +636,18 @@ const MyBets = ({ onBack, onRefresh }: MyBetsProps) => {
             <h1 className="text-2xl font-bold">My Bets</h1>
           </div>
           <div className="flex items-center gap-2">
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={handleResolveBets}
-              disabled={resolvingBets}
-              className="bg-primary/10 border-primary/30 hover:bg-primary/20"
-            >
-              <Zap className={`h-4 w-4 mr-2 ${resolvingBets ? 'animate-pulse' : ''}`} />
-              {resolvingBets ? 'Resolving...' : 'Resolve Bets'}
-            </Button>
+            {isAdminUser && (
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handleResolveBets}
+                disabled={resolvingBets}
+                className="bg-primary/10 border-primary/30 hover:bg-primary/20"
+              >
+                <Zap className={`h-4 w-4 mr-2 ${resolvingBets ? 'animate-pulse' : ''}`} />
+                {resolvingBets ? 'Resolving...' : 'Resolve Bets'}
+              </Button>
+            )}
             <Button variant="outline" size="sm" onClick={refreshBets}>
               <RefreshCw className="h-4 w-4 mr-2" />
               Refresh
