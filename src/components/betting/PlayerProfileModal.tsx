@@ -61,6 +61,7 @@ const PlayerProfileModal = ({
   const [stats, setStats] = useState<PlayerStats>({ totalBets: 0, wins: 0, losses: 0 });
   const [loading, setLoading] = useState(false);
   const [targetUserId, setTargetUserId] = useState<string | null>(null);
+  const [challengeOpen, setChallengeOpen] = useState(false);
 
   const { following, counts, loading: followLoading, checking, isSelf, toggleFollow } = useFollow(targetUserId);
 
